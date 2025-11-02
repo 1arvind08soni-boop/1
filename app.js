@@ -489,7 +489,7 @@ function addProduct(event) {
     );
     
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
         return;
     }
     
@@ -499,7 +499,7 @@ function addProduct(event) {
     );
     
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        showError('A product with this code already exists in the same category. Please use a different code or select a different category.');
         return;
     }
     
@@ -601,7 +601,7 @@ function addInlineProduct(event) {
     );
     
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
         return;
     }
     
@@ -611,7 +611,7 @@ function addInlineProduct(event) {
     );
     
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        showError('A product with this code already exists in the same category. Please use a different code or select a different category.');
         return;
     }
     
@@ -759,7 +759,7 @@ function updateProduct(event, productId) {
     );
     
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
         return;
     }
     
@@ -769,7 +769,7 @@ function updateProduct(event, productId) {
     );
     
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        showError('A product with this code already exists in the same category. Please use a different code or select a different category.');
         return;
     }
     
@@ -2092,13 +2092,13 @@ function addInvoice(event) {
     // Check for duplicate invoice number
     const invoiceNo = formData.get('invoiceNo').trim();
     if (!invoiceNo) {
-        alert('Please enter an invoice number');
+        showError('Please enter an invoice number');
         return;
     }
     
     const duplicateInvoice = AppState.invoices.find(inv => inv.invoiceNo === invoiceNo);
     if (duplicateInvoice) {
-        alert(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
+        showError(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
         return;
     }
     
@@ -2132,7 +2132,7 @@ function addInvoice(event) {
     });
     
     if (items.length === 0) {
-        alert('Please add at least one item to the invoice');
+        showError('Please add at least one item to the invoice');
         return;
     }
     
@@ -2175,19 +2175,19 @@ function addSimplifiedInvoice(event) {
     // Check for duplicate invoice number
     const invoiceNo = formData.get('invoiceNo').trim();
     if (!invoiceNo) {
-        alert('Please enter an invoice number');
+        showError('Please enter an invoice number');
         return;
     }
     
     const duplicateInvoice = AppState.invoices.find(inv => inv.invoiceNo === invoiceNo);
     if (duplicateInvoice) {
-        alert(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
+        showError(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
         return;
     }
     
     const amount = parseFloat(formData.get('amount'));
     if (!amount || amount <= 0) {
-        alert('Please enter a valid amount');
+        showError('Please enter a valid amount');
         return;
     }
     
@@ -2429,7 +2429,7 @@ function updateInvoice(event, invoiceId) {
     });
     
     if (items.length === 0) {
-        alert('Please add at least one item to the invoice');
+        showError('Please add at least one item to the invoice');
         return;
     }
     
@@ -2471,7 +2471,7 @@ function updateSimplifiedInvoice(event, invoiceId) {
     
     const amount = parseFloat(formData.get('amount'));
     if (!amount || amount <= 0) {
-        alert('Please enter a valid amount');
+        showError('Please enter a valid amount');
         return;
     }
     
@@ -2522,7 +2522,7 @@ function deleteInvoice(invoiceId) {
 
 function showRestoreInvoiceModal() {
     if (AppState.deletedInvoices.length === 0) {
-        alert('No recently deleted invoices to restore.');
+        showError('No recently deleted invoices to restore.');
         return;
     }
     
@@ -2575,7 +2575,7 @@ function showRestoreInvoiceModal() {
 function restoreInvoice(invoiceId) {
     const invoice = AppState.deletedInvoices.find(inv => inv.id === invoiceId);
     if (!invoice) {
-        alert('Invoice not found.');
+        showError('Invoice not found.');
         return;
     }
     
@@ -2604,7 +2604,7 @@ function restoreInvoice(invoiceId) {
     updateDashboard();
     closeModal();
     
-    alert('Invoice restored successfully!');
+    showSuccess('Invoice restored successfully!');
 }
 
 // Continue in next part...
@@ -6397,6 +6397,112 @@ function showModal(modalHTML) {
 function closeModal() {
     const container = document.getElementById('modalContainer');
     container.innerHTML = '';
+}
+
+// Show Error Notification (non-intrusive, doesn't break focus)
+function showError(message) {
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notificationContainer');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notificationContainer';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '10002';
+        notificationContainer.style.display = 'flex';
+        notificationContainer.style.flexDirection = 'column';
+        notificationContainer.style.gap = '10px';
+        notificationContainer.style.maxWidth = '400px';
+        document.body.appendChild(notificationContainer);
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    notification.style.backgroundColor = '#f8d7da';
+    notification.style.color = '#721c24';
+    notification.style.border = '1px solid #f5c6cb';
+    notification.style.padding = '15px 20px';
+    notification.style.borderRadius = '6px';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.style.display = 'flex';
+    notification.style.alignItems = 'center';
+    notification.style.justifyContent = 'space-between';
+    notification.style.gap = '10px';
+    notification.style.animation = 'slideInRight 0.3s ease-out';
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+            <i class="fas fa-exclamation-circle" style="font-size: 20px;"></i>
+            <span style="flex: 1;">${message}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #721c24; cursor: pointer; font-size: 18px; padding: 0; line-height: 1;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 5000);
+}
+
+// Show Success Notification
+function showSuccess(message) {
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notificationContainer');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notificationContainer';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '10002';
+        notificationContainer.style.display = 'flex';
+        notificationContainer.style.flexDirection = 'column';
+        notificationContainer.style.gap = '10px';
+        notificationContainer.style.maxWidth = '400px';
+        document.body.appendChild(notificationContainer);
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    notification.style.backgroundColor = '#d4edda';
+    notification.style.color = '#155724';
+    notification.style.border = '1px solid #c3e6cb';
+    notification.style.padding = '15px 20px';
+    notification.style.borderRadius = '6px';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.style.display = 'flex';
+    notification.style.alignItems = 'center';
+    notification.style.justifyContent = 'space-between';
+    notification.style.gap = '10px';
+    notification.style.animation = 'slideInRight 0.3s ease-out';
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+            <i class="fas fa-check-circle" style="font-size: 20px;"></i>
+            <span style="flex: 1;">${message}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #155724; cursor: pointer; font-size: 18px; padding: 0; line-height: 1;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 3000);
 }
 
 // Inline Modal Management (for nested modals)
