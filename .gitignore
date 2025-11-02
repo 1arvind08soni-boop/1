@@ -23,6 +23,9 @@ logs/
 *.log
 npm-debug.log*
 
+# ESLint cache
+.eslintcache
+
 # Temporary files
 tmp/
 temp/

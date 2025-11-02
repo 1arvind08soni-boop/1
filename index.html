@@ -117,7 +117,7 @@
                 <div class="screen-header">
                     <h1 class="page-title">Products</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="productSearchInput" class="form-control" placeholder="Search products..." style="width: 300px;" onkeyup="filterProducts()">
+                        <input type="text" id="productSearchInput" class="form-control" placeholder="Search products..." style="width: 300px;" onkeyup="debouncedFilterProducts()">
                         <button class="btn btn-primary" onclick="showAddProductModal()">
                             <i class="fas fa-plus"></i> Add Product
                         </button>
@@ -145,7 +145,7 @@
                 <div class="screen-header">
                     <h1 class="page-title">Clients</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="clientSearchInput" class="form-control" placeholder="Search clients..." style="width: 300px;" onkeyup="filterClients()">
+                        <input type="text" id="clientSearchInput" class="form-control" placeholder="Search clients..." style="width: 300px;" onkeyup="debouncedFilterClients()">
                         <button class="btn btn-primary" onclick="showAddClientModal()">
                             <i class="fas fa-plus"></i> Add Client
                         </button>
@@ -172,7 +172,7 @@
                 <div class="screen-header">
                     <h1 class="page-title">Vendors</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="vendorSearchInput" class="form-control" placeholder="Search vendors..." style="width: 300px;" onkeyup="filterVendors()">
+                        <input type="text" id="vendorSearchInput" class="form-control" placeholder="Search vendors..." style="width: 300px;" onkeyup="debouncedFilterVendors()">
                         <button class="btn btn-primary" onclick="showAddVendorModal()">
                             <i class="fas fa-plus"></i> Add Vendor
                         </button>
@@ -199,7 +199,7 @@
                 <div class="screen-header">
                     <h1 class="page-title">Sales Invoice</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="invoiceSearchInput" class="form-control" placeholder="Search invoices..." style="width: 300px;" onkeyup="filterInvoices()">
+                        <input type="text" id="invoiceSearchInput" class="form-control" placeholder="Search invoices..." style="width: 300px;" onkeyup="debouncedFilterInvoices()">
                         <button class="btn btn-primary" onclick="showAddInvoiceModal()">
                             <i class="fas fa-plus"></i> New Invoice
                         </button>
@@ -228,7 +228,7 @@
                 <div class="screen-header">
                     <h1 class="page-title">Purchase</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="purchaseSearchInput" class="form-control" placeholder="Search purchases..." style="width: 300px;" onkeyup="filterPurchases()">
+                        <input type="text" id="purchaseSearchInput" class="form-control" placeholder="Search purchases..." style="width: 300px;" onkeyup="debouncedFilterPurchases()">
                         <button class="btn btn-primary" onclick="showAddPurchaseModal()">
                             <i class="fas fa-plus"></i> New Purchase
                         </button>
@@ -254,7 +254,7 @@
                 <div class="screen-header">
                     <h1 class="page-title">Payments</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="paymentSearchInput" class="form-control" placeholder="Search payments..." style="width: 300px;" onkeyup="filterPayments()">
+                        <input type="text" id="paymentSearchInput" class="form-control" placeholder="Search payments..." style="width: 300px;" onkeyup="debouncedFilterPayments()">
                         <button class="btn btn-primary" onclick="showAddPaymentModal()">
                             <i class="fas fa-plus"></i> Add Payment
                         </button>
@@ -351,6 +351,9 @@
     <!-- Modal Container -->
     <div id="modalContainer"></div>
 
+    <!-- Scripts -->
+    <script src="constants.js"></script>
+    <script src="utils.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

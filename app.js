@@ -18,12 +18,6 @@ const AppState = {
     }
 };
 
-// UI Messages and Constants
-const UI_MESSAGES = {
-    DELETE_COMPANY_CONFIRM: (companyName) => 
-        `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
-};
-
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
@@ -1111,10 +1105,20 @@ function filterPayments() {
     }).join('');
 }
 
+// Create debounced versions of filter functions for better performance
+const debouncedFilterProducts = debounce(filterProducts, DEBOUNCE_DELAYS.SEARCH);
+const debouncedFilterClients = debounce(filterClients, DEBOUNCE_DELAYS.SEARCH);
+const debouncedFilterVendors = debounce(filterVendors, DEBOUNCE_DELAYS.SEARCH);
+const debouncedFilterInvoices = debounce(filterInvoices, DEBOUNCE_DELAYS.SEARCH);
+const debouncedFilterPurchases = debounce(filterPurchases, DEBOUNCE_DELAYS.SEARCH);
+const debouncedFilterPayments = debounce(filterPayments, DEBOUNCE_DELAYS.SEARCH);
+
 // Client Management
 function loadClients() {
     const tbody = document.getElementById('clientsTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+        return;
+    }
     
     if (AppState.clients.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">No clients added yet</td></tr>';
@@ -6436,57 +6440,17 @@ function closeInlineModal() {
     }
 }
 
-
-// Utility Functions
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-}
-
-// Date range helper functions
-function getCurrentMonthDates() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    
-    const fromDate = new Date(year, month, 1);
-    const toDate = new Date(year, month + 1, 0);
-    
-    return {
-        from: fromDate.toISOString().split('T')[0],
-        to: toDate.toISOString().split('T')[0]
-    };
-}
-
-function getLastMonthDates() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    
-    const fromDate = new Date(year, month - 1, 1);
-    const toDate = new Date(year, month, 0);
-    
-    return {
-        from: fromDate.toISOString().split('T')[0],
-        to: toDate.toISOString().split('T')[0]
-    };
-}
+// Note: Utility functions like generateId, formatDate, getCurrentMonthDates, 
+// getLastMonthDates are now in utils.js
 
 function applyDateFilter(filterId) {
     const filter = document.getElementById(filterId).value;
     const fromDateInput = document.getElementById(filterId.replace('Filter', 'FromDate'));
     const toDateInput = document.getElementById(filterId.replace('Filter', 'ToDate'));
     
-    if (!fromDateInput || !toDateInput) return;
+    if (!fromDateInput || !toDateInput) {
+        return;
+    }
     
     if (filter === 'current_month') {
         const dates = getCurrentMonthDates();

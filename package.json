@@ -8,7 +8,10 @@
     "start": "electron .",
     "build": "electron-builder build --win --publish never",
     "build:dir": "electron-builder build --win --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write \"**/*.{js,json,css,html}\""
   },
   "keywords": [
     "billing",
@@ -20,7 +23,11 @@
   "license": "ISC",
   "devDependencies": {
     "electron": "^38.4.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2"
   },
   "build": {
     "appId": "com.billingmanagement.app",
@@ -33,6 +40,8 @@
       "preload.js",
       "index.html",
       "app.js",
+      "utils.js",
+      "constants.js",
       "styles.css",
       "icon.png",
       "icon.ico"
