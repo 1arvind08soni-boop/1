@@ -6504,3 +6504,977 @@ function applyDateFilter(filterId) {
         }
     }
 }
+
+// ============================================================================
+// PROFESSIONAL ACCOUNTING FEATURES
+// ============================================================================
+
+// Trial Balance Report
+function showTrialBalance() {
+    const modal = createModal('Trial Balance', `
+        <div class="form-row">
+            <div class="form-group">
+                <label>As of Date</label>
+                <input type="date" class="form-control" id="trialBalanceDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateTrialBalance()">Generate Trial Balance</button>
+        <div id="trialBalanceReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportTrialBalanceToPDF()">
+                <i class="fas fa-download"></i> Export PDF
+            </button>
+        </div>
+    `, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateTrialBalance() {
+    const asOfDate = document.getElementById('trialBalanceDate').value;
+    
+    // Calculate balances for all accounts
+    const accounts = [];
+    
+    // Client accounts (Debtors/Receivables)
+    AppState.clients.forEach(client => {
+        const balance = calculateClientBalance(client.id, asOfDate);
+        if (balance !== 0) {
+            accounts.push({
+                name: client.name,
+                type: 'Asset',
+                category: 'Accounts Receivable',
+                debit: balance > 0 ? balance : 0,
+                credit: balance < 0 ? Math.abs(balance) : 0
+            });
+        }
+    });
+    
+    // Vendor accounts (Creditors/Payables)
+    AppState.vendors.forEach(vendor => {
+        const balance = calculateVendorBalance(vendor.id, asOfDate);
+        if (balance !== 0) {
+            accounts.push({
+                name: vendor.name,
+                type: 'Liability',
+                category: 'Accounts Payable',
+                debit: balance < 0 ? Math.abs(balance) : 0,
+                credit: balance > 0 ? balance : 0
+            });
+        }
+    });
+    
+    // Sales account
+    const totalSales = AppState.invoices
+        .filter(inv => !asOfDate || inv.date <= asOfDate)
+        .reduce((sum, inv) => sum + (inv.total || 0), 0);
+    
+    if (totalSales > 0) {
+        accounts.push({
+            name: 'Sales Revenue',
+            type: 'Income',
+            category: 'Revenue',
+            debit: 0,
+            credit: totalSales
+        });
+    }
+    
+    // Purchase account
+    const totalPurchases = AppState.purchases
+        .filter(pur => !asOfDate || pur.date <= asOfDate)
+        .reduce((sum, pur) => sum + (pur.total || 0), 0);
+    
+    if (totalPurchases > 0) {
+        accounts.push({
+            name: 'Purchase Expense',
+            type: 'Expense',
+            category: 'Cost of Goods Sold',
+            debit: totalPurchases,
+            credit: 0
+        });
+    }
+    
+    // Cash/Bank account (derived from payments)
+    const totalReceipts = AppState.payments
+        .filter(pay => pay.type === 'receipt' && (!asOfDate || pay.date <= asOfDate))
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    
+    const totalPayments = AppState.payments
+        .filter(pay => pay.type === 'payment' && (!asOfDate || pay.date <= asOfDate))
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    
+    const cashBalance = totalReceipts - totalPayments;
+    
+    if (cashBalance !== 0) {
+        accounts.push({
+            name: 'Cash/Bank',
+            type: 'Asset',
+            category: 'Current Assets',
+            debit: cashBalance > 0 ? cashBalance : 0,
+            credit: cashBalance < 0 ? Math.abs(cashBalance) : 0
+        });
+    }
+    
+    // Calculate totals
+    const totalDebit = accounts.reduce((sum, acc) => sum + acc.debit, 0);
+    const totalCredit = accounts.reduce((sum, acc) => sum + acc.credit, 0);
+    const difference = Math.abs(totalDebit - totalCredit);
+    
+    // Generate report HTML
+    const reportHTML = `
+        <div class="print-preview-container">
+            <h3 class="text-center">Trial Balance</h3>
+            <p class="text-center"><strong>${AppState.currentCompany.name}</strong></p>
+            <p class="text-center">As of ${formatDate(asOfDate)}</p>
+            ${accounts.length > 0 ? `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Account Name</th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th class="text-right">Debit (₹)</th>
+                            <th class="text-right">Credit (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${accounts.map(acc => `
+                            <tr>
+                                <td>${acc.name}</td>
+                                <td>${acc.type}</td>
+                                <td>${acc.category}</td>
+                                <td class="text-right">${acc.debit > 0 ? acc.debit.toFixed(2) : '-'}</td>
+                                <td class="text-right">${acc.credit > 0 ? acc.credit.toFixed(2) : '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="font-weight: bold; background: #f8f9fa;">
+                            <td colspan="3" class="text-right">Total</td>
+                            <td class="text-right">₹${totalDebit.toFixed(2)}</td>
+                            <td class="text-right">₹${totalCredit.toFixed(2)}</td>
+                        </tr>
+                        ${difference > 0.01 ? `
+                            <tr style="background: #fff3cd; color: #856404;">
+                                <td colspan="5" class="text-center">
+                                    <strong>⚠️ Warning: Accounts are not balanced! Difference: ₹${difference.toFixed(2)}</strong>
+                                </td>
+                            </tr>
+                        ` : `
+                            <tr style="background: #d4edda; color: #155724;">
+                                <td colspan="5" class="text-center">
+                                    <strong>✓ Trial Balance is Balanced</strong>
+                                </td>
+                            </tr>
+                        `}
+                    </tfoot>
+                </table>
+            ` : '<p class="text-center">No accounts found</p>'}
+        </div>
+    `;
+    
+    document.getElementById('trialBalanceReport').innerHTML = reportHTML;
+}
+
+function exportTrialBalanceToPDF() {
+    const content = document.getElementById('trialBalanceReport').innerHTML;
+    if (!content || content.trim() === '') {
+        alert('Please generate the trial balance first');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Trial Balance</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                thead { background: #f0f0f0; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                @media print {
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { margin: 0; padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            ${content}
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// Helper function to calculate balance up to a specific date
+function calculateClientBalance(clientId, asOfDate) {
+    const client = AppState.clients.find(c => c.id === clientId);
+    const openingBalance = client ? (client.openingBalance || 0) : 0;
+    
+    let invoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+    let payments = AppState.payments.filter(pay => pay.clientId === clientId && pay.type === 'receipt');
+    
+    if (asOfDate) {
+        invoices = invoices.filter(inv => inv.date <= asOfDate);
+        payments = payments.filter(pay => pay.date <= asOfDate);
+    }
+    
+    const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+    const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    
+    return openingBalance + totalInvoices - totalPayments;
+}
+
+function calculateVendorBalance(vendorId, asOfDate) {
+    const vendor = AppState.vendors.find(v => v.id === vendorId);
+    const openingBalance = vendor ? (vendor.openingBalance || 0) : 0;
+    
+    let purchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
+    let payments = AppState.payments.filter(pay => pay.vendorId === vendorId && pay.type === 'payment');
+    
+    if (asOfDate) {
+        purchases = purchases.filter(pur => pur.date <= asOfDate);
+        payments = payments.filter(pay => pay.date <= asOfDate);
+    }
+    
+    const totalPurchases = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
+    const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    
+    return openingBalance + totalPurchases - totalPayments;
+}
+
+// Profit & Loss Statement
+function showProfitLoss() {
+    const modal = createModal('Profit & Loss Statement', `
+        <div class="form-row">
+            <div class="form-group">
+                <label>From Date</label>
+                <input type="date" class="form-control" id="plFromDate">
+            </div>
+            <div class="form-group">
+                <label>To Date</label>
+                <input type="date" class="form-control" id="plToDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateProfitLoss()">Generate Statement</button>
+        <div id="profitLossReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportProfitLossToPDF()">
+                <i class="fas fa-download"></i> Export PDF
+            </button>
+        </div>
+    `, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateProfitLoss() {
+    const fromDate = document.getElementById('plFromDate').value;
+    const toDate = document.getElementById('plToDate').value;
+    
+    // Filter transactions by date range
+    let invoices = AppState.invoices;
+    let purchases = AppState.purchases;
+    
+    if (fromDate) {
+        invoices = invoices.filter(inv => inv.date >= fromDate);
+        purchases = purchases.filter(pur => pur.date >= fromDate);
+    }
+    
+    if (toDate) {
+        invoices = invoices.filter(inv => inv.date <= toDate);
+        purchases = purchases.filter(pur => pur.date <= toDate);
+    }
+    
+    // Calculate revenue
+    const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+    
+    // Calculate cost of goods sold (purchases)
+    const costOfGoodsSold = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
+    
+    // Calculate gross profit
+    const grossProfit = totalRevenue - costOfGoodsSold;
+    const grossProfitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue * 100) : 0;
+    
+    // For a more complete P&L, we would include operating expenses, but this is a simplified version
+    // Net profit = Gross profit (since we don't track operating expenses separately)
+    const netProfit = grossProfit;
+    const netProfitMargin = totalRevenue > 0 ? (netProfit / totalRevenue * 100) : 0;
+    
+    const dateRangeText = (fromDate && toDate) ? `${formatDate(fromDate)} to ${formatDate(toDate)}` : `${fromDate || 'Start'} to ${toDate || 'End'}`;
+    
+    const reportHTML = `
+        <div class="print-preview-container">
+            <h3 class="text-center">Profit & Loss Statement</h3>
+            <p class="text-center"><strong>${AppState.currentCompany.name}</strong></p>
+            <p class="text-center">Period: ${dateRangeText}</p>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Particulars</th>
+                        <th class="text-right">Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: #e8f5e9;">
+                        <td><strong>Revenue</strong></td>
+                        <td class="text-right"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">Sales Revenue</td>
+                        <td class="text-right">₹${totalRevenue.toFixed(2)}</td>
+                    </tr>
+                    <tr style="font-weight: bold; background: #f1f8e9;">
+                        <td>Total Revenue</td>
+                        <td class="text-right">₹${totalRevenue.toFixed(2)}</td>
+                    </tr>
+                    
+                    <tr style="background: #fff3e0;">
+                        <td><strong>Cost of Goods Sold</strong></td>
+                        <td class="text-right"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">Purchases</td>
+                        <td class="text-right">₹${costOfGoodsSold.toFixed(2)}</td>
+                    </tr>
+                    <tr style="font-weight: bold; background: #ffe0b2;">
+                        <td>Total COGS</td>
+                        <td class="text-right">₹${costOfGoodsSold.toFixed(2)}</td>
+                    </tr>
+                    
+                    <tr style="font-weight: bold; background: ${grossProfit >= 0 ? '#c8e6c9' : '#ffcdd2'}; font-size: 1.1em;">
+                        <td>Gross Profit</td>
+                        <td class="text-right">₹${grossProfit.toFixed(2)} (${grossProfitMargin.toFixed(2)}%)</td>
+                    </tr>
+                    
+                    <tr style="background: #e3f2fd;">
+                        <td><strong>Operating Expenses</strong></td>
+                        <td class="text-right"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" class="text-center" style="font-style: italic; color: #666;">
+                            (Operating expenses not tracked separately in current system)
+                        </td>
+                    </tr>
+                    
+                    <tr style="font-weight: bold; background: ${netProfit >= 0 ? '#a5d6a7' : '#ef9a9a'}; font-size: 1.2em;">
+                        <td>Net Profit</td>
+                        <td class="text-right">₹${netProfit.toFixed(2)} (${netProfitMargin.toFixed(2)}%)</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 2rem; padding: 1rem; background: #f5f5f5; border-radius: 6px;">
+                <h4>Key Financial Metrics</h4>
+                <ul>
+                    <li><strong>Gross Profit Margin:</strong> ${grossProfitMargin.toFixed(2)}%</li>
+                    <li><strong>Net Profit Margin:</strong> ${netProfitMargin.toFixed(2)}%</li>
+                    <li><strong>Revenue:</strong> ₹${totalRevenue.toFixed(2)}</li>
+                    <li><strong>Cost:</strong> ₹${costOfGoodsSold.toFixed(2)}</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('profitLossReport').innerHTML = reportHTML;
+}
+
+function exportProfitLossToPDF() {
+    const content = document.getElementById('profitLossReport').innerHTML;
+    if (!content || content.trim() === '') {
+        alert('Please generate the profit & loss statement first');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Profit & Loss Statement</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                thead { background: #f0f0f0; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+                @media print {
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { margin: 0; padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            ${content}
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// Aging Analysis Report
+function showAgingAnalysis() {
+    const modal = createModal('Aging Analysis', `
+        <div class="form-row">
+            <div class="form-group">
+                <label>Analysis Type</label>
+                <select class="form-control" id="agingType">
+                    <option value="receivables">Accounts Receivable (Customer Aging)</option>
+                    <option value="payables">Accounts Payable (Vendor Aging)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>As of Date</label>
+                <input type="date" class="form-control" id="agingDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateAgingAnalysis()">Generate Analysis</button>
+        <div id="agingReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportAgingToPDF()">
+                <i class="fas fa-download"></i> Export PDF
+            </button>
+        </div>
+    `, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateAgingAnalysis() {
+    const agingType = document.getElementById('agingType').value;
+    const asOfDate = new Date(document.getElementById('agingDate').value);
+    
+    let reportHTML = '';
+    
+    if (agingType === 'receivables') {
+        // Accounts Receivable Aging
+        const aging = [];
+        
+        AppState.clients.forEach(client => {
+            const invoices = AppState.invoices.filter(inv => inv.clientId === client.id);
+            const payments = AppState.payments.filter(pay => pay.clientId === client.id && pay.type === 'receipt');
+            
+            const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+            const totalPaid = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+            const balance = (client.openingBalance || 0) + totalInvoiced - totalPaid;
+            
+            if (balance > 0) {
+                // Calculate aging buckets
+                let current = 0, days30 = 0, days60 = 0, days90 = 0, over90 = 0;
+                
+                invoices.forEach(inv => {
+                    const invDate = new Date(inv.date);
+                    const daysDiff = Math.floor((asOfDate - invDate) / (1000 * 60 * 60 * 24));
+                    
+                    // Find payments for this invoice
+                    const invPayments = payments.filter(p => p.invoiceId === inv.id);
+                    const invPaid = invPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                    const invBalance = inv.total - invPaid;
+                    
+                    if (invBalance > 0) {
+                        if (daysDiff <= 30) {
+                            current += invBalance;
+                        } else if (daysDiff <= 60) {
+                            days30 += invBalance;
+                        } else if (daysDiff <= 90) {
+                            days60 += invBalance;
+                        } else if (daysDiff <= 120) {
+                            days90 += invBalance;
+                        } else {
+                            over90 += invBalance;
+                        }
+                    }
+                });
+                
+                aging.push({
+                    name: client.name,
+                    total: balance,
+                    current,
+                    days30,
+                    days60,
+                    days90,
+                    over90
+                });
+            }
+        });
+        
+        const totals = {
+            total: aging.reduce((sum, a) => sum + a.total, 0),
+            current: aging.reduce((sum, a) => sum + a.current, 0),
+            days30: aging.reduce((sum, a) => sum + a.days30, 0),
+            days60: aging.reduce((sum, a) => sum + a.days60, 0),
+            days90: aging.reduce((sum, a) => sum + a.days90, 0),
+            over90: aging.reduce((sum, a) => sum + a.over90, 0)
+        };
+        
+        reportHTML = `
+            <div class="print-preview-container">
+                <h3 class="text-center">Accounts Receivable Aging</h3>
+                <p class="text-center"><strong>${AppState.currentCompany.name}</strong></p>
+                <p class="text-center">As of ${formatDate(asOfDate.toISOString().split('T')[0])}</p>
+                ${aging.length > 0 ? `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th class="text-right">Total</th>
+                                <th class="text-right">Current</th>
+                                <th class="text-right">31-60 Days</th>
+                                <th class="text-right">61-90 Days</th>
+                                <th class="text-right">91-120 Days</th>
+                                <th class="text-right">Over 120</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${aging.map(a => `
+                                <tr>
+                                    <td>${a.name}</td>
+                                    <td class="text-right">₹${a.total.toFixed(2)}</td>
+                                    <td class="text-right">${a.current > 0 ? '₹' + a.current.toFixed(2) : '-'}</td>
+                                    <td class="text-right">${a.days30 > 0 ? '₹' + a.days30.toFixed(2) : '-'}</td>
+                                    <td class="text-right">${a.days60 > 0 ? '₹' + a.days60.toFixed(2) : '-'}</td>
+                                    <td class="text-right">${a.days90 > 0 ? '₹' + a.days90.toFixed(2) : '-'}</td>
+                                    <td class="text-right" style="${a.over90 > 0 ? 'color: red; font-weight: bold;' : ''}">${a.over90 > 0 ? '₹' + a.over90.toFixed(2) : '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: bold; background: #f8f9fa;">
+                                <td>Total</td>
+                                <td class="text-right">₹${totals.total.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.current.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.days30.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.days60.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.days90.toFixed(2)}</td>
+                                <td class="text-right" style="color: red;">₹${totals.over90.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: #fff3cd; border-radius: 6px;">
+                        <h4>Collection Priority</h4>
+                        <p>Focus collection efforts on:</p>
+                        <ul>
+                            <li><strong>Over 120 days:</strong> ₹${totals.over90.toFixed(2)} - Immediate action required</li>
+                            <li><strong>91-120 days:</strong> ₹${totals.days90.toFixed(2)} - High priority</li>
+                            <li><strong>Total Outstanding:</strong> ₹${totals.total.toFixed(2)}</li>
+                        </ul>
+                    </div>
+                ` : '<p class="text-center">No outstanding receivables</p>'}
+            </div>
+        `;
+    } else {
+        // Accounts Payable Aging
+        const aging = [];
+        
+        AppState.vendors.forEach(vendor => {
+            const purchases = AppState.purchases.filter(pur => pur.vendorId === vendor.id);
+            const payments = AppState.payments.filter(pay => pay.vendorId === vendor.id && pay.type === 'payment');
+            
+            const totalPurchased = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
+            const totalPaid = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+            const balance = (vendor.openingBalance || 0) + totalPurchased - totalPaid;
+            
+            if (balance > 0) {
+                // Calculate aging buckets
+                let current = 0, days30 = 0, days60 = 0, days90 = 0, over90 = 0;
+                
+                purchases.forEach(pur => {
+                    const purDate = new Date(pur.date);
+                    const daysDiff = Math.floor((asOfDate - purDate) / (1000 * 60 * 60 * 24));
+                    
+                    // Find payments for this purchase
+                    const purPayments = payments.filter(p => p.purchaseId === pur.id);
+                    const purPaid = purPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                    const purBalance = pur.total - purPaid;
+                    
+                    if (purBalance > 0) {
+                        if (daysDiff <= 30) {
+                            current += purBalance;
+                        } else if (daysDiff <= 60) {
+                            days30 += purBalance;
+                        } else if (daysDiff <= 90) {
+                            days60 += purBalance;
+                        } else if (daysDiff <= 120) {
+                            days90 += purBalance;
+                        } else {
+                            over90 += purBalance;
+                        }
+                    }
+                });
+                
+                aging.push({
+                    name: vendor.name,
+                    total: balance,
+                    current,
+                    days30,
+                    days60,
+                    days90,
+                    over90
+                });
+            }
+        });
+        
+        const totals = {
+            total: aging.reduce((sum, a) => sum + a.total, 0),
+            current: aging.reduce((sum, a) => sum + a.current, 0),
+            days30: aging.reduce((sum, a) => sum + a.days30, 0),
+            days60: aging.reduce((sum, a) => sum + a.days60, 0),
+            days90: aging.reduce((sum, a) => sum + a.days90, 0),
+            over90: aging.reduce((sum, a) => sum + a.over90, 0)
+        };
+        
+        reportHTML = `
+            <div class="print-preview-container">
+                <h3 class="text-center">Accounts Payable Aging</h3>
+                <p class="text-center"><strong>${AppState.currentCompany.name}</strong></p>
+                <p class="text-center">As of ${formatDate(asOfDate.toISOString().split('T')[0])}</p>
+                ${aging.length > 0 ? `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Vendor</th>
+                                <th class="text-right">Total</th>
+                                <th class="text-right">Current</th>
+                                <th class="text-right">31-60 Days</th>
+                                <th class="text-right">61-90 Days</th>
+                                <th class="text-right">91-120 Days</th>
+                                <th class="text-right">Over 120</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${aging.map(a => `
+                                <tr>
+                                    <td>${a.name}</td>
+                                    <td class="text-right">₹${a.total.toFixed(2)}</td>
+                                    <td class="text-right">${a.current > 0 ? '₹' + a.current.toFixed(2) : '-'}</td>
+                                    <td class="text-right">${a.days30 > 0 ? '₹' + a.days30.toFixed(2) : '-'}</td>
+                                    <td class="text-right">${a.days60 > 0 ? '₹' + a.days60.toFixed(2) : '-'}</td>
+                                    <td class="text-right">${a.days90 > 0 ? '₹' + a.days90.toFixed(2) : '-'}</td>
+                                    <td class="text-right" style="${a.over90 > 0 ? 'color: red; font-weight: bold;' : ''}">${a.over90 > 0 ? '₹' + a.over90.toFixed(2) : '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: bold; background: #f8f9fa;">
+                                <td>Total</td>
+                                <td class="text-right">₹${totals.total.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.current.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.days30.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.days60.toFixed(2)}</td>
+                                <td class="text-right">₹${totals.days90.toFixed(2)}</td>
+                                <td class="text-right" style="color: red;">₹${totals.over90.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: #f8d7da; border-radius: 6px;">
+                        <h4>Payment Priority</h4>
+                        <p>Priority payments needed for:</p>
+                        <ul>
+                            <li><strong>Over 120 days:</strong> ₹${totals.over90.toFixed(2)} - Immediate payment required</li>
+                            <li><strong>91-120 days:</strong> ₹${totals.days90.toFixed(2)} - High priority</li>
+                            <li><strong>Total Payable:</strong> ₹${totals.total.toFixed(2)}</li>
+                        </ul>
+                    </div>
+                ` : '<p class="text-center">No outstanding payables</p>'}
+            </div>
+        `;
+    }
+    
+    document.getElementById('agingReport').innerHTML = reportHTML;
+}
+
+function exportAgingToPDF() {
+    const content = document.getElementById('agingReport').innerHTML;
+    if (!content || content.trim() === '') {
+        alert('Please generate the aging analysis first');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Aging Analysis</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                thead { background: #f0f0f0; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+                @media print {
+                    @page { size: A4 landscape; margin: 15mm; }
+                    body { margin: 0; padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            ${content}
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// Balance Sheet
+function showBalanceSheet() {
+    const modal = createModal('Balance Sheet', `
+        <div class="form-row">
+            <div class="form-group">
+                <label>As of Date</label>
+                <input type="date" class="form-control" id="balanceSheetDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateBalanceSheet()">Generate Balance Sheet</button>
+        <div id="balanceSheetReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportBalanceSheetToPDF()">
+                <i class="fas fa-download"></i> Export PDF
+            </button>
+        </div>
+    `, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateBalanceSheet() {
+    const asOfDate = document.getElementById('balanceSheetDate').value;
+    
+    // Calculate Assets
+    // 1. Accounts Receivable
+    let accountsReceivable = 0;
+    AppState.clients.forEach(client => {
+        const balance = calculateClientBalance(client.id, asOfDate);
+        if (balance > 0) accountsReceivable += balance;
+    });
+    
+    // 2. Cash (from payments)
+    const totalReceipts = AppState.payments
+        .filter(pay => pay.type === 'receipt' && (!asOfDate || pay.date <= asOfDate))
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    
+    const totalPayments = AppState.payments
+        .filter(pay => pay.type === 'payment' && (!asOfDate || pay.date <= asOfDate))
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    
+    const cash = totalReceipts - totalPayments;
+    
+    const totalAssets = accountsReceivable + (cash > 0 ? cash : 0);
+    
+    // Calculate Liabilities
+    // 1. Accounts Payable
+    let accountsPayable = 0;
+    AppState.vendors.forEach(vendor => {
+        const balance = calculateVendorBalance(vendor.id, asOfDate);
+        if (balance > 0) accountsPayable += balance;
+    });
+    
+    const totalLiabilities = accountsPayable + (cash < 0 ? Math.abs(cash) : 0);
+    
+    // Calculate Equity
+    // Revenue - Expenses
+    const totalRevenue = AppState.invoices
+        .filter(inv => !asOfDate || inv.date <= asOfDate)
+        .reduce((sum, inv) => sum + (inv.total || 0), 0);
+    
+    const totalExpenses = AppState.purchases
+        .filter(pur => !asOfDate || pur.date <= asOfDate)
+        .reduce((sum, pur) => sum + (pur.total || 0), 0);
+    
+    const retainedEarnings = totalRevenue - totalExpenses;
+    
+    // Add opening balances to equity
+    const clientOpeningBalances = AppState.clients.reduce((sum, c) => sum + (c.openingBalance || 0), 0);
+    const vendorOpeningBalances = AppState.vendors.reduce((sum, v) => sum + (v.openingBalance || 0), 0);
+    
+    const totalEquity = retainedEarnings + clientOpeningBalances - vendorOpeningBalances;
+    
+    const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+    
+    const balanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01;
+    
+    const reportHTML = `
+        <div class="print-preview-container">
+            <h3 class="text-center">Balance Sheet</h3>
+            <p class="text-center"><strong>${AppState.currentCompany.name}</strong></p>
+            <p class="text-center">As of ${formatDate(asOfDate)}</p>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th colspan="2" style="background: #e3f2fd;">ASSETS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Current Assets</strong></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">Cash & Bank</td>
+                        <td class="text-right">₹${(cash > 0 ? cash : 0).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">Accounts Receivable</td>
+                        <td class="text-right">₹${accountsReceivable.toFixed(2)}</td>
+                    </tr>
+                    <tr style="font-weight: bold; background: #bbdefb;">
+                        <td>Total Assets</td>
+                        <td class="text-right">₹${totalAssets.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <table class="data-table" style="margin-top: 1.5rem;">
+                <thead>
+                    <tr>
+                        <th colspan="2" style="background: #fff3e0;">LIABILITIES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Current Liabilities</strong></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">Accounts Payable</td>
+                        <td class="text-right">₹${accountsPayable.toFixed(2)}</td>
+                    </tr>
+                    ${cash < 0 ? `
+                    <tr>
+                        <td style="padding-left: 2rem;">Bank Overdraft</td>
+                        <td class="text-right">₹${Math.abs(cash).toFixed(2)}</td>
+                    </tr>
+                    ` : ''}
+                    <tr style="font-weight: bold; background: #ffe0b2;">
+                        <td>Total Liabilities</td>
+                        <td class="text-right">₹${totalLiabilities.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <table class="data-table" style="margin-top: 1.5rem;">
+                <thead>
+                    <tr>
+                        <th colspan="2" style="background: #e8f5e9;">EQUITY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding-left: 2rem;">Retained Earnings</td>
+                        <td class="text-right">₹${retainedEarnings.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left: 2rem;">Opening Balances (Net)</td>
+                        <td class="text-right">₹${(clientOpeningBalances - vendorOpeningBalances).toFixed(2)}</td>
+                    </tr>
+                    <tr style="font-weight: bold; background: #c8e6c9;">
+                        <td>Total Equity</td>
+                        <td class="text-right">₹${totalEquity.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <table class="data-table" style="margin-top: 1.5rem;">
+                <tfoot>
+                    <tr style="font-weight: bold; background: #f8f9fa; font-size: 1.1em;">
+                        <td>Total Liabilities & Equity</td>
+                        <td class="text-right">₹${totalLiabilitiesAndEquity.toFixed(2)}</td>
+                    </tr>
+                    ${!balanced ? `
+                    <tr style="background: #fff3cd; color: #856404;">
+                        <td colspan="2" class="text-center">
+                            <strong>⚠️ Warning: Balance Sheet is not balanced! Difference: ₹${Math.abs(totalAssets - totalLiabilitiesAndEquity).toFixed(2)}</strong>
+                        </td>
+                    </tr>
+                    ` : `
+                    <tr style="background: #d4edda; color: #155724;">
+                        <td colspan="2" class="text-center">
+                            <strong>✓ Balance Sheet is Balanced (Assets = Liabilities + Equity)</strong>
+                        </td>
+                    </tr>
+                    `}
+                </tfoot>
+            </table>
+            
+            <div style="margin-top: 1.5rem; padding: 1rem; background: #f5f5f5; border-radius: 6px;">
+                <h4>Key Ratios</h4>
+                <ul>
+                    <li><strong>Current Ratio:</strong> ${totalLiabilities > 0 ? (totalAssets / totalLiabilities).toFixed(2) : 'N/A'}</li>
+                    <li><strong>Debt to Equity Ratio:</strong> ${totalEquity !== 0 ? (totalLiabilities / totalEquity).toFixed(2) : 'N/A'}</li>
+                    <li><strong>Working Capital:</strong> ₹${(totalAssets - totalLiabilities).toFixed(2)}</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('balanceSheetReport').innerHTML = reportHTML;
+}
+
+function exportBalanceSheetToPDF() {
+    const content = document.getElementById('balanceSheetReport').innerHTML;
+    if (!content || content.trim() === '') {
+        alert('Please generate the balance sheet first');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Balance Sheet</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                thead { background: #f0f0f0; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+                @media print {
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { margin: 0; padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            ${content}
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}

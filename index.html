@@ -279,6 +279,32 @@
 
             <div id="reportsScreen" class="content-screen">
                 <h1 class="page-title">Reports</h1>
+                
+                <h2 style="margin-top: 1rem; margin-bottom: 0.5rem; color: #2c3e50;">📊 Financial Statements</h2>
+                <div class="reports-grid">
+                    <div class="report-card" onclick="showTrialBalance()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <i class="fas fa-balance-scale"></i>
+                        <h3>Trial Balance</h3>
+                        <p>Verify accounting accuracy</p>
+                    </div>
+                    <div class="report-card" onclick="showProfitLoss()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Profit & Loss</h3>
+                        <p>Income statement analysis</p>
+                    </div>
+                    <div class="report-card" onclick="showBalanceSheet()" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <h3>Balance Sheet</h3>
+                        <p>Financial position snapshot</p>
+                    </div>
+                    <div class="report-card" onclick="showAgingAnalysis()" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+                        <i class="fas fa-clock"></i>
+                        <h3>Aging Analysis</h3>
+                        <p>Receivables & payables aging</p>
+                    </div>
+                </div>
+                
+                <h2 style="margin-top: 2rem; margin-bottom: 0.5rem; color: #2c3e50;">📋 Business Reports</h2>
                 <div class="reports-grid">
                     <div class="report-card" onclick="showProductReport()">
                         <i class="fas fa-box"></i>
