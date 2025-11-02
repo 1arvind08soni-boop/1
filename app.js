@@ -6399,9 +6399,8 @@ function closeModal() {
     container.innerHTML = '';
 }
 
-// Show Error Notification (non-intrusive, doesn't break focus)
-function showError(message) {
-    // Create notification container if it doesn't exist
+// Helper function to get or create notification container
+function getOrCreateNotificationContainer() {
     let notificationContainer = document.getElementById('notificationContainer');
     if (!notificationContainer) {
         notificationContainer = document.createElement('div');
@@ -6416,6 +6415,12 @@ function showError(message) {
         notificationContainer.style.maxWidth = '400px';
         document.body.appendChild(notificationContainer);
     }
+    return notificationContainer;
+}
+
+// Show Error Notification (non-intrusive, doesn't break focus)
+function showError(message) {
+    const notificationContainer = getOrCreateNotificationContainer();
 
     // Create notification element
     const notification = document.createElement('div');
@@ -6431,16 +6436,41 @@ function showError(message) {
     notification.style.justifyContent = 'space-between';
     notification.style.gap = '10px';
     notification.style.animation = 'slideInRight 0.3s ease-out';
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-            <i class="fas fa-exclamation-circle" style="font-size: 20px;"></i>
-            <span style="flex: 1;">${message}</span>
-        </div>
-        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #721c24; cursor: pointer; font-size: 18px; padding: 0; line-height: 1;">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-
+    
+    // Create content wrapper
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.display = 'flex';
+    contentWrapper.style.alignItems = 'center';
+    contentWrapper.style.gap = '10px';
+    contentWrapper.style.flex = '1';
+    
+    // Create icon
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-exclamation-circle';
+    icon.style.fontSize = '20px';
+    
+    // Create message span (using textContent to prevent XSS)
+    const messageSpan = document.createElement('span');
+    messageSpan.style.flex = '1';
+    messageSpan.textContent = message;
+    
+    contentWrapper.appendChild(icon);
+    contentWrapper.appendChild(messageSpan);
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.style.background = 'none';
+    closeButton.style.border = 'none';
+    closeButton.style.color = '#721c24';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.fontSize = '18px';
+    closeButton.style.padding = '0';
+    closeButton.style.lineHeight = '1';
+    closeButton.innerHTML = '<i class="fas fa-times"></i>';
+    closeButton.addEventListener('click', () => notification.remove());
+    
+    notification.appendChild(contentWrapper);
+    notification.appendChild(closeButton);
     notificationContainer.appendChild(notification);
 
     // Auto-remove after 5 seconds
@@ -6454,21 +6484,7 @@ function showError(message) {
 
 // Show Success Notification
 function showSuccess(message) {
-    // Create notification container if it doesn't exist
-    let notificationContainer = document.getElementById('notificationContainer');
-    if (!notificationContainer) {
-        notificationContainer = document.createElement('div');
-        notificationContainer.id = 'notificationContainer';
-        notificationContainer.style.position = 'fixed';
-        notificationContainer.style.top = '20px';
-        notificationContainer.style.right = '20px';
-        notificationContainer.style.zIndex = '10002';
-        notificationContainer.style.display = 'flex';
-        notificationContainer.style.flexDirection = 'column';
-        notificationContainer.style.gap = '10px';
-        notificationContainer.style.maxWidth = '400px';
-        document.body.appendChild(notificationContainer);
-    }
+    const notificationContainer = getOrCreateNotificationContainer();
 
     // Create notification element
     const notification = document.createElement('div');
@@ -6484,16 +6500,41 @@ function showSuccess(message) {
     notification.style.justifyContent = 'space-between';
     notification.style.gap = '10px';
     notification.style.animation = 'slideInRight 0.3s ease-out';
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-            <i class="fas fa-check-circle" style="font-size: 20px;"></i>
-            <span style="flex: 1;">${message}</span>
-        </div>
-        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #155724; cursor: pointer; font-size: 18px; padding: 0; line-height: 1;">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-
+    
+    // Create content wrapper
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.display = 'flex';
+    contentWrapper.style.alignItems = 'center';
+    contentWrapper.style.gap = '10px';
+    contentWrapper.style.flex = '1';
+    
+    // Create icon
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-check-circle';
+    icon.style.fontSize = '20px';
+    
+    // Create message span (using textContent to prevent XSS)
+    const messageSpan = document.createElement('span');
+    messageSpan.style.flex = '1';
+    messageSpan.textContent = message;
+    
+    contentWrapper.appendChild(icon);
+    contentWrapper.appendChild(messageSpan);
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.style.background = 'none';
+    closeButton.style.border = 'none';
+    closeButton.style.color = '#155724';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.fontSize = '18px';
+    closeButton.style.padding = '0';
+    closeButton.style.lineHeight = '1';
+    closeButton.innerHTML = '<i class="fas fa-times"></i>';
+    closeButton.addEventListener('click', () => notification.remove());
+    
+    notification.appendChild(contentWrapper);
+    notification.appendChild(closeButton);
     notificationContainer.appendChild(notification);
 
     // Auto-remove after 3 seconds
