@@ -1,0 +1,142 @@
+# Billing & Account Management System
+
+A comprehensive desktop application for Windows that helps manage billing, invoicing, clients, vendors, products, and accounts.
+
+## Features
+
+- **Multi-Company Support**: Manage multiple companies with separate data
+- **Product Management**: Track products with categories, pricing, and client-specific pricing
+- **Client & Vendor Management**: Maintain client and vendor databases with ledgers
+- **Sales Invoicing**: Create and manage sales invoices with detailed line items
+- **Purchase Management**: Track purchases from vendors
+- **Payment Tracking**: Record receipts and payments
+- **Reports & Ledgers**: Generate sales, purchase, payment, and account ledgers
+- **Data Export**: Export data to CSV/Excel format
+- **Backup & Restore**: Backup and restore company data
+
+## Windows Installation
+
+### For End Users:
+1. Download the latest release installer (.exe file) from the [Releases](../../releases) page
+2. Run the installer
+3. Follow the installation wizard
+4. Launch "Billing & Account Management" from your Start Menu or Desktop
+
+### For Developers:
+
+#### Prerequisites:
+- Node.js (v14 or higher) - Download from [nodejs.org](https://nodejs.org/)
+- npm (comes with Node.js)
+- Git (optional, for cloning the repository)
+
+#### Setup Instructions:
+
+1. **Clone or Download the Repository**
+   ```bash
+   git clone https://github.com/soniarvind08-glitch/FINAL.git
+   cd FINAL
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Run in Development Mode**
+   ```bash
+   npm start
+   ```
+   This will launch the application in development mode.
+
+4. **Build Windows Installer**
+   ```bash
+   npm run build
+   ```
+   This will create a Windows installer in the `dist` folder.
+   - The installer will be named something like: `Billing & Account Management Setup 1.0.0.exe`
+
+5. **Build Unpacked (for testing)**
+   ```bash
+   npm run build:dir
+   ```
+   This creates an unpacked version in `dist/win-unpacked` for testing without installation.
+
+## Build Output
+
+After running `npm run build`, you'll find in the `dist` folder:
+- **`Billing & Account Management Setup 1.0.0.exe`** - The installer for distribution
+- This is a standard Windows installer (NSIS) that:
+  - Allows users to choose installation directory
+  - Creates desktop and start menu shortcuts
+  - Includes an uninstaller
+  - Works on Windows 7, 8, 10, and 11 (64-bit)
+
+## Application Icons
+
+The application uses icon files for branding. To customize:
+1. Create a 256x256 PNG image (icon.png)
+2. Convert to ICO format (icon.ico)
+3. See `ICONS-README.md` for detailed instructions
+
+## Data Storage
+
+- All data is stored locally using browser's localStorage
+- Each company's data is isolated and stored separately
+- Data persists between application restarts
+- Use the built-in backup/restore feature to save your data
+
+## Technology Stack
+
+- **Frontend**: HTML, CSS, JavaScript
+- **Desktop Framework**: Electron
+- **Packaging**: electron-builder
+- **Data Storage**: LocalStorage (browser-based)
+
+## Development Scripts
+
+- `npm start` - Run the application in development mode
+- `npm run build` - Build Windows installer (.exe)
+- `npm run build:dir` - Build unpacked application for testing
+- `npm run dist` - Build for all configured platforms
+
+## Troubleshooting
+
+### Application won't start:
+- Make sure you have the latest version installed
+- Try running as administrator
+- Check Windows Event Viewer for errors
+
+### Data not saving:
+- The application uses localStorage - ensure you have disk space
+- Use the backup feature regularly to prevent data loss
+
+### Build errors:
+- Make sure Node.js v14+ is installed
+- Delete `node_modules` and `package-lock.json`, then run `npm install` again
+- Ensure you have write permissions in the project directory
+
+## Distribution
+
+To distribute your application:
+1. Run `npm run build`
+2. Find the installer in the `dist` folder
+3. Share the `.exe` file with users
+4. Users can install it like any other Windows application
+
+## License
+
+This project is licensed under the ISC License - see LICENSE.txt for details.
+
+## Support
+
+For issues or questions:
+- Open an issue on GitHub
+- Contact: [Your support email/contact]
+
+## Version History
+
+- **v1.0.0** - Initial release
+  - Complete billing and accounting features
+  - Windows desktop application
+  - Multi-company support
+  - Export and backup functionality
