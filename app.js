@@ -14,12 +14,12 @@ const AppState = {
         invoiceTemplate: 'modern',
         printSize: 'a4',
         reportTemplate: 'modern',
-        customTemplates: {}
-    }
+        customTemplates: {},
+    },
 };
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     loadFromStorage();
     initializeApp();
 });
@@ -37,17 +37,19 @@ function loadFromStorage() {
 function saveToStorage() {
     const data = {
         companies: AppState.companies,
-        settings: AppState.settings
+        settings: AppState.settings,
     };
     localStorage.setItem('billingAppData', JSON.stringify(data));
 }
 
 function loadCompanyData() {
-    if (!AppState.currentCompany) return;
-    
+    if (!AppState.currentCompany) {
+        return;
+    }
+
     const companyKey = `company_${AppState.currentCompany.id}`;
     const stored = localStorage.getItem(companyKey);
-    
+
     if (stored) {
         const data = JSON.parse(stored);
         AppState.products = data.products || [];
@@ -71,8 +73,10 @@ function loadCompanyData() {
 }
 
 function saveCompanyData() {
-    if (!AppState.currentCompany) return;
-    
+    if (!AppState.currentCompany) {
+        return;
+    }
+
     const companyKey = `company_${AppState.currentCompany.id}`;
     const data = {
         products: AppState.products,
@@ -82,7 +86,7 @@ function saveCompanyData() {
         purchases: AppState.purchases,
         payments: AppState.payments,
         deletedInvoices: AppState.deletedInvoices,
-        currentFinancialYear: AppState.currentFinancialYear
+        currentFinancialYear: AppState.currentFinancialYear,
     };
     localStorage.setItem(companyKey, JSON.stringify(data));
 }
@@ -91,8 +95,9 @@ function getCurrentFinancialYear() {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    
-    if (month >= 3) { // April onwards
+
+    if (month >= 3) {
+        // April onwards
         return `${year}-${year + 1}`;
     } else {
         return `${year - 1}-${year}`;
@@ -112,14 +117,18 @@ function initializeApp() {
 // Company Management
 function displayCompanyList() {
     const companyList = document.getElementById('companyList');
-    if (!companyList) return;
-    
+    if (!companyList) {
+        return;
+    }
+
     if (AppState.companies.length === 0) {
         companyList.innerHTML = '<p class="text-center">No companies added yet</p>';
         return;
     }
-    
-    companyList.innerHTML = AppState.companies.map(company => `
+
+    companyList.innerHTML = AppState.companies
+        .map(
+            company => `
         <div class="company-item">
             <div onclick="selectCompany('${company.id}')" style="flex: 1; cursor: pointer;">
                 <h3>${company.name}</h3>
@@ -132,11 +141,15 @@ function displayCompanyList() {
                 <i class="fas fa-chevron-right"></i>
             </div>
         </div>
-    `).join('');
+    `
+        )
+        .join('');
 }
 
 function showAddCompanyModal() {
-    const modal = createModal('Add New Company', `
+    const modal = createModal(
+        'Add New Company',
+        `
         <form id="addCompanyForm" onsubmit="addCompany(event)">
             <div class="form-group">
                 <label>Company Name *</label>
@@ -181,7 +194,8 @@ function showAddCompanyModal() {
                 <button type="submit" class="btn btn-primary">Add Company</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -189,7 +203,7 @@ function addCompany(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const company = {
         id: generateId(),
         name: formData.get('name'),
@@ -199,9 +213,9 @@ function addCompany(event) {
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
         detailedInvoicing: formData.get('detailedInvoicing') === 'on',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.companies.push(company);
     saveToStorage();
     displayCompanyList();
@@ -210,34 +224,38 @@ function addCompany(event) {
 
 function deleteCompany(companyId) {
     const company = AppState.companies.find(c => c.id === companyId);
-    if (!company) return;
-    
+    if (!company) {
+        return;
+    }
+
     // Show confirmation dialog
     if (!confirm(UI_MESSAGES.DELETE_COMPANY_CONFIRM(company.name))) {
         return;
     }
-    
+
     // Remove company from list
     AppState.companies = AppState.companies.filter(c => c.id !== companyId);
-    
+
     // Remove company data from localStorage
     const companyKey = `company_${companyId}`;
     localStorage.removeItem(companyKey);
-    
+
     // Save updated companies list
     saveToStorage();
-    
+
     // Refresh the company list display
     displayCompanyList();
 }
 
 function selectCompany(companyId) {
     const company = AppState.companies.find(c => c.id === companyId);
-    if (!company) return;
-    
+    if (!company) {
+        return;
+    }
+
     AppState.currentCompany = company;
     loadCompanyData();
-    
+
     document.getElementById('currentCompanyName').textContent = company.name;
     showScreen('main');
     showContentScreen('dashboard');
@@ -258,7 +276,7 @@ function showScreen(screenName) {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
-    
+
     if (screenName === 'companySelection') {
         document.getElementById('companySelectionScreen').classList.add('active');
     } else if (screenName === 'main') {
@@ -270,16 +288,16 @@ function showContentScreen(screenName) {
     document.querySelectorAll('.content-screen').forEach(screen => {
         screen.classList.remove('active');
     });
-    
+
     document.querySelectorAll('.nav-item').forEach(nav => {
         nav.classList.remove('active');
     });
-    
+
     const screen = document.getElementById(`${screenName}Screen`);
     if (screen) {
         screen.classList.add('active');
     }
-    
+
     // Update active nav item
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
@@ -287,9 +305,9 @@ function showContentScreen(screenName) {
             item.classList.add('active');
         }
     });
-    
+
     // Load data for specific screens
-    switch(screenName) {
+    switch (screenName) {
         case 'dashboard':
             updateDashboard();
             break;
@@ -318,15 +336,17 @@ function showContentScreen(screenName) {
 function updateDashboard() {
     const totalSales = AppState.invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
     const totalPurchase = AppState.purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
-    
+
     document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
     document.getElementById('totalPurchase').textContent = `₹${totalPurchase.toFixed(2)}`;
     document.getElementById('totalClients').textContent = AppState.clients.length;
     document.getElementById('totalProducts').textContent = AppState.products.length;
-    
+
     // Recent Invoices
     const recentInvoices = AppState.invoices.slice(-5).reverse();
-    const recentInvoicesHTML = recentInvoices.length > 0 ? `
+    const recentInvoicesHTML =
+        recentInvoices.length > 0
+            ? `
         <table class="data-table">
             <thead>
                 <tr>
@@ -337,9 +357,10 @@ function updateDashboard() {
                 </tr>
             </thead>
             <tbody>
-                ${recentInvoices.map(inv => {
-                    const client = AppState.clients.find(c => c.id === inv.clientId);
-                    return `
+                ${recentInvoices
+                    .map(inv => {
+                        const client = AppState.clients.find(c => c.id === inv.clientId);
+                        return `
                         <tr>
                             <td>${inv.invoiceNo}</td>
                             <td>${client ? client.name : 'N/A'}</td>
@@ -347,25 +368,31 @@ function updateDashboard() {
                             <td>₹${inv.total.toFixed(2)}</td>
                         </tr>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </tbody>
         </table>
-    ` : '<p>No recent invoices</p>';
-    
+    `
+            : '<p>No recent invoices</p>';
+
     document.getElementById('recentInvoices').innerHTML = recentInvoicesHTML;
 }
 
 // Product Management
 function loadProducts() {
     const tbody = document.getElementById('productsTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (AppState.products.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">No products added yet</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = AppState.products.map(product => `
+
+    tbody.innerHTML = AppState.products
+        .map(
+            product => `
         <tr>
             <td>${product.code}</td>
             <td>${product.name}</td>
@@ -382,15 +409,19 @@ function loadProducts() {
                 </button>
             </td>
         </tr>
-    `).join('');
+    `
+        )
+        .join('');
 }
 
 function showAddProductModal() {
-    const clientOptions = AppState.clients.map(c => 
-        `<option value="${c.id}">${c.name}</option>`
-    ).join('');
-    
-    const modal = createModal('Add New Product', `
+    const clientOptions = AppState.clients
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+
+    const modal = createModal(
+        'Add New Product',
+        `
         <form id="addProductForm" onsubmit="addProduct(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -436,7 +467,9 @@ function showAddProductModal() {
             <h4 style="margin-top: 1.5rem;">Client-Specific Pricing (Optional)</h4>
             <p style="color: #666; font-size: 0.9rem;">Set different prices for specific clients. If not set, the default price will be used.</p>
             <div id="clientPricingContainer">
-                ${AppState.clients.length > 0 ? `
+                ${
+                    AppState.clients.length > 0
+                        ? `
                     <table class="items-table" style="margin-top: 0.5rem;">
                         <thead>
                             <tr>
@@ -445,7 +478,9 @@ function showAddProductModal() {
                             </tr>
                         </thead>
                         <tbody id="clientPricingBody">
-                            ${AppState.clients.map(c => `
+                            ${AppState.clients
+                                .map(
+                                    c => `
                                 <tr>
                                     <td>${c.name}</td>
                                     <td>
@@ -453,10 +488,14 @@ function showAddProductModal() {
                                                step="0.01" min="0" placeholder="Use default">
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `
+                                )
+                                .join('')}
                         </tbody>
                     </table>
-                ` : '<p style="color: #666; font-size: 0.9rem;">No clients available. Add clients first to set client-specific pricing.</p>'}
+                `
+                        : '<p style="color: #666; font-size: 0.9rem;">No clients available. Add clients first to set client-specific pricing.</p>'
+                }
             </div>
             
             <div class="modal-footer">
@@ -464,7 +503,8 @@ function showAddProductModal() {
                 <button type="submit" class="btn btn-primary">Add Product</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -472,31 +512,35 @@ function addProduct(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const code = formData.get('code');
     const name = formData.get('name');
     const category = formData.get('category');
-    
+
     // Check for duplicate product name within the same category
-    const duplicateName = AppState.products.find(p => 
-        p.name.toLowerCase() === name.toLowerCase() && p.category === category
+    const duplicateName = AppState.products.find(
+        p => p.name.toLowerCase() === name.toLowerCase() && p.category === category
     );
-    
+
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        alert(
+            'A product with this name already exists in the same category. Please use a different name or select a different category.'
+        );
         return;
     }
-    
+
     // Check for duplicate code with same category
-    const duplicateCodeCategory = AppState.products.find(p => 
-        p.code === code && p.category === category
+    const duplicateCodeCategory = AppState.products.find(
+        p => p.code === code && p.category === category
     );
-    
+
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        alert(
+            'A product with this code already exists in the same category. Please use a different code or select a different category.'
+        );
         return;
     }
-    
+
     // Collect client-specific prices
     const clientPrices = {};
     AppState.clients.forEach(client => {
@@ -505,7 +549,7 @@ function addProduct(event) {
             clientPrices[client.id] = parseFloat(clientPrice);
         }
     });
-    
+
     const product = {
         id: generateId(),
         code: code,
@@ -515,9 +559,9 @@ function addProduct(event) {
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
         clientPrices: clientPrices,
         description: formData.get('description'),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.products.push(product);
     saveCompanyData();
     loadProducts();
@@ -526,7 +570,9 @@ function addProduct(event) {
 
 // Inline product creation for invoice forms
 function showInlineProductModal(buttonElement) {
-    const inlineModal = createModal('Create New Product', `
+    const inlineModal = createModal(
+        'Create New Product',
+        `
         <form id="inlineProductForm" onsubmit="addInlineProduct(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -573,8 +619,9 @@ function showInlineProductModal(buttonElement) {
                 <button type="submit" class="btn btn-primary">Create Product</button>
             </div>
         </form>
-    `);
-    
+    `
+    );
+
     // Store reference to the button element to update the select after creation
     window.inlineProductButton = buttonElement;
     showInlineModal(inlineModal);
@@ -584,31 +631,35 @@ function addInlineProduct(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const code = formData.get('code');
     const name = formData.get('name');
     const category = formData.get('category');
-    
+
     // Check for duplicate product name within the same category
-    const duplicateName = AppState.products.find(p => 
-        p.name.toLowerCase() === name.toLowerCase() && p.category === category
+    const duplicateName = AppState.products.find(
+        p => p.name.toLowerCase() === name.toLowerCase() && p.category === category
     );
-    
+
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        alert(
+            'A product with this name already exists in the same category. Please use a different name or select a different category.'
+        );
         return;
     }
-    
+
     // Check for duplicate code with same category
-    const duplicateCodeCategory = AppState.products.find(p => 
-        p.code === code && p.category === category
+    const duplicateCodeCategory = AppState.products.find(
+        p => p.code === code && p.category === category
     );
-    
+
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        alert(
+            'A product with this code already exists in the same category. Please use a different code or select a different category.'
+        );
         return;
     }
-    
+
     const product = {
         id: generateId(),
         code: code,
@@ -617,12 +668,12 @@ function addInlineProduct(event) {
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
         description: formData.get('description'),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.products.push(product);
     saveCompanyData();
-    
+
     // Update all product dropdowns in the invoice items table
     const productSelects = document.querySelectorAll('.product-select');
     productSelects.forEach(select => {
@@ -631,7 +682,7 @@ function addInlineProduct(event) {
         option.textContent = `${product.name} (${product.code})`;
         select.appendChild(option);
     });
-    
+
     // Auto-select the newly created product in the row where the button was clicked
     if (window.inlineProductButton) {
         const row = window.inlineProductButton.closest('tr');
@@ -645,16 +696,19 @@ function addInlineProduct(event) {
         }
         window.inlineProductButton = null;
     }
-    
+
     closeInlineModal();
 }
 
-
 function editProduct(productId) {
     const product = AppState.products.find(p => p.id === productId);
-    if (!product) return;
-    
-    const modal = createModal('Edit Product', `
+    if (!product) {
+        return;
+    }
+
+    const modal = createModal(
+        'Edit Product',
+        `
         <form id="editProductForm" onsubmit="updateProduct(event, '${productId}')">
             <div class="form-row">
                 <div class="form-group">
@@ -700,7 +754,9 @@ function editProduct(productId) {
             <h4 style="margin-top: 1.5rem;">Client-Specific Pricing (Optional)</h4>
             <p style="color: #666; font-size: 0.9rem;">Set different prices for specific clients. If not set, the default price will be used.</p>
             <div id="clientPricingContainer">
-                ${AppState.clients.length > 0 ? `
+                ${
+                    AppState.clients.length > 0
+                        ? `
                     <table class="items-table" style="margin-top: 0.5rem;">
                         <thead>
                             <tr>
@@ -709,9 +765,13 @@ function editProduct(productId) {
                             </tr>
                         </thead>
                         <tbody id="clientPricingBody">
-                            ${AppState.clients.map(c => {
-                                const clientPrice = product.clientPrices && product.clientPrices[c.id] ? product.clientPrices[c.id] : '';
-                                return `
+                            ${AppState.clients
+                                .map(c => {
+                                    const clientPrice =
+                                        product.clientPrices && product.clientPrices[c.id]
+                                            ? product.clientPrices[c.id]
+                                            : '';
+                                    return `
                                     <tr>
                                         <td>${c.name}</td>
                                         <td>
@@ -720,10 +780,13 @@ function editProduct(productId) {
                                         </td>
                                     </tr>
                                 `;
-                            }).join('')}
+                                })
+                                .join('')}
                         </tbody>
                     </table>
-                ` : '<p style="color: #666; font-size: 0.9rem;">No clients available. Add clients first to set client-specific pricing.</p>'}
+                `
+                        : '<p style="color: #666; font-size: 0.9rem;">No clients available. Add clients first to set client-specific pricing.</p>'
+                }
             </div>
             
             <div class="modal-footer">
@@ -731,7 +794,8 @@ function editProduct(productId) {
                 <button type="submit" class="btn btn-primary">Update Product</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -739,34 +803,43 @@ function updateProduct(event, productId) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const index = AppState.products.findIndex(p => p.id === productId);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     const code = formData.get('code');
     const name = formData.get('name');
     const category = formData.get('category');
-    
+
     // Check for duplicate product name within the same category (excluding current product)
-    const duplicateName = AppState.products.find(p => 
-        p.id !== productId && p.name.toLowerCase() === name.toLowerCase() && p.category === category
+    const duplicateName = AppState.products.find(
+        p =>
+            p.id !== productId &&
+            p.name.toLowerCase() === name.toLowerCase() &&
+            p.category === category
     );
-    
+
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        alert(
+            'A product with this name already exists in the same category. Please use a different name or select a different category.'
+        );
         return;
     }
-    
+
     // Check for duplicate code with same category (excluding current product)
-    const duplicateCodeCategory = AppState.products.find(p => 
-        p.id !== productId && p.code === code && p.category === category
+    const duplicateCodeCategory = AppState.products.find(
+        p => p.id !== productId && p.code === code && p.category === category
     );
-    
+
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        alert(
+            'A product with this code already exists in the same category. Please use a different code or select a different category.'
+        );
         return;
     }
-    
+
     // Collect client-specific prices
     const clientPrices = {};
     AppState.clients.forEach(client => {
@@ -775,7 +848,7 @@ function updateProduct(event, productId) {
             clientPrices[client.id] = parseFloat(clientPrice);
         }
     });
-    
+
     AppState.products[index] = {
         ...AppState.products[index],
         code: code,
@@ -785,17 +858,19 @@ function updateProduct(event, productId) {
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
         clientPrices: clientPrices,
         description: formData.get('description'),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     saveCompanyData();
     loadProducts();
     closeModal();
 }
 
 function deleteProduct(productId) {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-    
+    if (!confirm('Are you sure you want to delete this product?')) {
+        return;
+    }
+
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
     loadProducts();
@@ -804,30 +879,38 @@ function deleteProduct(productId) {
 // Filter Products based on search
 function filterProducts() {
     const searchInput = document.getElementById('productSearchInput');
-    if (!searchInput) return;
-    
+    if (!searchInput) {
+        return;
+    }
+
     const searchTerm = searchInput.value.toLowerCase();
     const tbody = document.getElementById('productsTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (searchTerm === '') {
         // If search is empty, show all products
         loadProducts();
         return;
     }
-    
+
     const filteredProducts = AppState.products.filter(product => {
-        return product.code.toLowerCase().includes(searchTerm) ||
-               product.name.toLowerCase().includes(searchTerm) ||
-               (product.category && product.category.toLowerCase().includes(searchTerm));
+        return (
+            product.code.toLowerCase().includes(searchTerm) ||
+            product.name.toLowerCase().includes(searchTerm) ||
+            (product.category && product.category.toLowerCase().includes(searchTerm))
+        );
     });
-    
+
     if (filteredProducts.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">No products found</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = filteredProducts.map(product => `
+
+    tbody.innerHTML = filteredProducts
+        .map(
+            product => `
         <tr>
             <td>${product.code}</td>
             <td>${product.name}</td>
@@ -844,38 +927,47 @@ function filterProducts() {
                 </button>
             </td>
         </tr>
-    `).join('');
+    `
+        )
+        .join('');
 }
 
 // Filter Clients based on search
 function filterClients() {
     const searchInput = document.getElementById('clientSearchInput');
-    if (!searchInput) return;
-    
+    if (!searchInput) {
+        return;
+    }
+
     const searchTerm = searchInput.value.toLowerCase();
     const tbody = document.getElementById('clientsTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (searchTerm === '') {
         loadClients();
         return;
     }
-    
+
     const filteredClients = AppState.clients.filter(client => {
-        return client.code.toLowerCase().includes(searchTerm) ||
-               client.name.toLowerCase().includes(searchTerm) ||
-               (client.contact && client.contact.toLowerCase().includes(searchTerm)) ||
-               (client.email && client.email.toLowerCase().includes(searchTerm));
+        return (
+            client.code.toLowerCase().includes(searchTerm) ||
+            client.name.toLowerCase().includes(searchTerm) ||
+            (client.contact && client.contact.toLowerCase().includes(searchTerm)) ||
+            (client.email && client.email.toLowerCase().includes(searchTerm))
+        );
     });
-    
+
     if (filteredClients.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">No clients found</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = filteredClients.map(client => {
-        const balance = calculateClientBalance(client.id);
-        return `
+
+    tbody.innerHTML = filteredClients
+        .map(client => {
+            const balance = calculateClientBalance(client.id);
+            return `
             <tr>
                 <td>${client.code}</td>
                 <td>${client.name}</td>
@@ -895,38 +987,46 @@ function filterClients() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 // Filter Vendors based on search
 function filterVendors() {
     const searchInput = document.getElementById('vendorSearchInput');
-    if (!searchInput) return;
-    
+    if (!searchInput) {
+        return;
+    }
+
     const searchTerm = searchInput.value.toLowerCase();
     const tbody = document.getElementById('vendorsTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (searchTerm === '') {
         loadVendors();
         return;
     }
-    
+
     const filteredVendors = AppState.vendors.filter(vendor => {
-        return vendor.code.toLowerCase().includes(searchTerm) ||
-               vendor.name.toLowerCase().includes(searchTerm) ||
-               (vendor.contact && vendor.contact.toLowerCase().includes(searchTerm)) ||
-               (vendor.email && vendor.email.toLowerCase().includes(searchTerm));
+        return (
+            vendor.code.toLowerCase().includes(searchTerm) ||
+            vendor.name.toLowerCase().includes(searchTerm) ||
+            (vendor.contact && vendor.contact.toLowerCase().includes(searchTerm)) ||
+            (vendor.email && vendor.email.toLowerCase().includes(searchTerm))
+        );
     });
-    
+
     if (filteredVendors.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">No vendors found</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = filteredVendors.map(vendor => {
-        const balance = calculateVendorBalance(vendor.id);
-        return `
+
+    tbody.innerHTML = filteredVendors
+        .map(vendor => {
+            const balance = calculateVendorBalance(vendor.id);
+            return `
             <tr>
                 <td>${vendor.code}</td>
                 <td>${vendor.name}</td>
@@ -946,39 +1046,47 @@ function filterVendors() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 // Filter Invoices based on search
 function filterInvoices() {
     const searchInput = document.getElementById('invoiceSearchInput');
-    if (!searchInput) return;
-    
+    if (!searchInput) {
+        return;
+    }
+
     const searchTerm = searchInput.value.toLowerCase();
     const tbody = document.getElementById('invoicesTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (searchTerm === '') {
         loadInvoices();
         return;
     }
-    
+
     const filteredInvoices = AppState.invoices.filter(invoice => {
         const client = AppState.clients.find(c => c.id === invoice.clientId);
         const clientName = client ? client.name.toLowerCase() : '';
-        return invoice.invoiceNo.toLowerCase().includes(searchTerm) ||
-               clientName.includes(searchTerm) ||
-               invoice.date.includes(searchTerm);
+        return (
+            invoice.invoiceNo.toLowerCase().includes(searchTerm) ||
+            clientName.includes(searchTerm) ||
+            invoice.date.includes(searchTerm)
+        );
     });
-    
+
     if (filteredInvoices.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">No invoices found</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = filteredInvoices.map(invoice => {
-        const client = AppState.clients.find(c => c.id === invoice.clientId);
-        return `
+
+    tbody.innerHTML = filteredInvoices
+        .map(invoice => {
+            const client = AppState.clients.find(c => c.id === invoice.clientId);
+            return `
             <tr>
                 <td>${invoice.invoiceNo}</td>
                 <td>${formatDate(invoice.date)}</td>
@@ -1000,40 +1108,52 @@ function filterInvoices() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 // Filter Purchases based on search
 function filterPurchases() {
     const searchInput = document.getElementById('purchaseSearchInput');
-    if (!searchInput) return;
-    
+    if (!searchInput) {
+        return;
+    }
+
     const searchTerm = searchInput.value.toLowerCase();
     const tbody = document.getElementById('purchaseTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (searchTerm === '') {
         loadPurchases();
         return;
     }
-    
+
     const filteredPurchases = AppState.purchases.filter(purchase => {
         const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
-        const vendorName = vendor ? vendor.name.toLowerCase() : (purchase.vendorName ? purchase.vendorName.toLowerCase() : '');
-        return purchase.purchaseNo.toLowerCase().includes(searchTerm) ||
-               vendorName.includes(searchTerm) ||
-               purchase.date.includes(searchTerm);
+        const vendorName = vendor
+            ? vendor.name.toLowerCase()
+            : purchase.vendorName
+              ? purchase.vendorName.toLowerCase()
+              : '';
+        return (
+            purchase.purchaseNo.toLowerCase().includes(searchTerm) ||
+            vendorName.includes(searchTerm) ||
+            purchase.date.includes(searchTerm)
+        );
     });
-    
+
     if (filteredPurchases.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">No purchases found</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = filteredPurchases.map(purchase => {
-        const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
-        const vendorName = vendor ? vendor.name : (purchase.vendorName || 'N/A');
-        return `
+
+    tbody.innerHTML = filteredPurchases
+        .map(purchase => {
+            const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
+            const vendorName = vendor ? vendor.name : purchase.vendorName || 'N/A';
+            return `
             <tr>
                 <td>${purchase.purchaseNo}</td>
                 <td>${formatDate(purchase.date)}</td>
@@ -1049,43 +1169,61 @@ function filterPurchases() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 // Filter Payments based on search
 function filterPayments() {
     const searchInput = document.getElementById('paymentSearchInput');
-    if (!searchInput) return;
-    
+    if (!searchInput) {
+        return;
+    }
+
     const searchTerm = searchInput.value.toLowerCase();
     const tbody = document.getElementById('paymentsTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (searchTerm === '') {
         loadPayments();
         return;
     }
-    
+
     const filteredPayments = AppState.payments.filter(payment => {
         const client = AppState.clients.find(c => c.id === payment.clientId);
         const vendor = AppState.vendors.find(v => v.id === payment.vendorId);
-        const partyName = client ? client.name.toLowerCase() : (vendor ? vendor.name.toLowerCase() : (payment.vendorName ? payment.vendorName.toLowerCase() : ''));
-        return payment.paymentNo.toLowerCase().includes(searchTerm) ||
-               partyName.includes(searchTerm) ||
-               payment.type.toLowerCase().includes(searchTerm) ||
-               payment.date.includes(searchTerm);
+        const partyName = client
+            ? client.name.toLowerCase()
+            : vendor
+              ? vendor.name.toLowerCase()
+              : payment.vendorName
+                ? payment.vendorName.toLowerCase()
+                : '';
+        return (
+            payment.paymentNo.toLowerCase().includes(searchTerm) ||
+            partyName.includes(searchTerm) ||
+            payment.type.toLowerCase().includes(searchTerm) ||
+            payment.date.includes(searchTerm)
+        );
     });
-    
+
     if (filteredPayments.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">No payments found</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = filteredPayments.map(payment => {
-        const client = AppState.clients.find(c => c.id === payment.clientId);
-        const vendor = AppState.vendors.find(v => v.id === payment.vendorId);
-        const partyName = client ? client.name : (vendor ? vendor.name : (payment.vendorName || 'N/A'));
-        return `
+
+    tbody.innerHTML = filteredPayments
+        .map(payment => {
+            const client = AppState.clients.find(c => c.id === payment.clientId);
+            const vendor = AppState.vendors.find(v => v.id === payment.vendorId);
+            const partyName = client
+                ? client.name
+                : vendor
+                  ? vendor.name
+                  : payment.vendorName || 'N/A';
+            return `
             <tr>
                 <td>${payment.paymentNo}</td>
                 <td>${formatDate(payment.date)}</td>
@@ -1102,7 +1240,8 @@ function filterPayments() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 // Create debounced versions of filter functions for better performance
@@ -1119,15 +1258,16 @@ function loadClients() {
     if (!tbody) {
         return;
     }
-    
+
     if (AppState.clients.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">No clients added yet</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = AppState.clients.map(client => {
-        const balance = calculateClientBalance(client.id);
-        return `
+
+    tbody.innerHTML = AppState.clients
+        .map(client => {
+            const balance = calculateClientBalance(client.id);
+            return `
             <tr>
                 <td>${client.code}</td>
                 <td>${client.name}</td>
@@ -1147,24 +1287,29 @@ function loadClients() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 function calculateClientBalance(clientId) {
     const client = AppState.clients.find(c => c.id === clientId);
-    const openingBalance = client ? (client.openingBalance || 0) : 0;
-    
+    const openingBalance = client ? client.openingBalance || 0 : 0;
+
     const invoices = AppState.invoices.filter(inv => inv.clientId === clientId);
-    const payments = AppState.payments.filter(pay => pay.clientId === clientId && pay.type === 'receipt');
-    
+    const payments = AppState.payments.filter(
+        pay => pay.clientId === clientId && pay.type === 'receipt'
+    );
+
     const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
     const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
-    
+
     return openingBalance + totalInvoices - totalPayments;
 }
 
 function showAddClientModal() {
-    const modal = createModal('Add New Client', `
+    const modal = createModal(
+        'Add New Client',
+        `
         <form id="addClientForm" onsubmit="addClient(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -1215,7 +1360,8 @@ function showAddClientModal() {
                 <button type="submit" class="btn btn-primary">Add Client</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -1223,7 +1369,7 @@ function addClient(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const client = {
         id: generateId(),
         code: formData.get('code'),
@@ -1235,9 +1381,9 @@ function addClient(event) {
         pan: formData.get('pan'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.clients.push(client);
     saveCompanyData();
     loadClients();
@@ -1246,7 +1392,9 @@ function addClient(event) {
 
 // Inline client creation for invoice/sales forms
 function showInlineClientModal() {
-    const inlineModal = createModal('Create New Client', `
+    const inlineModal = createModal(
+        'Create New Client',
+        `
         <form id="inlineClientForm" onsubmit="addInlineClient(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -1297,7 +1445,8 @@ function showInlineClientModal() {
                 <button type="submit" class="btn btn-primary">Create Client</button>
             </div>
         </form>
-    `);
+    `
+    );
     showInlineModal(inlineModal);
 }
 
@@ -1305,7 +1454,7 @@ function addInlineClient(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const client = {
         id: generateId(),
         code: formData.get('code'),
@@ -1317,12 +1466,12 @@ function addInlineClient(event) {
         pan: formData.get('pan'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.clients.push(client);
     saveCompanyData();
-    
+
     // Update the client dropdown in the invoice form
     const clientSelect = document.getElementById('invoiceClientSelect');
     if (clientSelect) {
@@ -1332,16 +1481,19 @@ function addInlineClient(event) {
         clientSelect.appendChild(option);
         clientSelect.value = client.id;
     }
-    
+
     closeInlineModal();
 }
 
-
 function editClient(clientId) {
     const client = AppState.clients.find(c => c.id === clientId);
-    if (!client) return;
-    
-    const modal = createModal('Edit Client', `
+    if (!client) {
+        return;
+    }
+
+    const modal = createModal(
+        'Edit Client',
+        `
         <form id="editClientForm" onsubmit="updateClient(event, '${clientId}')">
             <div class="form-row">
                 <div class="form-group">
@@ -1392,7 +1544,8 @@ function editClient(clientId) {
                 <button type="submit" class="btn btn-primary">Update Client</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -1400,10 +1553,12 @@ function updateClient(event, clientId) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const index = AppState.clients.findIndex(c => c.id === clientId);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     AppState.clients[index] = {
         ...AppState.clients[index],
         code: formData.get('code'),
@@ -1415,17 +1570,19 @@ function updateClient(event, clientId) {
         pan: formData.get('pan'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     saveCompanyData();
     loadClients();
     closeModal();
 }
 
 function deleteClient(clientId) {
-    if (!confirm('Are you sure you want to delete this client?')) return;
-    
+    if (!confirm('Are you sure you want to delete this client?')) {
+        return;
+    }
+
     AppState.clients = AppState.clients.filter(c => c.id !== clientId);
     saveCompanyData();
     loadClients();
@@ -1434,16 +1591,19 @@ function deleteClient(clientId) {
 // Vendor Management
 function loadVendors() {
     const tbody = document.getElementById('vendorsTableBody');
-    if (!tbody) return;
-    
+    if (!tbody) {
+        return;
+    }
+
     if (AppState.vendors.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">No vendors added yet</td></tr>';
         return;
     }
-    
-    tbody.innerHTML = AppState.vendors.map(vendor => {
-        const balance = calculateVendorBalance(vendor.id);
-        return `
+
+    tbody.innerHTML = AppState.vendors
+        .map(vendor => {
+            const balance = calculateVendorBalance(vendor.id);
+            return `
             <tr>
                 <td>${vendor.code}</td>
                 <td>${vendor.name}</td>
@@ -1463,24 +1623,29 @@ function loadVendors() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 function calculateVendorBalance(vendorId) {
     const vendor = AppState.vendors.find(v => v.id === vendorId);
-    const openingBalance = vendor ? (vendor.openingBalance || 0) : 0;
-    
+    const openingBalance = vendor ? vendor.openingBalance || 0 : 0;
+
     const purchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
-    const payments = AppState.payments.filter(pay => pay.vendorId === vendorId && pay.type === 'payment');
-    
+    const payments = AppState.payments.filter(
+        pay => pay.vendorId === vendorId && pay.type === 'payment'
+    );
+
     const totalPurchases = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
     const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
-    
+
     return openingBalance + totalPurchases - totalPayments;
 }
 
 function showAddVendorModal() {
-    const modal = createModal('Add New Vendor', `
+    const modal = createModal(
+        'Add New Vendor',
+        `
         <form id="addVendorForm" onsubmit="addVendor(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -1526,7 +1691,8 @@ function showAddVendorModal() {
                 <button type="submit" class="btn btn-primary">Add Vendor</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -1534,7 +1700,7 @@ function addVendor(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const vendor = {
         id: generateId(),
         code: formData.get('code'),
@@ -1545,9 +1711,9 @@ function addVendor(event) {
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.vendors.push(vendor);
     saveCompanyData();
     loadVendors();
@@ -1556,7 +1722,9 @@ function addVendor(event) {
 
 // Inline vendor creation for purchase forms
 function showInlineVendorModal() {
-    const inlineModal = createModal('Create New Vendor', `
+    const inlineModal = createModal(
+        'Create New Vendor',
+        `
         <form id="inlineVendorForm" onsubmit="addInlineVendor(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -1602,7 +1770,8 @@ function showInlineVendorModal() {
                 <button type="submit" class="btn btn-primary">Create Vendor</button>
             </div>
         </form>
-    `);
+    `
+    );
     showInlineModal(inlineModal);
 }
 
@@ -1610,7 +1779,7 @@ function addInlineVendor(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const vendor = {
         id: generateId(),
         code: formData.get('code'),
@@ -1621,12 +1790,12 @@ function addInlineVendor(event) {
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.vendors.push(vendor);
     saveCompanyData();
-    
+
     // Update the vendor dropdown in the purchase form
     const vendorSelect = document.getElementById('purchaseVendorSelect');
     if (vendorSelect) {
@@ -1636,16 +1805,19 @@ function addInlineVendor(event) {
         vendorSelect.appendChild(option);
         vendorSelect.value = vendor.id;
     }
-    
+
     closeInlineModal();
 }
 
-
 function editVendor(vendorId) {
     const vendor = AppState.vendors.find(v => v.id === vendorId);
-    if (!vendor) return;
-    
-    const modal = createModal('Edit Vendor', `
+    if (!vendor) {
+        return;
+    }
+
+    const modal = createModal(
+        'Edit Vendor',
+        `
         <form id="editVendorForm" onsubmit="updateVendor(event, '${vendorId}')">
             <div class="form-row">
                 <div class="form-group">
@@ -1691,7 +1863,8 @@ function editVendor(vendorId) {
                 <button type="submit" class="btn btn-primary">Update Vendor</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -1699,10 +1872,12 @@ function updateVendor(event, vendorId) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const index = AppState.vendors.findIndex(v => v.id === vendorId);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     AppState.vendors[index] = {
         ...AppState.vendors[index],
         code: formData.get('code'),
@@ -1713,17 +1888,19 @@ function updateVendor(event, vendorId) {
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     saveCompanyData();
     loadVendors();
     closeModal();
 }
 
 function deleteVendor(vendorId) {
-    if (!confirm('Are you sure you want to delete this vendor?')) return;
-    
+    if (!confirm('Are you sure you want to delete this vendor?')) {
+        return;
+    }
+
     AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
     saveCompanyData();
     loadVendors();
@@ -1734,16 +1911,20 @@ function deleteVendor(vendorId) {
 // Invoice Management
 function loadInvoices() {
     const tbody = document.getElementById('invoicesTableBody');
-    if (!tbody) return;
-    
-    if (AppState.invoices.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No invoices created yet</td></tr>';
+    if (!tbody) {
         return;
     }
-    
-    tbody.innerHTML = AppState.invoices.map(invoice => {
-        const client = AppState.clients.find(c => c.id === invoice.clientId);
-        return `
+
+    if (AppState.invoices.length === 0) {
+        tbody.innerHTML =
+            '<tr><td colspan="5" class="text-center">No invoices created yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = AppState.invoices
+        .map(invoice => {
+            const client = AppState.clients.find(c => c.id === invoice.clientId);
+            return `
             <tr>
                 <td>${invoice.invoiceNo}</td>
                 <td>${formatDate(invoice.date)}</td>
@@ -1765,14 +1946,15 @@ function loadInvoices() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 function getNextInvoiceNumber() {
     if (AppState.invoices.length === 0) {
         return 'INV-001';
     }
-    
+
     // Find the highest invoice number to avoid duplicates
     const maxNumber = AppState.invoices.reduce((max, invoice) => {
         const match = invoice.invoiceNo.match(/INV-(\d+)/);
@@ -1782,19 +1964,25 @@ function getNextInvoiceNumber() {
         }
         return max;
     }, 0);
-    
+
     return `INV-${String(maxNumber + 1).padStart(3, '0')}`;
 }
 
 function showAddInvoiceModal() {
-    const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    const clientOptions = AppState.clients
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
     const detailedInvoicing = AppState.currentCompany.detailedInvoicing !== false; // Default to true
-    
+
     if (detailedInvoicing) {
         // Show detailed invoice form with products
-        const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
-        
-        const modal = createModal('New Sales Invoice', `
+        const productOptions = AppState.products
+            .map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+            .join('');
+
+        const modal = createModal(
+            'New Sales Invoice',
+            `
             <form id="addInvoiceForm" onsubmit="addInvoice(event)">
                 <div class="form-row">
                     <div class="form-group">
@@ -1902,11 +2090,14 @@ function showAddInvoiceModal() {
                     <button type="submit" class="btn btn-primary">Create Invoice</button>
                 </div>
             </form>
-        `);
+        `
+        );
         showModal(modal);
     } else {
         // Show simplified invoice form
-        const modal = createModal('New Sales Invoice (Simplified)', `
+        const modal = createModal(
+            'New Sales Invoice (Simplified)',
+            `
             <form id="addInvoiceForm" onsubmit="addSimplifiedInvoice(event)">
                 <div class="form-row">
                     <div class="form-group">
@@ -1953,7 +2144,8 @@ function showAddInvoiceModal() {
                     <button type="submit" class="btn btn-primary">Create Invoice</button>
                 </div>
             </form>
-        `);
+        `
+        );
         showModal(modal);
     }
 }
@@ -1961,7 +2153,7 @@ function showAddInvoiceModal() {
 function updateInvoiceItem(selectElement) {
     const row = selectElement.closest('tr');
     const productId = selectElement.value;
-    
+
     if (!productId) {
         row.querySelector('.rate-input').value = 0;
         row.querySelector('.boxes-input').value = 0;
@@ -1971,19 +2163,19 @@ function updateInvoiceItem(selectElement) {
         calculateInvoiceTotal();
         return;
     }
-    
+
     const product = AppState.products.find(p => p.id === productId);
     if (product) {
         // Get the selected client from the invoice form
         const clientSelect = document.getElementById('invoiceClientSelect');
         const clientId = clientSelect ? clientSelect.value : null;
-        
+
         // Use client-specific price if available, otherwise use default price
         let pricePerUnit = product.pricePerUnit;
         if (clientId && product.clientPrices && product.clientPrices[clientId]) {
             pricePerUnit = product.clientPrices[clientId];
         }
-        
+
         row.querySelector('.rate-input').value = pricePerUnit;
         row.querySelector('.unit-per-box-input').value = product.unitPerBox;
         row.dataset.unitPerBox = product.unitPerBox;
@@ -1998,11 +2190,11 @@ function calculateInvoiceItem(inputElement) {
     const boxes = parseFloat(row.querySelector('.boxes-input').value) || 0;
     const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
     const unitPerBox = parseInt(row.dataset.unitPerBox) || 1;
-    
+
     // Formula: boxes * unitPerBox = totalUnits, then totalUnits * rate = amount
     const totalUnits = boxes * unitPerBox;
     const amount = totalUnits * rate;
-    
+
     row.querySelector('.quantity-input').value = totalUnits;
     row.querySelector('.amount-input').value = amount.toFixed(2);
     calculateInvoiceTotal();
@@ -2013,11 +2205,11 @@ function calculateInvoiceTotal() {
     const boxesInputs = document.querySelectorAll('#invoiceItemsBody .boxes-input');
     let subtotal = 0;
     let totalBoxes = 0;
-    
+
     amounts.forEach(input => {
         subtotal += parseFloat(input.value) || 0;
     });
-    
+
     // Calculate total boxes with rounding logic
     boxesInputs.forEach(input => {
         const boxes = parseFloat(input.value) || 0;
@@ -2027,14 +2219,14 @@ function calculateInvoiceTotal() {
             totalBoxes += Math.ceil(boxes);
         }
     });
-    
+
     const taxPercent = parseFloat(document.getElementById('invoiceTax').value) || 0;
     const taxAmount = (subtotal * taxPercent) / 100;
     const total = subtotal + taxAmount;
-    
+
     document.getElementById('invoiceSubtotal').value = subtotal.toFixed(2);
     document.getElementById('invoiceTotal').value = total.toFixed(2);
-    
+
     // Update total boxes field if it exists
     const totalBoxesField = document.getElementById('invoiceTotalBoxes');
     if (totalBoxesField) {
@@ -2043,10 +2235,12 @@ function calculateInvoiceTotal() {
 }
 
 function addInvoiceItem() {
-    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+    const productOptions = AppState.products
+        .map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+        .join('');
     const tbody = document.getElementById('invoiceItemsBody');
     const serialNo = tbody.children.length + 1;
-    
+
     const row = document.createElement('tr');
     row.dataset.serial = serialNo;
     row.innerHTML = `
@@ -2092,27 +2286,29 @@ function addInvoice(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     // Check for duplicate invoice number
     const invoiceNo = formData.get('invoiceNo').trim();
     if (!invoiceNo) {
         alert('Please enter an invoice number');
         return;
     }
-    
+
     const duplicateInvoice = AppState.invoices.find(inv => inv.invoiceNo === invoiceNo);
     if (duplicateInvoice) {
-        alert(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
+        alert(
+            `Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`
+        );
         return;
     }
-    
+
     const items = [];
     const rows = document.querySelectorAll('#invoiceItemsBody tr');
-    
+
     rows.forEach((row, index) => {
         const productSelect = row.querySelector('.product-select');
         const productId = productSelect.value;
-        
+
         if (productId) {
             const product = AppState.products.find(p => p.id === productId);
             const boxes = parseFloat(row.querySelector('.boxes-input').value) || 0;
@@ -2120,7 +2316,7 @@ function addInvoice(event) {
             const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
             const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
             const amount = parseFloat(row.querySelector('.amount-input').value) || 0;
-            
+
             items.push({
                 serialNo: index + 1,
                 productId,
@@ -2130,16 +2326,16 @@ function addInvoice(event) {
                 unitPerBox,
                 quantity,
                 rate,
-                amount
+                amount,
             });
         }
     });
-    
+
     if (items.length === 0) {
         alert('Please add at least one item to the invoice');
         return;
     }
-    
+
     // Calculate total boxes with rounding
     let totalBoxes = 0;
     items.forEach(item => {
@@ -2147,7 +2343,7 @@ function addInvoice(event) {
             totalBoxes += Math.ceil(item.boxes);
         }
     });
-    
+
     const invoice = {
         id: generateId(),
         invoiceNo: invoiceNo,
@@ -2161,9 +2357,9 @@ function addInvoice(event) {
         totalBoxes: totalBoxes,
         notes: formData.get('notes'),
         status: 'Unpaid',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.invoices.push(invoice);
     saveCompanyData();
     loadInvoices();
@@ -2175,26 +2371,28 @@ function addSimplifiedInvoice(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     // Check for duplicate invoice number
     const invoiceNo = formData.get('invoiceNo').trim();
     if (!invoiceNo) {
         alert('Please enter an invoice number');
         return;
     }
-    
+
     const duplicateInvoice = AppState.invoices.find(inv => inv.invoiceNo === invoiceNo);
     if (duplicateInvoice) {
-        alert(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
+        alert(
+            `Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`
+        );
         return;
     }
-    
+
     const amount = parseFloat(formData.get('amount'));
     if (!amount || amount <= 0) {
         alert('Please enter a valid amount');
         return;
     }
-    
+
     const invoice = {
         id: generateId(),
         invoiceNo: invoiceNo,
@@ -2209,9 +2407,9 @@ function addSimplifiedInvoice(event) {
         notes: formData.get('notes'),
         status: 'Unpaid',
         simplified: true, // Mark as simplified invoice
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.invoices.push(invoice);
     saveCompanyData();
     loadInvoices();
@@ -2221,16 +2419,23 @@ function addSimplifiedInvoice(event) {
 
 function editInvoice(invoiceId) {
     const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
-    if (!invoice) return;
-    
-    const clientOptions = AppState.clients.map(c => 
-        `<option value="${c.id}" ${c.id === invoice.clientId ? 'selected' : ''}>${c.name}</option>`
-    ).join('');
-    
+    if (!invoice) {
+        return;
+    }
+
+    const clientOptions = AppState.clients
+        .map(
+            c =>
+                `<option value="${c.id}" ${c.id === invoice.clientId ? 'selected' : ''}>${c.name}</option>`
+        )
+        .join('');
+
     // Check if this is a simplified invoice
     if (invoice.simplified) {
         // Show simplified edit form
-        const modal = createModal('Edit Sales Invoice (Simplified)', `
+        const modal = createModal(
+            'Edit Sales Invoice (Simplified)',
+            `
             <form id="editInvoiceForm" onsubmit="updateSimplifiedInvoice(event, '${invoiceId}')">
                 <div class="form-row">
                     <div class="form-group">
@@ -2271,18 +2476,23 @@ function editInvoice(invoiceId) {
                     <button type="submit" class="btn btn-primary">Update Invoice</button>
                 </div>
             </form>
-        `);
+        `
+        );
         showModal(modal);
         return;
     }
-    
+
     // Show detailed edit form
-    const itemsHTML = invoice.items.map((item, index) => {
-        const productOptions = AppState.products.map(p => 
-            `<option value="${p.id}" ${p.id === item.productId ? 'selected' : ''}>${p.name} (${p.code})</option>`
-        ).join('');
-        
-        return `
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const productOptions = AppState.products
+                .map(
+                    p =>
+                        `<option value="${p.id}" ${p.id === item.productId ? 'selected' : ''}>${p.name} (${p.code})</option>`
+                )
+                .join('');
+
+            return `
             <tr data-unit-per-box="${item.unitPerBox}" data-serial="${index + 1}">
                 <td class="serial-no">${index + 1}</td>
                 <td>
@@ -2304,9 +2514,12 @@ function editInvoice(invoiceId) {
                 <td><button type="button" class="action-btn delete" onclick="removeInvoiceItem(this)"><i class="fas fa-trash"></i></button></td>
             </tr>
         `;
-    }).join('');
-    
-    const modal = createModal('Edit Sales Invoice', `
+        })
+        .join('');
+
+    const modal = createModal(
+        'Edit Sales Invoice',
+        `
         <form id="editInvoiceForm" onsubmit="updateInvoice(event, '${invoiceId}')">
             <div class="form-row">
                 <div class="form-group">
@@ -2394,7 +2607,8 @@ function editInvoice(invoiceId) {
                 <button type="submit" class="btn btn-primary">Update Invoice</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -2402,14 +2616,14 @@ function updateInvoice(event, invoiceId) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const items = [];
     const rows = document.querySelectorAll('#invoiceItemsBody tr');
-    
+
     rows.forEach((row, index) => {
         const productSelect = row.querySelector('.product-select');
         const productId = productSelect.value;
-        
+
         if (productId) {
             const product = AppState.products.find(p => p.id === productId);
             const boxes = parseFloat(row.querySelector('.boxes-input').value) || 0;
@@ -2417,7 +2631,7 @@ function updateInvoice(event, invoiceId) {
             const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
             const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
             const amount = parseFloat(row.querySelector('.amount-input').value) || 0;
-            
+
             items.push({
                 serialNo: index + 1,
                 productId,
@@ -2427,16 +2641,16 @@ function updateInvoice(event, invoiceId) {
                 unitPerBox,
                 quantity,
                 rate,
-                amount
+                amount,
             });
         }
     });
-    
+
     if (items.length === 0) {
         alert('Please add at least one item to the invoice');
         return;
     }
-    
+
     // Calculate total boxes with rounding
     let totalBoxes = 0;
     items.forEach(item => {
@@ -2444,10 +2658,12 @@ function updateInvoice(event, invoiceId) {
             totalBoxes += Math.ceil(item.boxes);
         }
     });
-    
+
     const index = AppState.invoices.findIndex(inv => inv.id === invoiceId);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     AppState.invoices[index] = {
         ...AppState.invoices[index],
         date: formData.get('date'),
@@ -2459,9 +2675,9 @@ function updateInvoice(event, invoiceId) {
         total: parseFloat(document.getElementById('invoiceTotal').value),
         totalBoxes: totalBoxes,
         notes: formData.get('notes'),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     saveCompanyData();
     loadInvoices();
     updateDashboard();
@@ -2472,16 +2688,18 @@ function updateSimplifiedInvoice(event, invoiceId) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const amount = parseFloat(formData.get('amount'));
     if (!amount || amount <= 0) {
         alert('Please enter a valid amount');
         return;
     }
-    
+
     const index = AppState.invoices.findIndex(inv => inv.id === invoiceId);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     AppState.invoices[index] = {
         ...AppState.invoices[index],
         date: formData.get('date'),
@@ -2494,9 +2712,9 @@ function updateSimplifiedInvoice(event, invoiceId) {
         totalBoxes: 0,
         notes: formData.get('notes'),
         simplified: true,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     saveCompanyData();
     loadInvoices();
     updateDashboard();
@@ -2504,8 +2722,10 @@ function updateSimplifiedInvoice(event, invoiceId) {
 }
 
 function deleteInvoice(invoiceId) {
-    if (!confirm('Are you sure you want to delete this invoice?')) return;
-    
+    if (!confirm('Are you sure you want to delete this invoice?')) {
+        return;
+    }
+
     // Find the invoice to delete
     const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
     if (invoice) {
@@ -2517,7 +2737,7 @@ function deleteInvoice(invoiceId) {
             AppState.deletedInvoices = AppState.deletedInvoices.slice(0, 10);
         }
     }
-    
+
     AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
     saveCompanyData();
     loadInvoices();
@@ -2529,11 +2749,12 @@ function showRestoreInvoiceModal() {
         alert('No recently deleted invoices to restore.');
         return;
     }
-    
-    const invoiceRows = AppState.deletedInvoices.map(invoice => {
-        const client = AppState.clients.find(c => c.id === invoice.clientId);
-        const deletedDate = new Date(invoice.deletedAt);
-        return `
+
+    const invoiceRows = AppState.deletedInvoices
+        .map(invoice => {
+            const client = AppState.clients.find(c => c.id === invoice.clientId);
+            const deletedDate = new Date(invoice.deletedAt);
+            return `
             <tr>
                 <td>${invoice.invoiceNo}</td>
                 <td>${formatDate(invoice.date)}</td>
@@ -2547,9 +2768,12 @@ function showRestoreInvoiceModal() {
                 </td>
             </tr>
         `;
-    }).join('');
-    
-    const modal = createModal('Restore Deleted Invoice', `
+        })
+        .join('');
+
+    const modal = createModal(
+        'Restore Deleted Invoice',
+        `
         <p>Recently deleted invoices (last 10):</p>
         <div style="max-height: 400px; overflow-y: auto;">
             <table class="data-table">
@@ -2571,8 +2795,10 @@ function showRestoreInvoiceModal() {
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
         </div>
-    `, 'modal-lg');
-    
+    `,
+        'modal-lg'
+    );
+
     showModal(modal);
 }
 
@@ -2582,32 +2808,38 @@ function restoreInvoice(invoiceId) {
         alert('Invoice not found.');
         return;
     }
-    
+
     // Create a clean copy of the invoice without the deletedAt timestamp
     const restoredInvoice = { ...invoice };
     delete restoredInvoice.deletedAt;
-    
+
     // Check if invoice number already exists
-    const existingInvoice = AppState.invoices.find(inv => inv.invoiceNo === restoredInvoice.invoiceNo);
+    const existingInvoice = AppState.invoices.find(
+        inv => inv.invoiceNo === restoredInvoice.invoiceNo
+    );
     if (existingInvoice) {
-        if (!confirm(`An invoice with number ${restoredInvoice.invoiceNo} already exists. Do you want to restore this invoice with a new invoice number?`)) {
+        if (
+            !confirm(
+                `An invoice with number ${restoredInvoice.invoiceNo} already exists. Do you want to restore this invoice with a new invoice number?`
+            )
+        ) {
             return;
         }
         // Assign new invoice number based on current highest number
         restoredInvoice.invoiceNo = getNextInvoiceNumber();
     }
-    
+
     // Add back to invoices
     AppState.invoices.push(restoredInvoice);
-    
+
     // Remove from deleted invoices
     AppState.deletedInvoices = AppState.deletedInvoices.filter(inv => inv.id !== invoiceId);
-    
+
     saveCompanyData();
     loadInvoices();
     updateDashboard();
     closeModal();
-    
+
     alert('Invoice restored successfully!');
 }
 
@@ -2616,10 +2848,12 @@ function restoreInvoice(invoiceId) {
 // Print Invoice
 function printInvoice(invoiceId) {
     const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
-    if (!invoice) return;
-    
+    if (!invoice) {
+        return;
+    }
+
     const client = AppState.clients.find(c => c.id === invoice.clientId);
-    
+
     showPrintPreviewModal(invoice, client);
 }
 
@@ -2628,7 +2862,9 @@ function viewInvoice(invoiceId) {
 }
 
 function showPrintPreviewModal(invoice, client) {
-    const modal = createModal('Invoice Preview', `
+    const modal = createModal(
+        'Invoice Preview',
+        `
         <div id="printPreviewContent" class="print-preview-container" style="max-height: 500px; overflow-y: auto; border: 1px solid #ddd; background: white;"></div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
@@ -2639,17 +2875,19 @@ function showPrintPreviewModal(invoice, client) {
                 <i class="fas fa-print"></i> Print
             </button>
         </div>
-    `, 'modal-lg');
-    
+    `,
+        'modal-lg'
+    );
+
     showModal(modal);
-    
+
     // Store invoice data for preview in a controlled namespace
     if (!window.invoicePreviewData) {
         window.invoicePreviewData = {};
     }
     window.invoicePreviewData.currentInvoice = invoice;
     window.invoicePreviewData.currentClient = client;
-    
+
     updatePrintPreview();
 }
 
@@ -2658,16 +2896,18 @@ function updatePrintPreview() {
     const template = AppState.settings.invoiceTemplate || 'modern';
     const size = AppState.settings.printSize || 'a5';
     const preview = document.getElementById('printPreviewContent');
-    
+
     // Get invoice data from controlled namespace
     const invoice = window.invoicePreviewData ? window.invoicePreviewData.currentInvoice : null;
     const client = window.invoicePreviewData ? window.invoicePreviewData.currentClient : null;
-    
-    if (!invoice || !client || !preview) return;
-    
+
+    if (!invoice || !client || !preview) {
+        return;
+    }
+
     let html = '';
-    
-    switch(template) {
+
+    switch (template) {
         case 'modern':
             html = generateModernInvoice(invoice, client, size);
             break;
@@ -2701,7 +2941,7 @@ function updatePrintPreview() {
         default:
             html = generateModernInvoice(invoice, client, size);
     }
-    
+
     preview.innerHTML = html;
 }
 
@@ -2711,24 +2951,25 @@ function generateModernInvoice(invoice, client, size) {
     const padding = size === 'a5' ? '0.4rem' : '0.75rem';
     const headerPadding = size === 'a5' ? '1rem' : '2rem';
     const margin = size === 'a5' ? '1rem' : '2rem';
-    
+
     // Page dimensions
     const pageHeight = size === 'a5' ? '210mm' : '297mm';
     const pageWidth = size === 'a5' ? '148mm' : '210mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        // Round up each item's boxes individually
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            // Round up each item's boxes individually
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td class="text-center">${index + 1}</td>
             <td>${item.productName} (${item.productCode})</td>
@@ -2739,8 +2980,9 @@ function generateModernInvoice(invoice, client, size) {
             <td class="text-right">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; min-height: ${pageHeight}; margin: 0 auto; padding: ${size === 'a5' ? '10mm' : '15mm'}; box-sizing: border-box; display: flex; flex-direction: column;">
             <div class="invoice-header" style="background: linear-gradient(135deg, #4a90e2, #7b68ee); color: white; padding: ${headerPadding}; margin: -${size === 'a5' ? '10mm' : '15mm'} -${size === 'a5' ? '10mm' : '15mm'} ${margin}; border-radius: 0;">
@@ -2793,12 +3035,16 @@ function generateModernInvoice(invoice, client, size) {
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Subtotal:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${invoice.subtotal.toFixed(2)}</strong></td>
                         </tr>
-                        ${invoice.tax > 0 ? `
+                        ${
+                            invoice.tax > 0
+                                ? `
                         <tr style="background: #ecf0f1;">
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Tax (${invoice.tax}%):</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                         </tr>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                         <tr style="background: #4a90e2; color: white;">
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Total:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${invoice.total.toFixed(2)}</strong></td>
@@ -2821,24 +3067,25 @@ function generateClassicInvoice(invoice, client, size) {
     const fontSize = size === 'a5' ? '0.65em' : '1em';
     const padding = size === 'a5' ? '0.3rem' : '0.5rem';
     const headerPadding = size === 'a5' ? '0.5rem' : '1rem';
-    
+
     // Page dimensions
     const pageHeight = size === 'a5' ? '210mm' : '297mm';
     const pageWidth = size === 'a5' ? '148mm' : '210mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        // Round up each item's boxes individually
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            // Round up each item's boxes individually
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
             <td style="padding: ${padding}; border: 1px solid #000;">${item.productName} (${item.productCode})</td>
@@ -2849,8 +3096,9 @@ function generateClassicInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border: 1px solid #000; text-align: right;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; min-height: ${pageHeight}; border: 2px solid #000; padding: ${size === 'a5' ? '10mm' : '15mm'}; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column;">
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: ${headerPadding}; margin-bottom: ${headerPadding};">
@@ -2903,12 +3151,16 @@ function generateClassicInvoice(invoice, client, size) {
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #000; text-align: right;"><strong>Subtotal:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #000; text-align: right;"><strong>₹${invoice.subtotal.toFixed(2)}</strong></td>
                         </tr>
-                        ${invoice.tax > 0 ? `
+                        ${
+                            invoice.tax > 0
+                                ? `
                         <tr>
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #000; text-align: right;"><strong>Tax (${invoice.tax}%):</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #000; text-align: right;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                         </tr>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                         <tr style="background: #f0f0f0;">
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #000; text-align: right;"><strong>TOTAL:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #000; text-align: right;"><strong>₹${invoice.total.toFixed(2)}</strong></td>
@@ -2936,23 +3188,24 @@ function generateMinimalInvoice(invoice, client, size) {
     const fontSize = size === 'a5' ? '0.7em' : '1em';
     const padding = size === 'a5' ? '0.3rem' : '0.5rem';
     const headerPadding = size === 'a5' ? '0.4rem' : '0.8rem';
-    
+
     // Page dimensions
     const pageHeight = size === 'a5' ? '210mm' : '297mm';
     const pageWidth = size === 'a5' ? '148mm' : '210mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${index + 1}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; font-size: 0.95em;">${item.productName} (${item.productCode})</td>
@@ -2963,8 +3216,9 @@ function generateMinimalInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right; font-size: 0.95em;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     // Add filler rows to push totals to bottom when there's less content (A5 only)
     let fillerHTML = '';
     if (size === 'a5' && invoice.items.length < 6) {
@@ -2984,7 +3238,7 @@ function generateMinimalInvoice(invoice, client, size) {
             `;
         }
     }
-    
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; min-height: ${pageHeight}; padding: ${size === 'a5' ? '8mm' : '12mm'}; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column;">
             <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: ${headerPadding}; margin-bottom: ${headerPadding};">
@@ -3038,12 +3292,16 @@ function generateMinimalInvoice(invoice, client, size) {
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #333; text-align: right; font-size: 1em;"><strong>Subtotal:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #333; text-align: right; font-size: 1em;"><strong>₹${invoice.subtotal.toFixed(2)}</strong></td>
                         </tr>
-                        ${invoice.tax > 0 ? `
+                        ${
+                            invoice.tax > 0
+                                ? `
                         <tr>
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #333; text-align: right; font-size: 1em;"><strong>Tax (${invoice.tax}%):</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #333; text-align: right; font-size: 1em;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                         </tr>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                         <tr style="background: #333; color: white;">
                             <td colspan="6" style="padding: ${size === 'a5' ? '0.5rem' : '0.7rem'}; border: 1px solid #333; text-align: right; font-size: ${size === 'a5' ? '1.2em' : '1.3em'}; font-weight: 700;"><strong>TOTAL:</strong></td>
                             <td style="padding: ${size === 'a5' ? '0.5rem' : '0.7rem'}; border: 1px solid #333; text-align: right; font-size: ${size === 'a5' ? '1.2em' : '1.3em'}; font-weight: 700;"><strong>₹${invoice.total.toFixed(2)}</strong></td>
@@ -3066,23 +3324,24 @@ function generateCompactInvoice(invoice, client, size) {
     const fontSize = size === 'a5' ? '0.6em' : '0.85em';
     const padding = size === 'a5' ? '0.2rem' : '0.4rem';
     const headerPadding = size === 'a5' ? '0.3rem' : '0.6rem';
-    
+
     // Page dimensions
     const pageHeight = size === 'a5' ? '210mm' : '297mm';
     const pageWidth = size === 'a5' ? '148mm' : '210mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${index + 1}</td>
             <td style="padding: ${padding}; border: 1px solid #333; font-size: 0.9em;">${item.productName} (${item.productCode})</td>
@@ -3093,8 +3352,9 @@ function generateCompactInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border: 1px solid #333; text-align: right; font-size: 0.9em;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; min-height: ${pageHeight}; padding: ${size === 'a5' ? '8mm' : '12mm'}; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column;">
             <div style="text-align: center; padding-bottom: ${headerPadding}; margin-bottom: ${headerPadding}; border-bottom: 3px double #333;">
@@ -3147,12 +3407,16 @@ function generateCompactInvoice(invoice, client, size) {
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #333; text-align: right;"><strong>Subtotal:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #333; text-align: right;"><strong>₹${invoice.subtotal.toFixed(2)}</strong></td>
                         </tr>
-                        ${invoice.tax > 0 ? `
+                        ${
+                            invoice.tax > 0
+                                ? `
                         <tr>
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #333; text-align: right;"><strong>Tax (${invoice.tax}%):</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #333; text-align: right;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                         </tr>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                         <tr style="background: #333; color: white;">
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #333; text-align: right;"><strong>GRAND TOTAL:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #333; text-align: right;"><strong>₹${invoice.total.toFixed(2)}</strong></td>
@@ -3176,25 +3440,26 @@ function generateDeliveryChallanInvoice(invoice, client, size) {
     const fontSize = size === 'a5' ? '0.7em' : '1.05em';
     const padding = size === 'a5' ? '0.3rem' : '0.6rem';
     const headerPadding = size === 'a5' ? '0.4rem' : '0.9rem';
-    
+
     // Page dimensions
     const pageHeight = size === 'a5' ? '210mm' : '297mm';
     const pageWidth = size === 'a5' ? '148mm' : '210mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const boxes = item.boxes || 0;
-        const unitPerBox = item.unitPerBox || 0;
-        const quantity = item.quantity || (boxes * unitPerBox);
-        totalBoxes += boxes;
-        totalBoxesRounded += Math.ceil(boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const boxes = item.boxes || 0;
+            const unitPerBox = item.unitPerBox || 0;
+            const quantity = item.quantity || boxes * unitPerBox;
+            totalBoxes += boxes;
+            totalBoxesRounded += Math.ceil(boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${index + 1}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; font-size: 1.05em;">${item.productName} (${item.productCode})</td>
@@ -3205,8 +3470,9 @@ function generateDeliveryChallanInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: right; font-size: 1.05em;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     // Add empty space rows (without interior column lines, just outer borders)
     const minRows = 6;
     const emptyRows = Math.max(0, minRows - invoice.items.length);
@@ -3219,7 +3485,7 @@ function generateDeliveryChallanInvoice(invoice, client, size) {
         </tr>
         `;
     }
-    
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; height: ${pageHeight}; padding: 0; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid #000;">
             <!-- Company Name Section with Border -->
@@ -3269,12 +3535,16 @@ function generateDeliveryChallanInvoice(invoice, client, size) {
                         ${emptySpaceHTML}
                     </tbody>
                     <tfoot>
-                        ${invoice.tax > 0 ? `
+                        ${
+                            invoice.tax > 0
+                                ? `
                         <tr>
                             <td colspan="6" style="padding: ${size === 'a5' ? '0.5rem' : '0.7rem'}; border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: right; font-size: 1.15em; background: #fff; color: #000;"><strong>Tax (${invoice.tax}%):</strong></td>
                             <td style="padding: ${size === 'a5' ? '0.5rem' : '0.7rem'}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: right; font-size: 1.15em; background: #fff; color: #000;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                         </tr>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     </tfoot>
                 </table>
             </div>
@@ -3325,23 +3595,24 @@ function generateA5BorderedColorInvoice(invoice, client, size) {
     const company = AppState.currentCompany;
     const fontSize = size === 'a5' ? '0.7em' : '0.9em';
     const padding = size === 'a5' ? '0.25rem' : '0.5rem';
-    
+
     // Page dimensions - A5 only
     const pageHeight = '210mm';
     const pageWidth = '148mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${index + 1}</td>
             <td style="padding: ${padding}; border: 1px solid #444;">${item.productName} (${item.productCode})</td>
@@ -3352,8 +3623,9 @@ function generateA5BorderedColorInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border: 1px solid #444; text-align: right;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     // Add filler rows if needed to push total to bottom
     const minRows = 8;
     const fillerRows = Math.max(0, minRows - invoice.items.length);
@@ -3371,7 +3643,7 @@ function generateA5BorderedColorInvoice(invoice, client, size) {
         </tr>
         `;
     }
-    
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; height: ${pageHeight}; margin: 0; padding: 0; box-sizing: border-box; border: 3px solid #2c5aa0; display: flex; flex-direction: column; background: white;">
             <!-- Header Section -->
@@ -3432,12 +3704,16 @@ function generateA5BorderedColorInvoice(invoice, client, size) {
                         <td style="padding: 0.3rem; text-align: right; width: 70%;"><strong>Subtotal:</strong></td>
                         <td style="padding: 0.3rem; text-align: right; width: 30%; font-size: 1.1em;"><strong>₹${invoice.subtotal.toFixed(2)}</strong></td>
                     </tr>
-                    ${invoice.tax > 0 ? `
+                    ${
+                        invoice.tax > 0
+                            ? `
                     <tr>
                         <td style="padding: 0.3rem; text-align: right;"><strong>Tax (${invoice.tax}%):</strong></td>
                         <td style="padding: 0.3rem; text-align: right; font-size: 1.1em;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                     </tr>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                     <tr style="background: #2c5aa0; color: white;">
                         <td style="padding: 0.4rem; text-align: right; font-size: 1.1em;"><strong>GRAND TOTAL:</strong></td>
                         <td style="padding: 0.4rem; text-align: right; font-size: 1.3em;"><strong>₹${invoice.total.toFixed(2)}</strong></td>
@@ -3457,23 +3733,24 @@ function generateA5BorderedBWInvoice(invoice, client, size) {
     const company = AppState.currentCompany;
     const fontSize = size === 'a5' ? '0.7em' : '0.9em';
     const padding = size === 'a5' ? '0.25rem' : '0.5rem';
-    
+
     // Page dimensions - A5 only
     const pageHeight = '210mm';
     const pageWidth = '148mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
             <td style="padding: ${padding}; border: 1px solid #000;">${item.productName} (${item.productCode})</td>
@@ -3484,8 +3761,9 @@ function generateA5BorderedBWInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border: 1px solid #000; text-align: right;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     // Add filler rows if needed to push total to bottom
     const minRows = 8;
     const fillerRows = Math.max(0, minRows - invoice.items.length);
@@ -3503,7 +3781,7 @@ function generateA5BorderedBWInvoice(invoice, client, size) {
         </tr>
         `;
     }
-    
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; height: ${pageHeight}; margin: 0; padding: 0; box-sizing: border-box; border: 3px solid #000; display: flex; flex-direction: column; background: white;">
             <!-- Header Section -->
@@ -3564,12 +3842,16 @@ function generateA5BorderedBWInvoice(invoice, client, size) {
                         <td style="padding: 0.3rem; text-align: right; width: 70%;"><strong>Subtotal:</strong></td>
                         <td style="padding: 0.3rem; text-align: right; width: 30%; font-size: 1.1em;"><strong>₹${invoice.subtotal.toFixed(2)}</strong></td>
                     </tr>
-                    ${invoice.tax > 0 ? `
+                    ${
+                        invoice.tax > 0
+                            ? `
                     <tr>
                         <td style="padding: 0.3rem; text-align: right;"><strong>Tax (${invoice.tax}%):</strong></td>
                         <td style="padding: 0.3rem; text-align: right; font-size: 1.1em;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                     </tr>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                     <tr style="background: #000; color: white;">
                         <td style="padding: 0.4rem; text-align: right; font-size: 1.1em;"><strong>GRAND TOTAL:</strong></td>
                         <td style="padding: 0.4rem; text-align: right; font-size: 1.3em;"><strong>₹${invoice.total.toFixed(2)}</strong></td>
@@ -3589,23 +3871,24 @@ function generateA5SimpleColorInvoice(invoice, client, size) {
     const company = AppState.currentCompany;
     const fontSize = size === 'a5' ? '0.72em' : '0.9em';
     const padding = size === 'a5' ? '0.3rem' : '0.5rem';
-    
+
     // Page dimensions - A5 only
     const pageHeight = '210mm';
     const pageWidth = '148mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${index + 1}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd;">${item.productName} (${item.productCode})</td>
@@ -3616,8 +3899,9 @@ function generateA5SimpleColorInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: right;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     // Add filler rows if needed to push total to bottom
     const minRows = 10;
     const fillerRows = Math.max(0, minRows - invoice.items.length);
@@ -3635,7 +3919,7 @@ function generateA5SimpleColorInvoice(invoice, client, size) {
         </tr>
         `;
     }
-    
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; height: ${pageHeight}; margin: 0; padding: 0; box-sizing: border-box; border: 2px solid #1e88e5; display: flex; flex-direction: column; background: white;">
             <!-- Header Section -->
@@ -3700,12 +3984,16 @@ function generateA5SimpleColorInvoice(invoice, client, size) {
                         <td style="padding: 0.5rem; text-align: right; width: 70%; font-size: 1.05em;"><strong>Subtotal:</strong></td>
                         <td style="padding: 0.5rem; text-align: right; width: 30%; font-size: 1.1em; font-weight: bold;">₹${invoice.subtotal.toFixed(2)}</td>
                     </tr>
-                    ${invoice.tax > 0 ? `
+                    ${
+                        invoice.tax > 0
+                            ? `
                     <tr style="background: #f0f7ff;">
                         <td style="padding: 0.5rem; text-align: right; font-size: 1.05em;"><strong>Tax (${invoice.tax}%):</strong></td>
                         <td style="padding: 0.5rem; text-align: right; font-size: 1.1em; font-weight: bold;">₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</td>
                     </tr>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                     <tr style="background: #1e88e5; color: white;">
                         <td style="padding: 0.6rem; text-align: right; font-size: 1.2em;"><strong>GRAND TOTAL:</strong></td>
                         <td style="padding: 0.6rem; text-align: right; font-size: 1.4em; font-weight: bold;">₹${invoice.total.toFixed(2)}</td>
@@ -3725,23 +4013,24 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
     const company = AppState.currentCompany;
     const fontSize = size === 'a5' ? '0.72em' : '0.9em';
     const padding = size === 'a5' ? '0.3rem' : '0.5rem';
-    
+
     // Page dimensions - A5 only
     const pageHeight = '210mm';
     const pageWidth = '148mm';
-    
+
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
     let totalQuantity = 0;
-    
-    const itemsHTML = invoice.items.map((item, index) => {
-        const quantity = item.quantity || (item.boxes * item.unitPerBox);
-        totalBoxes += item.boxes;
-        totalBoxesRounded += Math.ceil(item.boxes);
-        totalQuantity += quantity;
-        
-        return `
+
+    const itemsHTML = invoice.items
+        .map((item, index) => {
+            const quantity = item.quantity || item.boxes * item.unitPerBox;
+            totalBoxes += item.boxes;
+            totalBoxesRounded += Math.ceil(item.boxes);
+            totalQuantity += quantity;
+
+            return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${index + 1}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999;">${item.productName} (${item.productCode})</td>
@@ -3752,8 +4041,9 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: right;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
-    }).join('');
-    
+        })
+        .join('');
+
     // Add filler rows if needed to push total to bottom
     const minRows = 10;
     const fillerRows = Math.max(0, minRows - invoice.items.length);
@@ -3771,7 +4061,7 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
         </tr>
         `;
     }
-    
+
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; height: ${pageHeight}; margin: 0; padding: 0; box-sizing: border-box; border: 2px solid #000; display: flex; flex-direction: column; background: white;">
             <!-- Header Section -->
@@ -3836,12 +4126,16 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
                         <td style="padding: 0.5rem; text-align: right; width: 70%; font-size: 1.05em;"><strong>Subtotal:</strong></td>
                         <td style="padding: 0.5rem; text-align: right; width: 30%; font-size: 1.1em; font-weight: bold;">₹${invoice.subtotal.toFixed(2)}</td>
                     </tr>
-                    ${invoice.tax > 0 ? `
+                    ${
+                        invoice.tax > 0
+                            ? `
                     <tr style="background: #e8e8e8;">
                         <td style="padding: 0.5rem; text-align: right; font-size: 1.05em;"><strong>Tax (${invoice.tax}%):</strong></td>
                         <td style="padding: 0.5rem; text-align: right; font-size: 1.1em; font-weight: bold;">₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</td>
                     </tr>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                     <tr style="background: #000; color: white;">
                         <td style="padding: 0.6rem; text-align: right; font-size: 1.2em;"><strong>GRAND TOTAL:</strong></td>
                         <td style="padding: 0.6rem; text-align: right; font-size: 1.4em; font-weight: bold;">₹${invoice.total.toFixed(2)}</td>
@@ -3861,20 +4155,20 @@ function printInvoiceWithDialog() {
     // Get invoice data from controlled namespace
     const invoice = window.invoicePreviewData ? window.invoicePreviewData.currentInvoice : null;
     const client = window.invoicePreviewData ? window.invoicePreviewData.currentClient : null;
-    
+
     if (!invoice || !client) {
         alert('No invoice data available for printing');
         return;
     }
-    
+
     // Use template and size from settings
     const template = AppState.settings.invoiceTemplate || 'modern';
     const size = AppState.settings.printSize || 'a5';
-    
+
     // Generate invoice HTML for single copy
     let invoiceHTML = '';
-    
-    switch(template) {
+
+    switch (template) {
         case 'modern':
             invoiceHTML = generateModernInvoice(invoice, client, size);
             break;
@@ -3908,9 +4202,9 @@ function printInvoiceWithDialog() {
         default:
             invoiceHTML = generateModernInvoice(invoice, client, size);
     }
-    
+
     const pageSize = size === 'a5' ? 'A5 portrait' : 'A4 portrait';
-    
+
     // Check if electronAPI is available (desktop app)
     if (typeof window.electronAPI !== 'undefined' && window.electronAPI.printInvoice) {
         // Use Electron print API with native dialog and margin options
@@ -3946,11 +4240,12 @@ function printInvoiceWithDialog() {
             </body>
             </html>
         `;
-        
+
         // Use minimum margin type by default for best print quality
         const marginType = 'minimum';
-        
-        window.electronAPI.printInvoice(html, size, marginType)
+
+        window.electronAPI
+            .printInvoice(html, size, marginType)
             .then(result => {
                 if (!result.success) {
                     console.error('Print failed:', result.error);
@@ -3972,7 +4267,7 @@ function printInvoiceWithDialog() {
 // Fallback browser print dialog
 function openBrowserPrintDialog(invoiceHTML, invoice, pageSize) {
     const printWindow = window.open('', '_blank');
-    
+
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -4029,26 +4324,26 @@ async function saveInvoiceToPDF() {
     // Get invoice data from controlled namespace
     const invoice = window.invoicePreviewData ? window.invoicePreviewData.currentInvoice : null;
     const client = window.invoicePreviewData ? window.invoicePreviewData.currentClient : null;
-    
+
     if (!invoice || !client) {
         alert('No invoice data available for saving');
         return;
     }
-    
+
     // Check if electronAPI is available
     if (typeof window.electronAPI === 'undefined') {
         alert('File saving is only available in the desktop application');
         return;
     }
-    
+
     // Use template and size from settings
     const template = AppState.settings.invoiceTemplate || 'modern';
     const size = AppState.settings.printSize || 'a5';
-    
+
     // Generate invoice HTML
     let invoiceHTML = '';
-    
-    switch(template) {
+
+    switch (template) {
         case 'modern':
             invoiceHTML = generateModernInvoice(invoice, client, size);
             break;
@@ -4082,9 +4377,9 @@ async function saveInvoiceToPDF() {
         default:
             invoiceHTML = generateModernInvoice(invoice, client, size);
     }
-    
+
     const pageSize = size === 'a5' ? 'A5 portrait' : 'A4 portrait';
-    
+
     // Create full HTML document
     const fullHTML = `<!DOCTYPE html>
 <html>
@@ -4118,14 +4413,14 @@ async function saveInvoiceToPDF() {
     ${invoiceHTML}
 </body>
 </html>`;
-    
+
     // Generate filename
     const filename = `Invoice_${invoice.invoiceNo}_${new Date().toISOString().split('T')[0]}.html`;
-    
+
     try {
         // Check if custom save location is configured
         const useCustomLocation = AppState.settings.invoiceCustomSaveLocation;
-        
+
         let result;
         if (useCustomLocation && AppState.settings.invoiceDefaultPath) {
             // Use the configured custom save location - save directly without prompting
@@ -4135,7 +4430,7 @@ async function saveInvoiceToPDF() {
             // Use default invoice folder
             result = await window.electronAPI.savePDF(fullHTML, filename, 'invoice');
         }
-        
+
         if (result.success) {
             alert(`Invoice saved successfully!\nLocation: ${result.filePath || result.path}`);
         } else {
@@ -4154,12 +4449,12 @@ async function saveReportToPDF(reportName, content) {
         alert('File saving is only available in the desktop application');
         return;
     }
-    
+
     if (!content || content.trim() === '') {
         alert(`Please generate the ${reportName} report first`);
         return;
     }
-    
+
     // Create full HTML document
     const fullHTML = `<!DOCTYPE html>
 <html>
@@ -4193,14 +4488,14 @@ async function saveReportToPDF(reportName, content) {
     ${content}
 </body>
 </html>`;
-    
+
     // Generate filename
     const filename = `${reportName}_${new Date().toISOString().split('T')[0]}.html`;
-    
+
     try {
         // Check if custom save location is configured for reports
         const useCustomLocation = AppState.settings.reportCustomSaveLocation;
-        
+
         let result;
         if (useCustomLocation && AppState.settings.reportDefaultPath) {
             // Use the configured custom save location - save directly without prompting
@@ -4210,7 +4505,7 @@ async function saveReportToPDF(reportName, content) {
             // Use default reports folder
             result = await window.electronAPI.savePDF(fullHTML, filename, 'reports');
         }
-        
+
         if (result.success) {
             alert(`Report saved successfully!\nLocation: ${result.filePath || result.path}`);
         } else {
@@ -4225,17 +4520,21 @@ async function saveReportToPDF(reportName, content) {
 // Purchase Management
 function loadPurchases() {
     const tbody = document.getElementById('purchaseTableBody');
-    if (!tbody) return;
-    
-    if (AppState.purchases.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No purchases recorded yet</td></tr>';
+    if (!tbody) {
         return;
     }
-    
-    tbody.innerHTML = AppState.purchases.map(purchase => {
-        const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
-        const vendorName = vendor ? vendor.name : (purchase.vendorName || 'N/A');
-        return `
+
+    if (AppState.purchases.length === 0) {
+        tbody.innerHTML =
+            '<tr><td colspan="5" class="text-center">No purchases recorded yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = AppState.purchases
+        .map(purchase => {
+            const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
+            const vendorName = vendor ? vendor.name : purchase.vendorName || 'N/A';
+            return `
             <tr>
                 <td>${purchase.purchaseNo}</td>
                 <td>${formatDate(purchase.date)}</td>
@@ -4251,13 +4550,18 @@ function loadPurchases() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 function showAddPurchaseModal() {
-    const vendorOptions = AppState.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
-    
-    const modal = createModal('New Purchase', `
+    const vendorOptions = AppState.vendors
+        .map(v => `<option value="${v.id}">${v.name}</option>`)
+        .join('');
+
+    const modal = createModal(
+        'New Purchase',
+        `
         <form id="addPurchaseForm" onsubmit="addPurchase(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -4294,7 +4598,8 @@ function showAddPurchaseModal() {
                 <button type="submit" class="btn btn-primary">Add Purchase</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -4302,7 +4607,7 @@ function addPurchase(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const purchase = {
         id: generateId(),
         purchaseNo: formData.get('purchaseNo'),
@@ -4311,9 +4616,9 @@ function addPurchase(event) {
         total: parseFloat(formData.get('amount')),
         description: formData.get('description'),
         status: 'Unpaid',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.purchases.push(purchase);
     saveCompanyData();
     loadPurchases();
@@ -4323,13 +4628,20 @@ function addPurchase(event) {
 
 function editPurchase(purchaseId) {
     const purchase = AppState.purchases.find(p => p.id === purchaseId);
-    if (!purchase) return;
-    
-    const vendorOptions = AppState.vendors.map(v => 
-        `<option value="${v.id}" ${v.id === purchase.vendorId ? 'selected' : ''}>${v.name}</option>`
-    ).join('');
-    
-    const modal = createModal('Edit Purchase', `
+    if (!purchase) {
+        return;
+    }
+
+    const vendorOptions = AppState.vendors
+        .map(
+            v =>
+                `<option value="${v.id}" ${v.id === purchase.vendorId ? 'selected' : ''}>${v.name}</option>`
+        )
+        .join('');
+
+    const modal = createModal(
+        'Edit Purchase',
+        `
         <form id="editPurchaseForm" onsubmit="updatePurchase(event, '${purchaseId}')">
             <div class="form-row">
                 <div class="form-group">
@@ -4373,7 +4685,8 @@ function editPurchase(purchaseId) {
                 <button type="submit" class="btn btn-primary">Update Purchase</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -4381,10 +4694,12 @@ function updatePurchase(event, purchaseId) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const index = AppState.purchases.findIndex(p => p.id === purchaseId);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     AppState.purchases[index] = {
         ...AppState.purchases[index],
         purchaseNo: formData.get('purchaseNo'),
@@ -4393,9 +4708,9 @@ function updatePurchase(event, purchaseId) {
         total: parseFloat(formData.get('amount')),
         description: formData.get('description'),
         status: formData.get('status'),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     saveCompanyData();
     loadPurchases();
     updateDashboard();
@@ -4403,8 +4718,10 @@ function updatePurchase(event, purchaseId) {
 }
 
 function deletePurchase(purchaseId) {
-    if (!confirm('Are you sure you want to delete this purchase?')) return;
-    
+    if (!confirm('Are you sure you want to delete this purchase?')) {
+        return;
+    }
+
     AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
     saveCompanyData();
     loadPurchases();
@@ -4416,18 +4733,26 @@ function deletePurchase(purchaseId) {
 // Payment Management
 function loadPayments() {
     const tbody = document.getElementById('paymentsTableBody');
-    if (!tbody) return;
-    
-    if (AppState.payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No payments recorded yet</td></tr>';
+    if (!tbody) {
         return;
     }
-    
-    tbody.innerHTML = AppState.payments.map(payment => {
-        const client = AppState.clients.find(c => c.id === payment.clientId);
-        const vendor = AppState.vendors.find(v => v.id === payment.vendorId);
-        const partyName = client ? client.name : (vendor ? vendor.name : (payment.vendorName || 'N/A'));
-        return `
+
+    if (AppState.payments.length === 0) {
+        tbody.innerHTML =
+            '<tr><td colspan="6" class="text-center">No payments recorded yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = AppState.payments
+        .map(payment => {
+            const client = AppState.clients.find(c => c.id === payment.clientId);
+            const vendor = AppState.vendors.find(v => v.id === payment.vendorId);
+            const partyName = client
+                ? client.name
+                : vendor
+                  ? vendor.name
+                  : payment.vendorName || 'N/A';
+            return `
             <tr>
                 <td>${payment.paymentNo}</td>
                 <td>${formatDate(payment.date)}</td>
@@ -4444,14 +4769,21 @@ function loadPayments() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 function showAddPaymentModal() {
-    const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    const vendorOptions = AppState.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
-    
-    const modal = createModal('Add Payment', `
+    const clientOptions = AppState.clients
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+    const vendorOptions = AppState.vendors
+        .map(v => `<option value="${v.id}">${v.name}</option>`)
+        .join('');
+
+    const modal = createModal(
+        'Add Payment',
+        `
         <form id="addPaymentForm" onsubmit="addPayment(event)">
             <div class="form-row">
                 <div class="form-group">
@@ -4508,7 +4840,8 @@ function showAddPaymentModal() {
                 <button type="submit" class="btn btn-primary">Add Payment</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -4516,7 +4849,7 @@ function togglePaymentFields() {
     const type = document.getElementById('paymentType').value;
     const clientField = document.getElementById('clientField');
     const vendorField = document.getElementById('vendorField');
-    
+
     if (type === 'receipt') {
         clientField.style.display = 'block';
         vendorField.style.display = 'none';
@@ -4530,7 +4863,7 @@ function addPayment(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const payment = {
         id: generateId(),
         paymentNo: formData.get('paymentNo'),
@@ -4541,9 +4874,9 @@ function addPayment(event) {
         amount: parseFloat(formData.get('amount')),
         method: formData.get('method'),
         notes: formData.get('notes'),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-    
+
     AppState.payments.push(payment);
     saveCompanyData();
     loadPayments();
@@ -4553,17 +4886,27 @@ function addPayment(event) {
 
 function editPayment(paymentId) {
     const payment = AppState.payments.find(p => p.id === paymentId);
-    if (!payment) return;
-    
-    const clientOptions = AppState.clients.map(c => 
-        `<option value="${c.id}" ${c.id === payment.clientId ? 'selected' : ''}>${c.name}</option>`
-    ).join('');
-    
-    const vendorOptions = AppState.vendors.map(v => 
-        `<option value="${v.id}" ${v.id === payment.vendorId ? 'selected' : ''}>${v.name}</option>`
-    ).join('');
-    
-    const modal = createModal('Edit Payment', `
+    if (!payment) {
+        return;
+    }
+
+    const clientOptions = AppState.clients
+        .map(
+            c =>
+                `<option value="${c.id}" ${c.id === payment.clientId ? 'selected' : ''}>${c.name}</option>`
+        )
+        .join('');
+
+    const vendorOptions = AppState.vendors
+        .map(
+            v =>
+                `<option value="${v.id}" ${v.id === payment.vendorId ? 'selected' : ''}>${v.name}</option>`
+        )
+        .join('');
+
+    const modal = createModal(
+        'Edit Payment',
+        `
         <form id="editPaymentForm" onsubmit="updatePayment(event, '${paymentId}')">
             <div class="form-row">
                 <div class="form-group">
@@ -4620,7 +4963,8 @@ function editPayment(paymentId) {
                 <button type="submit" class="btn btn-primary">Update Payment</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -4628,10 +4972,12 @@ function updatePayment(event, paymentId) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const index = AppState.payments.findIndex(p => p.id === paymentId);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     AppState.payments[index] = {
         ...AppState.payments[index],
         paymentNo: formData.get('paymentNo'),
@@ -4642,9 +4988,9 @@ function updatePayment(event, paymentId) {
         amount: parseFloat(formData.get('amount')),
         method: formData.get('method'),
         notes: formData.get('notes'),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     saveCompanyData();
     loadPayments();
     updateDashboard();
@@ -4652,8 +4998,10 @@ function updatePayment(event, paymentId) {
 }
 
 function deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment?')) return;
-    
+    if (!confirm('Are you sure you want to delete this payment?')) {
+        return;
+    }
+
     AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
     saveCompanyData();
     loadPayments();
@@ -4662,9 +5010,13 @@ function deletePayment(paymentId) {
 
 // Reports Functions
 function showSalesLedger() {
-    const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    
-    const modal = createModal('Sales Ledger', `
+    const clientOptions = AppState.clients
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+
+    const modal = createModal(
+        'Sales Ledger',
+        `
         <div class="form-row">
             <div class="form-group">
                 <label>Select Client</label>
@@ -4703,8 +5055,10 @@ function showSalesLedger() {
                 <i class="fas fa-download"></i> Print
             </button>
         </div>
-    `, 'modal-lg');
-    
+    `,
+        'modal-lg'
+    );
+
     showModal(modal);
 }
 
@@ -4712,54 +5066,57 @@ function generateSalesLedger() {
     const clientId = document.getElementById('ledgerClient').value;
     const fromDate = document.getElementById('ledgerFromDate').value;
     const toDate = document.getElementById('ledgerToDate').value;
-    
+
     let invoices = AppState.invoices;
-    
+
     if (clientId) {
         invoices = invoices.filter(inv => inv.clientId === clientId);
     }
-    
+
     if (fromDate) {
         invoices = invoices.filter(inv => inv.date >= fromDate);
     }
-    
+
     if (toDate) {
         invoices = invoices.filter(inv => inv.date <= toDate);
     }
-    
+
     // Format date range
-    const dateRangeText = (fromDate && toDate) ? `${formatDate(fromDate)} to ${formatDate(toDate)}` : `${fromDate || 'Start'} to ${toDate || 'End'}`;
-    
+    const dateRangeText =
+        fromDate && toDate
+            ? `${formatDate(fromDate)} to ${formatDate(toDate)}`
+            : `${fromDate || 'Start'} to ${toDate || 'End'}`;
+
     // Get client name and discount percentage if selected
     let clientName = '';
     let discountPercentage = 0;
     if (clientId) {
         const selectedClient = AppState.clients.find(c => c.id === clientId);
         clientName = selectedClient ? selectedClient.name : '';
-        discountPercentage = selectedClient ? (selectedClient.discountPercentage || 0) : 0;
+        discountPercentage = selectedClient ? selectedClient.discountPercentage || 0 : 0;
     }
-    
+
     // Separate invoices by category
     const lessInvoices = invoices.filter(inv => inv.category === 'LESS');
     const netInvoices = invoices.filter(inv => !inv.category || inv.category === 'NET');
-    
+
     // Calculate totals
     // Note: Discount is only applied when a specific client is selected.
     // When "All Clients" view is used, no discount is applied since different
     // clients may have different discount percentages.
     const lessSubtotal = lessInvoices.reduce((sum, inv) => sum + inv.total, 0);
-    const lessDiscount = clientId ? (lessSubtotal * discountPercentage / 100) : 0;
+    const lessDiscount = clientId ? (lessSubtotal * discountPercentage) / 100 : 0;
     const lessTotal = lessSubtotal - lessDiscount;
     const netTotal = netInvoices.reduce((sum, inv) => sum + inv.total, 0);
     const grandTotal = lessTotal + netTotal;
-    
+
     let reportHTML = `
         <div class="print-preview-container">
             <h3 class="text-center">Sales Ledger Report</h3>
             ${clientName ? `<p class="text-center"><strong>Client: ${clientName}</strong></p>` : ''}
             <p class="text-center">Period: ${dateRangeText}</p>
     `;
-    
+
     if (invoices.length > 0) {
         // Show LESS category first if there are any LESS invoices
         if (lessInvoices.length > 0) {
@@ -4775,9 +5132,10 @@ function generateSalesLedger() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${lessInvoices.map(inv => {
-                            const client = AppState.clients.find(c => c.id === inv.clientId);
-                            return `
+                        ${lessInvoices
+                            .map(inv => {
+                                const client = AppState.clients.find(c => c.id === inv.clientId);
+                                return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
                                     <td>${inv.invoiceNo}</td>
@@ -4785,14 +5143,17 @@ function generateSalesLedger() {
                                     <td>₹${inv.total.toFixed(2)}</td>
                                 </tr>
                             `;
-                        }).join('')}
+                            })
+                            .join('')}
                     </tbody>
                     <tfoot>
                         <tr>
                             <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Subtotal (LESS):</strong></td>
                             <td><strong>₹${lessSubtotal.toFixed(2)}</strong></td>
                         </tr>
-                        ${clientId && discountPercentage > 0 ? `
+                        ${
+                            clientId && discountPercentage > 0
+                                ? `
                         <tr>
                             <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Discount (${discountPercentage}%):</strong></td>
                             <td><strong style="color: #d9534f;">-₹${lessDiscount.toFixed(2)}</strong></td>
@@ -4801,12 +5162,14 @@ function generateSalesLedger() {
                             <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Total After Discount:</strong></td>
                             <td><strong>₹${lessTotal.toFixed(2)}</strong></td>
                         </tr>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     </tfoot>
                 </table>
             `;
         }
-        
+
         // Show NET category
         if (netInvoices.length > 0) {
             reportHTML += `
@@ -4821,9 +5184,10 @@ function generateSalesLedger() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${netInvoices.map(inv => {
-                            const client = AppState.clients.find(c => c.id === inv.clientId);
-                            return `
+                        ${netInvoices
+                            .map(inv => {
+                                const client = AppState.clients.find(c => c.id === inv.clientId);
+                                return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
                                     <td>${inv.invoiceNo}</td>
@@ -4831,7 +5195,8 @@ function generateSalesLedger() {
                                     <td>₹${inv.total.toFixed(2)}</td>
                                 </tr>
                             `;
-                        }).join('')}
+                            })
+                            .join('')}
                     </tbody>
                     <tfoot>
                         <tr>
@@ -4842,7 +5207,7 @@ function generateSalesLedger() {
                 </table>
             `;
         }
-        
+
         // Grand Total
         reportHTML += `
             <table class="data-table" style="margin-top: 20px; border-top: 3px solid #333;">
@@ -4857,16 +5222,20 @@ function generateSalesLedger() {
     } else {
         reportHTML += '<p class="text-center">No records found</p>';
     }
-    
-    reportHTML += `</div>`;
-    
+
+    reportHTML += '</div>';
+
     document.getElementById('ledgerReport').innerHTML = reportHTML;
 }
 
 function showPurchaseLedger() {
-    const vendorOptions = AppState.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
-    
-    const modal = createModal('Purchase Ledger', `
+    const vendorOptions = AppState.vendors
+        .map(v => `<option value="${v.id}">${v.name}</option>`)
+        .join('');
+
+    const modal = createModal(
+        'Purchase Ledger',
+        `
         <div class="form-row">
             <div class="form-group">
                 <label>Select Vendor</label>
@@ -4905,8 +5274,10 @@ function showPurchaseLedger() {
                 <i class="fas fa-download"></i> Print
             </button>
         </div>
-    `, 'modal-lg');
-    
+    `,
+        'modal-lg'
+    );
+
     showModal(modal);
 }
 
@@ -4914,37 +5285,42 @@ function generatePurchaseLedger() {
     const vendorId = document.getElementById('purchaseLedgerVendor').value;
     const fromDate = document.getElementById('purchaseLedgerFromDate').value;
     const toDate = document.getElementById('purchaseLedgerToDate').value;
-    
+
     let purchases = AppState.purchases;
-    
+
     if (vendorId) {
         purchases = purchases.filter(pur => pur.vendorId === vendorId);
     }
-    
+
     if (fromDate) {
         purchases = purchases.filter(pur => pur.date >= fromDate);
     }
-    
+
     if (toDate) {
         purchases = purchases.filter(pur => pur.date <= toDate);
     }
-    
+
     // Format date range
-    const dateRangeText = (fromDate && toDate) ? `${formatDate(fromDate)} to ${formatDate(toDate)}` : `${fromDate || 'Start'} to ${toDate || 'End'}`;
-    
+    const dateRangeText =
+        fromDate && toDate
+            ? `${formatDate(fromDate)} to ${formatDate(toDate)}`
+            : `${fromDate || 'Start'} to ${toDate || 'End'}`;
+
     // Get vendor name if selected
     let vendorName = '';
     if (vendorId) {
         const selectedVendor = AppState.vendors.find(v => v.id === vendorId);
         vendorName = selectedVendor ? selectedVendor.name : '';
     }
-    
+
     const reportHTML = `
         <div class="print-preview-container">
             <h3 class="text-center">Purchase Ledger Report</h3>
             ${vendorName ? `<p class="text-center"><strong>Vendor: ${vendorName}</strong></p>` : ''}
             <p class="text-center">Period: ${dateRangeText}</p>
-            ${purchases.length > 0 ? `
+            ${
+                purchases.length > 0
+                    ? `
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -4955,10 +5331,11 @@ function generatePurchaseLedger() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${purchases.map(pur => {
-                            const vendor = AppState.vendors.find(v => v.id === pur.vendorId);
-                            const vName = vendor ? vendor.name : (pur.vendorName || 'N/A');
-                            return `
+                        ${purchases
+                            .map(pur => {
+                                const vendor = AppState.vendors.find(v => v.id === pur.vendorId);
+                                const vName = vendor ? vendor.name : pur.vendorName || 'N/A';
+                                return `
                                 <tr>
                                     <td>${formatDate(pur.date)}</td>
                                     <td>${pur.purchaseNo}</td>
@@ -4966,7 +5343,8 @@ function generatePurchaseLedger() {
                                     <td>₹${pur.total.toFixed(2)}</td>
                                 </tr>
                             `;
-                        }).join('')}
+                            })
+                            .join('')}
                     </tbody>
                     <tfoot>
                         <tr>
@@ -4975,10 +5353,12 @@ function generatePurchaseLedger() {
                         </tr>
                     </tfoot>
                 </table>
-            ` : '<p class="text-center">No records found</p>'}
+            `
+                    : '<p class="text-center">No records found</p>'
+            }
         </div>
     `;
-    
+
     document.getElementById('purchaseLedgerReport').innerHTML = reportHTML;
 }
 
@@ -4988,7 +5368,7 @@ function exportPurchaseLedgerToPDF() {
         alert('Please generate the purchase ledger report first');
         return;
     }
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -5039,7 +5419,9 @@ function exportPurchaseLedgerToPDF() {
 }
 
 function showPaymentReport() {
-    const modal = createModal('Payment Report', `
+    const modal = createModal(
+        'Payment Report',
+        `
         <div class="form-row">
             <div class="form-group">
                 <label>Date Filter</label>
@@ -5071,30 +5453,34 @@ function showPaymentReport() {
                 <i class="fas fa-download"></i> Print
             </button>
         </div>
-    `, 'modal-lg');
-    
+    `,
+        'modal-lg'
+    );
+
     showModal(modal);
 }
 
 function generatePaymentReport() {
     const fromDate = document.getElementById('paymentFromDate').value;
     const toDate = document.getElementById('paymentToDate').value;
-    
+
     let payments = AppState.payments;
-    
+
     if (fromDate) {
         payments = payments.filter(pay => pay.date >= fromDate);
     }
-    
+
     if (toDate) {
         payments = payments.filter(pay => pay.date <= toDate);
     }
-    
+
     const reportHTML = `
         <div class="print-preview-container">
             <h3 class="text-center">Payment Report</h3>
             <p class="text-center">Period: ${fromDate || 'Start'} to ${toDate || 'End'}</p>
-            ${payments.length > 0 ? `
+            ${
+                payments.length > 0
+                    ? `
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -5107,11 +5493,20 @@ function generatePaymentReport() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${payments.map(pay => {
-                            const client = pay.clientId ? AppState.clients.find(c => c.id === pay.clientId) : null;
-                            const vendor = pay.vendorId ? AppState.vendors.find(v => v.id === pay.vendorId) : null;
-                            const partyName = client ? client.name : (vendor ? vendor.name : (pay.vendorName || 'N/A'));
-                            return `
+                        ${payments
+                            .map(pay => {
+                                const client = pay.clientId
+                                    ? AppState.clients.find(c => c.id === pay.clientId)
+                                    : null;
+                                const vendor = pay.vendorId
+                                    ? AppState.vendors.find(v => v.id === pay.vendorId)
+                                    : null;
+                                const partyName = client
+                                    ? client.name
+                                    : vendor
+                                      ? vendor.name
+                                      : pay.vendorName || 'N/A';
+                                return `
                                 <tr>
                                     <td>${formatDate(pay.date)}</td>
                                     <td>${pay.paymentNo}</td>
@@ -5121,7 +5516,8 @@ function generatePaymentReport() {
                                     <td>₹${pay.amount.toFixed(2)}</td>
                                 </tr>
                             `;
-                        }).join('')}
+                            })
+                            .join('')}
                     </tbody>
                     <tfoot>
                         <tr>
@@ -5130,18 +5526,26 @@ function generatePaymentReport() {
                         </tr>
                     </tfoot>
                 </table>
-            ` : '<p class="text-center">No records found</p>'}
+            `
+                    : '<p class="text-center">No records found</p>'
+            }
         </div>
     `;
-    
+
     document.getElementById('paymentReport').innerHTML = reportHTML;
 }
 
 function showAccountLedger() {
-    const clientOptions = AppState.clients.map(c => `<option value="client_${c.id}">${c.name}</option>`).join('');
-    const vendorOptions = AppState.vendors.map(v => `<option value="vendor_${v.id}">${v.name}</option>`).join('');
-    
-    const modal = createModal('Account Ledger', `
+    const clientOptions = AppState.clients
+        .map(c => `<option value="client_${c.id}">${c.name}</option>`)
+        .join('');
+    const vendorOptions = AppState.vendors
+        .map(v => `<option value="vendor_${v.id}">${v.name}</option>`)
+        .join('');
+
+    const modal = createModal(
+        'Account Ledger',
+        `
         <div class="form-row">
             <div class="form-group">
                 <label>Select Account Type *</label>
@@ -5189,10 +5593,12 @@ function showAccountLedger() {
                 <i class="fas fa-download"></i> Print
             </button>
         </div>
-    `, 'modal-lg');
-    
+    `,
+        'modal-lg'
+    );
+
     showModal(modal);
-    
+
     // Store options for later use
     window.accountClientOptions = clientOptions;
     window.accountVendorOptions = vendorOptions;
@@ -5201,7 +5607,7 @@ function showAccountLedger() {
 function toggleAccountSelection() {
     const accountType = document.getElementById('accountType').value;
     const accountSelect = document.getElementById('accountSelect');
-    
+
     if (accountType === 'client') {
         accountSelect.innerHTML = `
             <option value="">-- Select Client --</option>
@@ -5221,17 +5627,17 @@ function generateAccountLedger() {
         alert('Please select an account');
         return;
     }
-    
+
     const fromDate = document.getElementById('accountFromDate').value;
     const toDate = document.getElementById('accountToDate').value;
-    
+
     // Parse account type and ID
     const [accountType, id] = accountId.split('_');
-    
+
     let accountName = '';
-    let transactions = [];
+    const transactions = [];
     let openingBalance = 0;
-    
+
     if (accountType === 'client') {
         const client = AppState.clients.find(c => c.id === id);
         if (!client) {
@@ -5240,37 +5646,37 @@ function generateAccountLedger() {
         }
         accountName = client.name;
         openingBalance = client.openingBalance || 0;
-        
+
         let invoices = AppState.invoices.filter(inv => inv.clientId === id);
         let payments = AppState.payments.filter(pay => pay.clientId === id);
-        
+
         if (fromDate) {
             invoices = invoices.filter(inv => inv.date >= fromDate);
             payments = payments.filter(pay => pay.date >= fromDate);
         }
-        
+
         if (toDate) {
             invoices = invoices.filter(inv => inv.date <= toDate);
             payments = payments.filter(pay => pay.date <= toDate);
         }
-        
+
         invoices.forEach(inv => {
             transactions.push({
                 date: inv.date,
                 type: 'Invoice',
                 reference: inv.invoiceNo,
                 debit: inv.total,
-                credit: 0
+                credit: 0,
             });
         });
-        
+
         payments.forEach(pay => {
             transactions.push({
                 date: pay.date,
                 type: 'Receipt',
                 reference: pay.paymentNo,
                 debit: 0,
-                credit: pay.amount
+                credit: pay.amount,
             });
         });
     } else if (accountType === 'vendor') {
@@ -5281,51 +5687,53 @@ function generateAccountLedger() {
         }
         accountName = vendor.name;
         openingBalance = vendor.openingBalance || 0;
-        
+
         let purchases = AppState.purchases.filter(pur => pur.vendorId === id);
         let payments = AppState.payments.filter(pay => pay.vendorId === id);
-        
+
         if (fromDate) {
             purchases = purchases.filter(pur => pur.date >= fromDate);
             payments = payments.filter(pay => pay.date >= fromDate);
         }
-        
+
         if (toDate) {
             purchases = purchases.filter(pur => pur.date <= toDate);
             payments = payments.filter(pay => pay.date <= toDate);
         }
-        
+
         purchases.forEach(pur => {
             transactions.push({
                 date: pur.date,
                 type: 'Purchase',
                 reference: pur.purchaseNo,
                 debit: pur.total,
-                credit: 0
+                credit: 0,
             });
         });
-        
+
         payments.forEach(pay => {
             transactions.push({
                 date: pay.date,
                 type: 'Payment',
                 reference: pay.paymentNo,
                 debit: 0,
-                credit: pay.amount
+                credit: pay.amount,
             });
         });
     }
-    
+
     transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
+
     let balance = openingBalance;
-    
+
     const reportHTML = `
         <div class="print-preview-container">
             <h3 class="text-center">Account Ledger</h3>
             <p class="text-center"><strong>${accountName}</strong> (${accountType === 'client' ? 'Client' : 'Vendor'})</p>
             <p class="text-center">Period: ${fromDate || 'Start'} to ${toDate || 'End'}</p>
-            ${openingBalance !== 0 || transactions.length > 0 ? `
+            ${
+                openingBalance !== 0 || transactions.length > 0
+                    ? `
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -5338,17 +5746,22 @@ function generateAccountLedger() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${openingBalance !== 0 ? `
+                        ${
+                            openingBalance !== 0
+                                ? `
                             <tr style="background: #f8f9fa; font-weight: bold;">
                                 <td colspan="3">Opening Balance</td>
                                 <td class="text-right">${openingBalance > 0 ? '₹' + openingBalance.toFixed(2) : '-'}</td>
                                 <td class="text-right">${openingBalance < 0 ? '₹' + Math.abs(openingBalance).toFixed(2) : '-'}</td>
                                 <td class="text-right">₹${openingBalance.toFixed(2)}</td>
                             </tr>
-                        ` : ''}
-                        ${transactions.map(trans => {
-                            balance += trans.debit - trans.credit;
-                            return `
+                        `
+                                : ''
+                        }
+                        ${transactions
+                            .map(trans => {
+                                balance += trans.debit - trans.credit;
+                                return `
                                 <tr>
                                     <td>${formatDate(trans.date)}</td>
                                     <td>${trans.type}</td>
@@ -5358,7 +5771,8 @@ function generateAccountLedger() {
                                     <td class="text-right">₹${balance.toFixed(2)}</td>
                                 </tr>
                             `;
-                        }).join('')}
+                            })
+                            .join('')}
                     </tbody>
                     <tfoot>
                         <tr>
@@ -5367,10 +5781,12 @@ function generateAccountLedger() {
                         </tr>
                     </tfoot>
                 </table>
-            ` : '<p class="text-center">No transactions found</p>'}
+            `
+                    : '<p class="text-center">No transactions found</p>'
+            }
         </div>
     `;
-    
+
     document.getElementById('accountReport').innerHTML = reportHTML;
 }
 
@@ -5410,9 +5826,13 @@ function viewVendorLedger(vendorId) {
 
 // Product Report Functions
 function showProductReport() {
-    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
-    
-    const modal = createModal('Product Sales Report', `
+    const productOptions = AppState.products
+        .map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+        .join('');
+
+    const modal = createModal(
+        'Product Sales Report',
+        `
         <div class="form-row">
             <div class="form-group">
                 <label>Select Product</label>
@@ -5451,8 +5871,10 @@ function showProductReport() {
                 <i class="fas fa-download"></i> Print
             </button>
         </div>
-    `, 'modal-lg');
-    
+    `,
+        'modal-lg'
+    );
+
     showModal(modal);
 }
 
@@ -5460,10 +5882,10 @@ function generateProductReport() {
     const productId = document.getElementById('productReportProduct').value;
     const fromDate = document.getElementById('productReportFromDate').value;
     const toDate = document.getElementById('productReportToDate').value;
-    
+
     // Filter to only include detailed invoices with items (excludes simplified invoices)
     let invoices = AppState.invoices.filter(inv => inv.items && inv.items.length > 0);
-    
+
     // Filter by date range
     if (fromDate) {
         invoices = invoices.filter(inv => inv.date >= fromDate);
@@ -5471,10 +5893,10 @@ function generateProductReport() {
     if (toDate) {
         invoices = invoices.filter(inv => inv.date <= toDate);
     }
-    
+
     // Aggregate product sales data
     const productSales = {};
-    
+
     invoices.forEach(invoice => {
         invoice.items.forEach(item => {
             if (!productId || item.productId === productId) {
@@ -5486,10 +5908,10 @@ function generateProductReport() {
                         totalQuantity: 0,
                         totalBoxes: 0,
                         totalAmount: 0,
-                        invoiceCount: 0
+                        invoiceCount: 0,
                     };
                 }
-                
+
                 productSales[item.productId].totalQuantity += item.quantity || 0;
                 productSales[item.productId].totalBoxes += Math.ceil(item.boxes || 0);
                 productSales[item.productId].totalAmount += item.amount || 0;
@@ -5497,25 +5919,30 @@ function generateProductReport() {
             }
         });
     });
-    
+
     const salesArray = Object.values(productSales);
-    
+
     // Format date range
-    const dateRangeText = (fromDate && toDate) ? `${formatDate(fromDate)} to ${formatDate(toDate)}` : `${fromDate || 'Start'} to ${toDate || 'End'}`;
-    
+    const dateRangeText =
+        fromDate && toDate
+            ? `${formatDate(fromDate)} to ${formatDate(toDate)}`
+            : `${fromDate || 'Start'} to ${toDate || 'End'}`;
+
     // Get product name if selected
     let productName = '';
     if (productId) {
         const selectedProduct = AppState.products.find(p => p.id === productId);
         productName = selectedProduct ? `${selectedProduct.name} (${selectedProduct.code})` : '';
     }
-    
+
     const reportHTML = `
         <div class="print-preview-container">
             <h3 class="text-center">Product Sales Report</h3>
             ${productName ? `<p class="text-center"><strong>Product: ${productName}</strong></p>` : ''}
             <p class="text-center">Period: ${dateRangeText}</p>
-            ${salesArray.length > 0 ? `
+            ${
+                salesArray.length > 0
+                    ? `
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -5528,7 +5955,9 @@ function generateProductReport() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${salesArray.map(sale => `
+                        ${salesArray
+                            .map(
+                                sale => `
                             <tr>
                                 ${!productId ? `<td>${sale.productCode}</td>` : ''}
                                 ${!productId ? `<td>${sale.productName}</td>` : ''}
@@ -5537,7 +5966,9 @@ function generateProductReport() {
                                 <td>₹${sale.totalAmount.toFixed(2)}</td>
                                 <td>${sale.invoiceCount}</td>
                             </tr>
-                        `).join('')}
+                        `
+                            )
+                            .join('')}
                     </tbody>
                     <tfoot>
                         <tr>
@@ -5547,10 +5978,12 @@ function generateProductReport() {
                         </tr>
                     </tfoot>
                 </table>
-            ` : '<p class="text-center">No sales data found for the selected criteria</p>'}
+            `
+                    : '<p class="text-center">No sales data found for the selected criteria</p>'
+            }
         </div>
     `;
-    
+
     document.getElementById('productReport').innerHTML = reportHTML;
 }
 
@@ -5560,7 +5993,7 @@ function saveProductReportToPDF() {
         alert('Please generate the report first');
         return;
     }
-    
+
     const printWindow = window.open('', '', 'width=800,height=600');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -5597,7 +6030,7 @@ function exportProductReportToPDF() {
         alert('Please generate the report first');
         return;
     }
-    
+
     const printWindow = window.open('', '', 'width=800,height=600');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -5629,7 +6062,9 @@ function exportProductReportToPDF() {
 
 // Export Functions
 function showExportData() {
-    const modal = createModal('Export Data', `
+    const modal = createModal(
+        'Export Data',
+        `
         <div class="settings-section">
             <h4>Export to Excel</h4>
             <p>Export all data to separate Excel files</p>
@@ -5655,23 +6090,24 @@ function showExportData() {
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
         </div>
-    `);
-    
+    `
+    );
+
     showModal(modal);
 }
 
 function exportToExcel(type) {
     let data = [];
     let filename = '';
-    
-    switch(type) {
+
+    switch (type) {
         case 'products':
             data = AppState.products.map(p => ({
                 'Product Code': p.code,
                 'Product Name': p.name,
                 'Unit Per Box': p.unitPerBox,
                 'Price Per Unit': p.pricePerUnit,
-                'Price Per Box': p.unitPerBox * p.pricePerUnit
+                'Price Per Box': p.unitPerBox * p.pricePerUnit,
             }));
             filename = 'products.csv';
             break;
@@ -5679,11 +6115,11 @@ function exportToExcel(type) {
             data = AppState.clients.map(c => ({
                 'Client Code': c.code,
                 'Client Name': c.name,
-                'Contact': c.contact || '',
-                'Email': c.email || '',
-                'Address': c.address || '',
-                'GSTIN': c.gstin || '',
-                'Balance': calculateClientBalance(c.id)
+                Contact: c.contact || '',
+                Email: c.email || '',
+                Address: c.address || '',
+                GSTIN: c.gstin || '',
+                Balance: calculateClientBalance(c.id),
             }));
             filename = 'clients.csv';
             break;
@@ -5691,11 +6127,11 @@ function exportToExcel(type) {
             data = AppState.vendors.map(v => ({
                 'Vendor Code': v.code,
                 'Vendor Name': v.name,
-                'Contact': v.contact || '',
-                'Email': v.email || '',
-                'Address': v.address || '',
-                'GSTIN': v.gstin || '',
-                'Balance': calculateVendorBalance(v.id)
+                Contact: v.contact || '',
+                Email: v.email || '',
+                Address: v.address || '',
+                GSTIN: v.gstin || '',
+                Balance: calculateVendorBalance(v.id),
             }));
             filename = 'vendors.csv';
             break;
@@ -5704,11 +6140,11 @@ function exportToExcel(type) {
                 const client = AppState.clients.find(c => c.id === inv.clientId);
                 return {
                     'Invoice No': inv.invoiceNo,
-                    'Date': inv.date,
-                    'Client': client ? client.name : 'N/A',
-                    'Subtotal': inv.subtotal,
+                    Date: inv.date,
+                    Client: client ? client.name : 'N/A',
+                    Subtotal: inv.subtotal,
                     'Tax %': inv.tax,
-                    'Total': inv.total
+                    Total: inv.total,
                 };
             });
             filename = 'invoices.csv';
@@ -5716,12 +6152,12 @@ function exportToExcel(type) {
         case 'purchases':
             data = AppState.purchases.map(p => {
                 const vendor = AppState.vendors.find(v => v.id === p.vendorId);
-                const vendorName = vendor ? vendor.name : (p.vendorName || 'N/A');
+                const vendorName = vendor ? vendor.name : p.vendorName || 'N/A';
                 return {
                     'Purchase No': p.purchaseNo,
-                    'Date': p.date,
-                    'Vendor': vendorName,
-                    'Amount': p.total
+                    Date: p.date,
+                    Vendor: vendorName,
+                    Amount: p.total,
                 };
             });
             filename = 'purchases.csv';
@@ -5730,25 +6166,29 @@ function exportToExcel(type) {
             data = AppState.payments.map(p => {
                 const client = p.clientId ? AppState.clients.find(c => c.id === p.clientId) : null;
                 const vendor = p.vendorId ? AppState.vendors.find(v => v.id === p.vendorId) : null;
-                const partyName = client ? client.name : (vendor ? vendor.name : (p.vendorName || 'N/A'));
+                const partyName = client
+                    ? client.name
+                    : vendor
+                      ? vendor.name
+                      : p.vendorName || 'N/A';
                 return {
                     'Payment No': p.paymentNo,
-                    'Date': p.date,
-                    'Type': p.type,
-                    'Party': partyName,
-                    'Amount': p.amount,
-                    'Method': p.method
+                    Date: p.date,
+                    Type: p.type,
+                    Party: partyName,
+                    Amount: p.amount,
+                    Method: p.method,
                 };
             });
             filename = 'payments.csv';
             break;
     }
-    
+
     if (data.length === 0) {
         alert('No data to export');
         return;
     }
-    
+
     const csv = convertToCSV(data);
     downloadCSV(csv, filename);
 }
@@ -5756,10 +6196,10 @@ function exportToExcel(type) {
 function convertToCSV(data) {
     const headers = Object.keys(data[0]);
     const csvRows = [];
-    
+
     // Add headers
     csvRows.push(headers.join(','));
-    
+
     // Add data rows
     for (const row of data) {
         const values = headers.map(header => {
@@ -5768,7 +6208,7 @@ function convertToCSV(data) {
         });
         csvRows.push(values.join(','));
     }
-    
+
     return csvRows.join('\n');
 }
 
@@ -5789,7 +6229,7 @@ function exportLedgerToPDF() {
         alert('Please generate the ledger report first');
         return;
     }
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -5845,7 +6285,7 @@ function exportPaymentReportToPDF() {
         alert('Please generate the payment report first');
         return;
     }
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -5901,7 +6341,7 @@ function exportAccountLedgerToPDF() {
         alert('Please generate the account ledger first');
         return;
     }
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -5973,8 +6413,10 @@ async function saveAccountLedgerReportToPDF() {
 function editCompanySettings() {
     const company = AppState.currentCompany;
     const detailedInvoicingEnabled = company.detailedInvoicing !== false; // Default to true if not set
-    
-    const modal = createModal('Edit Company Settings', `
+
+    const modal = createModal(
+        'Edit Company Settings',
+        `
         <form id="editCompanyForm" onsubmit="updateCompanySettings(event)">
             <div class="form-group">
                 <label>Company Name *</label>
@@ -6019,7 +6461,8 @@ function editCompanySettings() {
                 <button type="submit" class="btn btn-primary">Update Settings</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -6027,10 +6470,12 @@ function updateCompanySettings(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     const index = AppState.companies.findIndex(c => c.id === AppState.currentCompany.id);
-    if (index === -1) return;
-    
+    if (index === -1) {
+        return;
+    }
+
     AppState.companies[index] = {
         ...AppState.companies[index],
         name: formData.get('name'),
@@ -6040,19 +6485,21 @@ function updateCompanySettings(event) {
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
         detailedInvoicing: formData.get('detailedInvoicing') === 'on',
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
     };
-    
+
     AppState.currentCompany = AppState.companies[index];
     document.getElementById('currentCompanyName').textContent = AppState.currentCompany.name;
-    
+
     saveToStorage();
     closeModal();
     alert('Company settings updated successfully');
 }
 
 function showFinancialYearSettings() {
-    const modal = createModal('Financial Year Settings', `
+    const modal = createModal(
+        'Financial Year Settings',
+        `
         <div class="form-group">
             <label>Current Financial Year</label>
             <input type="text" class="form-control" value="${AppState.currentFinancialYear}" readonly>
@@ -6067,12 +6514,15 @@ function showFinancialYearSettings() {
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
         </div>
-    `);
+    `
+    );
     showModal(modal);
 }
 
 function showTemplateSettings() {
-    const modal = createModal('Template Settings', `
+    const modal = createModal(
+        'Template Settings',
+        `
         <form id="templateSettingsForm" onsubmit="updateTemplateSettings(event)">
             <h4>Invoice Settings</h4>
             <div class="form-group">
@@ -6180,7 +6630,8 @@ function showTemplateSettings() {
                 <button type="submit" class="btn btn-primary">Save Settings</button>
             </div>
         </form>
-    `);
+    `
+    );
     showModal(modal);
 }
 
@@ -6188,13 +6639,14 @@ function updateTemplateSettings(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     AppState.settings.invoiceTemplate = formData.get('invoiceTemplate');
     AppState.settings.printSize = formData.get('printSize');
     AppState.settings.reportTemplate = formData.get('reportTemplate');
-    AppState.settings.invoiceCustomSaveLocation = formData.get('invoiceCustomSaveLocation') === 'on';
+    AppState.settings.invoiceCustomSaveLocation =
+        formData.get('invoiceCustomSaveLocation') === 'on';
     AppState.settings.reportCustomSaveLocation = formData.get('reportCustomSaveLocation') === 'on';
-    
+
     // Get the path values from the input fields
     const invoicePathInput = document.getElementById('invoiceDefaultPath');
     const reportPathInput = document.getElementById('reportDefaultPath');
@@ -6204,10 +6656,12 @@ function updateTemplateSettings(event) {
     if (reportPathInput) {
         AppState.settings.reportDefaultPath = reportPathInput.value;
     }
-    
+
     saveToStorage();
     closeModal();
-    alert('Template settings updated successfully! PDF files will be saved to your configured locations.');
+    alert(
+        'Template settings updated successfully! PDF files will be saved to your configured locations.'
+    );
 }
 
 // Toggle functions for save location settings
@@ -6231,7 +6685,7 @@ async function selectInvoiceSaveLocation() {
         alert('Folder selection is only available in the desktop application');
         return;
     }
-    
+
     try {
         const result = await window.electronAPI.selectFolder();
         if (result.success && result.folderPath) {
@@ -6253,7 +6707,7 @@ async function selectReportSaveLocation() {
         alert('Folder selection is only available in the desktop application');
         return;
     }
-    
+
     try {
         const result = await window.electronAPI.selectFolder();
         if (result.success && result.folderPath) {
@@ -6277,29 +6731,31 @@ async function importCustomTemplate() {
         alert('Template import is only available in the desktop application');
         return;
     }
-    
+
     try {
         const result = await window.electronAPI.importTemplate();
-        
+
         if (result.canceled) {
             return; // User canceled
         }
-        
+
         if (result.success) {
             // Store the custom template in AppState
             if (!AppState.settings.customTemplates) {
                 AppState.settings.customTemplates = {};
             }
-            
+
             // Extract a name from filename (without extension)
-            const templateName = result.filename.replace(/\.[^/.]+$/, "");
-            
+            const templateName = result.filename.replace(/\.[^/.]+$/, '');
+
             // Add to custom templates
             AppState.settings.customTemplates[templateName] = result.content;
             saveToStorage();
-            
-            alert(`Custom template "${templateName}" imported successfully!\n\nNote: This is a basic import. For best results, ensure your template follows the same structure as the built-in templates.`);
-            
+
+            alert(
+                `Custom template "${templateName}" imported successfully!\n\nNote: This is a basic import. For best results, ensure your template follows the same structure as the built-in templates.`
+            );
+
             // Optionally reload the settings modal to show the new template
             closeModal();
             showTemplateSettings();
@@ -6322,18 +6778,21 @@ function backupData() {
         purchases: AppState.purchases,
         payments: AppState.payments,
         financialYear: AppState.currentFinancialYear,
-        exportDate: new Date().toISOString()
+        exportDate: new Date().toISOString(),
     };
-    
+
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', `backup_${AppState.currentCompany.name}_${new Date().toISOString().split('T')[0]}.json`);
+    a.setAttribute(
+        'download',
+        `backup_${AppState.currentCompany.name}_${new Date().toISOString().split('T')[0]}.json`
+    );
     a.click();
     window.URL.revokeObjectURL(url);
-    
+
     alert('Backup created successfully');
 }
 
@@ -6341,15 +6800,15 @@ function restoreData() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    
-    input.onchange = (e) => {
+
+    input.onchange = e => {
         const file = e.target.files[0];
         const reader = new FileReader();
-        
-        reader.onload = (event) => {
+
+        reader.onload = event => {
             try {
                 const data = JSON.parse(event.target.result);
-                
+
                 if (confirm('This will replace all current data. Are you sure?')) {
                     AppState.products = data.products || [];
                     AppState.clients = data.clients || [];
@@ -6358,19 +6817,19 @@ function restoreData() {
                     AppState.purchases = data.purchases || [];
                     AppState.payments = data.payments || [];
                     AppState.currentFinancialYear = data.financialYear || getCurrentFinancialYear();
-                    
+
                     saveCompanyData();
                     alert('Data restored successfully');
                     location.reload();
                 }
-            } catch (error) {
+            } catch (_error) {
                 alert('Error restoring data: Invalid backup file');
             }
         };
-        
+
         reader.readAsText(file);
     };
-    
+
     input.click();
 }
 
@@ -6440,18 +6899,18 @@ function closeInlineModal() {
     }
 }
 
-// Note: Utility functions like generateId, formatDate, getCurrentMonthDates, 
+// Note: Utility functions like generateId, formatDate, getCurrentMonthDates,
 // getLastMonthDates are now in utils.js
 
 function applyDateFilter(filterId) {
     const filter = document.getElementById(filterId).value;
     const fromDateInput = document.getElementById(filterId.replace('Filter', 'FromDate'));
     const toDateInput = document.getElementById(filterId.replace('Filter', 'ToDate'));
-    
+
     if (!fromDateInput || !toDateInput) {
         return;
     }
-    
+
     if (filter === 'current_month') {
         const dates = getCurrentMonthDates();
         fromDateInput.value = dates.from;

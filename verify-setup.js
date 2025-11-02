@@ -23,7 +23,7 @@ const requiredFiles = [
     { file: 'index.html', description: 'Application HTML' },
     { file: 'app.js', description: 'Application JavaScript' },
     { file: 'styles.css', description: 'Application styles' },
-    { file: 'LICENSE.txt', description: 'License file' }
+    { file: 'LICENSE.txt', description: 'License file' },
 ];
 
 console.log('1. Checking Required Files:');
@@ -40,7 +40,7 @@ console.log('');
 // Check optional files
 const optionalFiles = [
     { file: 'icon.png', description: 'PNG icon' },
-    { file: 'icon.ico', description: 'Windows icon' }
+    { file: 'icon.ico', description: 'Windows icon' },
 ];
 
 console.log('2. Checking Optional Files:');
@@ -64,49 +64,48 @@ console.log('');
 console.log('3. Verifying package.json Configuration:');
 try {
     const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-    
+
     if (pkg.main === 'main.js') {
         console.log('   ✓ Main entry point: main.js');
     } else {
         console.log(`   ✗ Main entry point incorrect: ${pkg.main} (should be main.js)`);
         errors++;
     }
-    
+
     if (pkg.scripts && pkg.scripts.start) {
         console.log('   ✓ Start script configured');
     } else {
         console.log('   ✗ Start script missing');
         errors++;
     }
-    
+
     if (pkg.scripts && pkg.scripts.build) {
         console.log('   ✓ Build script configured');
     } else {
         console.log('   ✗ Build script missing');
         errors++;
     }
-    
+
     if (pkg.devDependencies && pkg.devDependencies.electron) {
         console.log(`   ✓ Electron dependency: ${pkg.devDependencies.electron}`);
     } else {
         console.log('   ✗ Electron dependency missing');
         errors++;
     }
-    
+
     if (pkg.devDependencies && pkg.devDependencies['electron-builder']) {
         console.log(`   ✓ Electron-builder dependency: ${pkg.devDependencies['electron-builder']}`);
     } else {
         console.log('   ✗ Electron-builder dependency missing');
         errors++;
     }
-    
+
     if (pkg.build && pkg.build.win) {
         console.log('   ✓ Windows build configuration present');
     } else {
         console.log('   ✗ Windows build configuration missing');
         errors++;
     }
-    
 } catch (e) {
     console.log(`   ✗ Error reading package.json: ${e.message}`);
     errors++;
@@ -117,14 +116,14 @@ console.log('');
 console.log('4. Checking Dependencies:');
 if (fs.existsSync('node_modules')) {
     console.log('   ✓ node_modules directory exists');
-    
+
     if (fs.existsSync('node_modules/electron')) {
         console.log('   ✓ Electron installed');
     } else {
         console.log('   ✗ Electron not installed - Run: npm install');
         errors++;
     }
-    
+
     if (fs.existsSync('node_modules/electron-builder')) {
         console.log('   ✓ Electron-builder installed');
     } else {
@@ -176,11 +175,11 @@ if (errors === 0 && warnings === 0) {
 } else {
     console.log(`Found ${errors} error(s) and ${warnings} warning(s)`);
     console.log('');
-    
+
     if (errors > 0) {
         console.log('Please fix the errors before building.');
     }
-    
+
     if (warnings > 0) {
         console.log('Warnings are optional but recommended to fix.');
         console.log('The application will build without them.');

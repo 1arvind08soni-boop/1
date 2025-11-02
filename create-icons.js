@@ -12,7 +12,9 @@ console.log('   - Design: Include your app logo or branding');
 console.log('   - Save as: icon.png');
 console.log('\n2. Convert to .ico format:');
 console.log('   - Use an online tool like: https://convertio.co/png-ico/');
-console.log('   - Or use ImageMagick: convert icon.png -define icon:auto-resize=256,128,96,64,48,32,16 icon.ico');
+console.log(
+    '   - Or use ImageMagick: convert icon.png -define icon:auto-resize=256,128,96,64,48,32,16 icon.ico'
+);
 console.log('   - Save as: icon.ico');
 console.log('\n3. Place both files in the project root directory');
 console.log('\nFor now, creating placeholder files...\n');
@@ -31,4 +33,3 @@ fs.writeFileSync('icon.svg', svgIcon);
 console.log('✓ Created icon.svg (placeholder)');
 console.log('\nNOTE: You need to convert icon.svg to icon.png and icon.ico');
 console.log('      Or create your own custom icons before building.\n');
-

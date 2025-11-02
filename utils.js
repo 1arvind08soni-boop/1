@@ -139,12 +139,12 @@ function showToast(message, type = 'info', duration = 3000) {
             <span>${escapeHTML(message)}</span>
         </div>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     // Trigger animation
     setTimeout(() => toast.classList.add('show'), 10);
-    
+
     // Remove toast after duration
     setTimeout(() => {
         toast.classList.remove('show');
@@ -175,48 +175,48 @@ function getToastIcon(type) {
  */
 function validateFormData(formData, rules) {
     const errors = [];
-    
+
     for (const [field, rule] of Object.entries(rules)) {
         const value = formData.get(field);
-        
+
         if (rule.required && (!value || value.trim() === '')) {
             errors.push(`${rule.label || field} is required`);
             continue;
         }
-        
+
         if (value && rule.email && !isValidEmail(value)) {
             errors.push(`${rule.label || field} must be a valid email`);
         }
-        
+
         if (value && rule.phone && !isValidPhone(value)) {
             errors.push(`${rule.label || field} must be a valid phone number`);
         }
-        
+
         if (value && rule.gstin && !isValidGSTIN(value)) {
             errors.push(`${rule.label || field} must be a valid GSTIN`);
         }
-        
+
         if (value && rule.pan && !isValidPAN(value)) {
             errors.push(`${rule.label || field} must be a valid PAN`);
         }
-        
+
         if (value && rule.minLength && value.length < rule.minLength) {
             errors.push(`${rule.label || field} must be at least ${rule.minLength} characters`);
         }
-        
+
         if (value && rule.maxLength && value.length > rule.maxLength) {
             errors.push(`${rule.label || field} must be at most ${rule.maxLength} characters`);
         }
-        
+
         if (value && rule.min && parseFloat(value) < rule.min) {
             errors.push(`${rule.label || field} must be at least ${rule.min}`);
         }
-        
+
         if (value && rule.max && parseFloat(value) > rule.max) {
             errors.push(`${rule.label || field} must be at most ${rule.max}`);
         }
     }
-    
+
     return {
         isValid: errors.length === 0,
         errors: errors,
@@ -231,11 +231,12 @@ function showValidationErrors(errors) {
     if (!errors || errors.length === 0) {
         return;
     }
-    
-    const errorMessage = errors.length === 1 
-        ? errors[0]
-        : `Please fix the following errors:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`;
-    
+
+    const errorMessage =
+        errors.length === 1
+            ? errors[0]
+            : `Please fix the following errors:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`;
+
     showToast(errorMessage, 'error', 5000);
 }
 
@@ -296,10 +297,10 @@ function getCurrentMonthDates() {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    
+
     const fromDate = new Date(year, month, 1);
     const toDate = new Date(year, month + 1, 0);
-    
+
     return {
         from: fromDate.toISOString().split('T')[0],
         to: toDate.toISOString().split('T')[0],
@@ -314,10 +315,10 @@ function getLastMonthDates() {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    
+
     const fromDate = new Date(year, month - 1, 1);
     const toDate = new Date(year, month, 0);
-    
+
     return {
         from: fromDate.toISOString().split('T')[0],
         to: toDate.toISOString().split('T')[0],

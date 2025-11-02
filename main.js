@@ -17,11 +17,11 @@ function createWindow() {
             contextIsolation: true,
             enableRemoteModule: false,
             webSecurity: true,
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'preload.js'),
         },
         backgroundColor: '#f5f7fa',
         show: false,
-        autoHideMenuBar: true
+        autoHideMenuBar: true,
     });
 
     // Load the index.html of the app
@@ -42,7 +42,7 @@ function createWindow() {
                     accelerator: 'CmdOrCtrl+R',
                     click: () => {
                         mainWindow.reload();
-                    }
+                    },
                 },
                 { type: 'separator' },
                 {
@@ -50,9 +50,9 @@ function createWindow() {
                     accelerator: 'CmdOrCtrl+Q',
                     click: () => {
                         app.quit();
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         },
         {
             label: 'Edit',
@@ -63,8 +63,8 @@ function createWindow() {
                 { role: 'cut' },
                 { role: 'copy' },
                 { role: 'paste' },
-                { role: 'selectAll' }
-            ]
+                { role: 'selectAll' },
+            ],
         },
         {
             label: 'View',
@@ -73,8 +73,8 @@ function createWindow() {
                 { type: 'separator' },
                 { role: 'zoomIn' },
                 { role: 'zoomOut' },
-                { role: 'resetZoom' }
-            ]
+                { role: 'resetZoom' },
+            ],
         },
         {
             label: 'Help',
@@ -88,12 +88,12 @@ function createWindow() {
                             title: 'About',
                             message: 'Billing & Account Management System',
                             detail: 'Version 1.0.0\nA comprehensive billing and account management solution.',
-                            buttons: ['OK']
+                            buttons: ['OK'],
                         });
-                    }
-                }
-            ]
-        }
+                    },
+                },
+            ],
+        },
     ];
 
     const menu = Menu.buildFromTemplate(template);
@@ -138,7 +138,9 @@ if (!gotTheLock) {
     app.on('second-instance', () => {
         // Someone tried to run a second instance, focus our window instead
         if (mainWindow) {
-            if (mainWindow.isMinimized()) mainWindow.restore();
+            if (mainWindow.isMinimized()) {
+                mainWindow.restore();
+            }
             mainWindow.focus();
         }
     });
@@ -150,18 +152,18 @@ ipcMain.handle('save-pdf', async (event, { content, filename, folder }) => {
         // Get app path or user's documents directory
         const userDataPath = app.getPath('userData');
         const folderPath = path.join(userDataPath, folder);
-        
+
         // Create folder if it doesn't exist
         if (!fs.existsSync(folderPath)) {
             fs.mkdirSync(folderPath, { recursive: true });
         }
-        
+
         const filePath = path.join(folderPath, filename);
-        
+
         // In a real implementation, you would use a library like puppeteer or electron-pdf
         // For now, we'll save the HTML content
         fs.writeFileSync(filePath, content, 'utf-8');
-        
+
         return { success: true, path: filePath };
     } catch (error) {
         console.error('Error saving PDF:', error);
@@ -169,24 +171,24 @@ ipcMain.handle('save-pdf', async (event, { content, filename, folder }) => {
     }
 });
 
-ipcMain.handle('import-template', async (event) => {
+ipcMain.handle('import-template', async event => {
     try {
         const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openFile'],
             filters: [
                 { name: 'HTML Templates', extensions: ['html', 'htm'] },
-                { name: 'All Files', extensions: ['*'] }
-            ]
+                { name: 'All Files', extensions: ['*'] },
+            ],
         });
-        
+
         if (result.canceled) {
             return { success: false, canceled: true };
         }
-        
+
         const filePath = result.filePaths[0];
         const content = fs.readFileSync(filePath, 'utf-8');
         const filename = path.basename(filePath);
-        
+
         return { success: true, content, filename };
     } catch (error) {
         console.error('Error importing template:', error);
@@ -200,14 +202,14 @@ ipcMain.handle('select-save-location', async (event, { defaultPath }) => {
             defaultPath: defaultPath,
             filters: [
                 { name: 'HTML Files', extensions: ['html'] },
-                { name: 'All Files', extensions: ['*'] }
-            ]
+                { name: 'All Files', extensions: ['*'] },
+            ],
         });
-        
+
         if (result.canceled) {
             return { success: false, canceled: true };
         }
-        
+
         return { success: true, filePath: result.filePath };
     } catch (error) {
         console.error('Error selecting save location:', error);
@@ -225,20 +227,20 @@ ipcMain.handle('save-file', async (event, { filePath, content }) => {
     }
 });
 
-ipcMain.handle('get-user-data-path', async (event) => {
+ipcMain.handle('get-user-data-path', async event => {
     return app.getPath('userData');
 });
 
-ipcMain.handle('select-folder', async (event) => {
+ipcMain.handle('select-folder', async event => {
     try {
         const result = await dialog.showOpenDialog(mainWindow, {
-            properties: ['openDirectory']
+            properties: ['openDirectory'],
         });
-        
+
         if (result.canceled) {
             return { success: false, canceled: true };
         }
-        
+
         return { success: true, folderPath: result.filePaths[0] };
     } catch (error) {
         console.error('Error selecting folder:', error);
@@ -252,10 +254,10 @@ ipcMain.handle('save-to-custom-path', async (event, { content, filename, customP
         if (!fs.existsSync(customPath)) {
             return { success: false, error: 'The selected folder does not exist' };
         }
-        
+
         const filePath = path.join(customPath, filename);
         fs.writeFileSync(filePath, content, 'utf-8');
-        
+
         return { success: true, filePath };
     } catch (error) {
         console.error('Error saving to custom path:', error);
@@ -273,8 +275,8 @@ ipcMain.handle('print-invoice', async (event, { html, pageSize, marginType }) =>
             show: false,
             webPreferences: {
                 nodeIntegration: false,
-                contextIsolation: true
-            }
+                contextIsolation: true,
+            },
         });
 
         // Load the HTML content
@@ -288,19 +290,19 @@ ipcMain.handle('print-invoice', async (event, { html, pageSize, marginType }) =>
             silent: false,
             printBackground: true,
             pageSize: pageSize === 'a5' ? 'A5' : 'A4',
-            landscape: false
+            landscape: false,
         };
 
         // Map margin type to Electron margin settings
         switch (marginType) {
             case 'none':
                 printOptions.margins = {
-                    marginType: 'none'
+                    marginType: 'none',
                 };
                 break;
             case 'minimum':
                 printOptions.margins = {
-                    marginType: 'minimum'
+                    marginType: 'minimum',
                 };
                 break;
             case 'custom':
@@ -309,12 +311,12 @@ ipcMain.handle('print-invoice', async (event, { html, pageSize, marginType }) =>
                     top: 0,
                     bottom: 0,
                     left: 0,
-                    right: 0
+                    right: 0,
                 };
                 break;
             default: // 'default'
                 printOptions.margins = {
-                    marginType: 'default'
+                    marginType: 'default',
                 };
         }
 

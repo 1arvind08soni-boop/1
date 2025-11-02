@@ -4,7 +4,8 @@
 const fs = require('fs');
 
 // Create a simple base64 encoded PNG (256x256 blue square with white text)
-const base64PNG = 'iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABR0RVh0Q3JlYXRpb24gVGltZQAyMDI1AABjSURBVHhe7ZHRDYAgDERZwRGcwBGcwAmcgBGcwBEcwQmcwAmcQGPShKSaJv0+7peW3r2SSqVS+Xfq';
+const base64PNG =
+    'iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABR0RVh0Q3JlYXRpb24gVGltZQAyMDI1AABjSURBVHhe7ZHRDYAgDERZwRGcwBGcwAmcgBGcwBEcwQmcwAmcQGPShKSaJv0+7peW3r2SSqVS+Xfq';
 
 // For now, we'll create placeholder text files explaining what's needed
 const iconReadme = `# Application Icons
@@ -55,4 +56,3 @@ console.log('✓ Created placeholder icon.png and icon.ico');
 console.log('\nNOTE: These are empty placeholder files.');
 console.log('      The application will build, but please add real icons for production.');
 console.log('      See ICONS-README.md for detailed instructions.\n');
-

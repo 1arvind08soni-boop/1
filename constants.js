@@ -12,12 +12,9 @@ const UI_MESSAGES = {
         `Are you sure you want to delete the client "${clientName}"?`,
     DELETE_VENDOR_CONFIRM: vendorName =>
         `Are you sure you want to delete the vendor "${vendorName}"?`,
-    DELETE_INVOICE_CONFIRM: invoiceNo =>
-        `Are you sure you want to delete invoice "${invoiceNo}"?`,
-    DELETE_PURCHASE_CONFIRM: purchaseId =>
-        `Are you sure you want to delete this purchase?`,
-    DELETE_PAYMENT_CONFIRM: paymentId =>
-        `Are you sure you want to delete this payment?`,
+    DELETE_INVOICE_CONFIRM: invoiceNo => `Are you sure you want to delete invoice "${invoiceNo}"?`,
+    DELETE_PURCHASE_CONFIRM: purchaseId => 'Are you sure you want to delete this purchase?',
+    DELETE_PAYMENT_CONFIRM: paymentId => 'Are you sure you want to delete this payment?',
     NO_COMPANY_SELECTED: 'Please select a company first',
     DATA_SAVED_SUCCESS: 'Data saved successfully',
     DATA_LOAD_ERROR: 'Error loading data',
