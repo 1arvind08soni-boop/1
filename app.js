@@ -5211,6 +5211,52 @@ function toggleAccountSelection() {
     }
 }
 
+// Helper function to calculate opening balance for a period
+function calculateOpeningBalanceForPeriod(accountType, accountId, beforeDate) {
+    let balance = 0;
+    
+    if (accountType === 'client') {
+        const client = AppState.clients.find(c => c.id === accountId);
+        if (!client) return 0;
+        
+        // Start with client's opening balance
+        balance = client.openingBalance || 0;
+        
+        // Add all invoices before the period
+        const invoices = AppState.invoices.filter(inv => 
+            inv.clientId === accountId && inv.date < beforeDate
+        );
+        balance += invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+        
+        // Subtract all receipts before the period
+        const payments = AppState.payments.filter(pay => 
+            pay.clientId === accountId && pay.date < beforeDate
+        );
+        balance -= payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+        
+    } else if (accountType === 'vendor') {
+        const vendor = AppState.vendors.find(v => v.id === accountId);
+        if (!vendor) return 0;
+        
+        // Start with vendor's opening balance
+        balance = vendor.openingBalance || 0;
+        
+        // Add all purchases before the period
+        const purchases = AppState.purchases.filter(pur => 
+            pur.vendorId === accountId && pur.date < beforeDate
+        );
+        balance += purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
+        
+        // Subtract all payments before the period
+        const payments = AppState.payments.filter(pay => 
+            pay.vendorId === accountId && pay.date < beforeDate
+        );
+        balance -= payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    }
+    
+    return balance;
+}
+
 function generateAccountLedger() {
     const accountId = document.getElementById('accountSelect').value;
     if (!accountId) {
@@ -5235,7 +5281,13 @@ function generateAccountLedger() {
             return;
         }
         accountName = client.name;
-        openingBalance = client.openingBalance || 0;
+        
+        // Calculate opening balance for the period
+        if (fromDate) {
+            openingBalance = calculateOpeningBalanceForPeriod('client', id, fromDate);
+        } else {
+            openingBalance = client.openingBalance || 0;
+        }
         
         let invoices = AppState.invoices.filter(inv => inv.clientId === id);
         let payments = AppState.payments.filter(pay => pay.clientId === id);
@@ -5255,6 +5307,7 @@ function generateAccountLedger() {
                 date: inv.date,
                 type: 'Invoice',
                 reference: inv.invoiceNo,
+                description: inv.description || 'Sales Invoice',
                 debit: inv.total,
                 credit: 0
             });
@@ -5265,6 +5318,7 @@ function generateAccountLedger() {
                 date: pay.date,
                 type: 'Receipt',
                 reference: pay.paymentNo,
+                description: pay.description || 'Payment Received',
                 debit: 0,
                 credit: pay.amount
             });
@@ -5276,7 +5330,13 @@ function generateAccountLedger() {
             return;
         }
         accountName = vendor.name;
-        openingBalance = vendor.openingBalance || 0;
+        
+        // Calculate opening balance for the period
+        if (fromDate) {
+            openingBalance = calculateOpeningBalanceForPeriod('vendor', id, fromDate);
+        } else {
+            openingBalance = vendor.openingBalance || 0;
+        }
         
         let purchases = AppState.purchases.filter(pur => pur.vendorId === id);
         let payments = AppState.payments.filter(pay => pay.vendorId === id);
@@ -5296,6 +5356,7 @@ function generateAccountLedger() {
                 date: pur.date,
                 type: 'Purchase',
                 reference: pur.purchaseNo,
+                description: pur.description || 'Purchase',
                 debit: pur.total,
                 credit: 0
             });
@@ -5306,6 +5367,7 @@ function generateAccountLedger() {
                 date: pay.date,
                 type: 'Payment',
                 reference: pay.paymentNo,
+                description: pay.description || 'Payment Made',
                 debit: 0,
                 credit: pay.amount
             });
@@ -5316,11 +5378,16 @@ function generateAccountLedger() {
     
     let balance = openingBalance;
     
+    // Calculate totals
+    const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
+    const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
+    const closingBalance = openingBalance + totalDebit - totalCredit;
+    
     const reportHTML = `
         <div class="print-preview-container">
             <h3 class="text-center">Account Ledger</h3>
             <p class="text-center"><strong>${accountName}</strong> (${accountType === 'client' ? 'Client' : 'Vendor'})</p>
-            <p class="text-center">Period: ${fromDate || 'Start'} to ${toDate || 'End'}</p>
+            <p class="text-center">Period: ${fromDate ? formatDate(fromDate) : 'Start'} to ${toDate ? formatDate(toDate) : 'End'}</p>
             ${openingBalance !== 0 || transactions.length > 0 ? `
                 <table class="data-table">
                     <thead>
@@ -5328,20 +5395,19 @@ function generateAccountLedger() {
                             <th>Date</th>
                             <th>Type</th>
                             <th>Reference</th>
+                            <th>Description</th>
                             <th class="text-right">Debit</th>
                             <th class="text-right">Credit</th>
                             <th class="text-right">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${openingBalance !== 0 ? `
-                            <tr style="background: #f8f9fa; font-weight: bold;">
-                                <td colspan="3">Opening Balance</td>
-                                <td class="text-right">${openingBalance > 0 ? '₹' + openingBalance.toFixed(2) : '-'}</td>
-                                <td class="text-right">${openingBalance < 0 ? '₹' + Math.abs(openingBalance).toFixed(2) : '-'}</td>
-                                <td class="text-right">₹${openingBalance.toFixed(2)}</td>
-                            </tr>
-                        ` : ''}
+                        <tr style="background: #e3f2fd; font-weight: bold;">
+                            <td colspan="4">Opening Balance</td>
+                            <td class="text-right">${openingBalance > 0 ? '₹' + openingBalance.toFixed(2) : '-'}</td>
+                            <td class="text-right">${openingBalance < 0 ? '₹' + Math.abs(openingBalance).toFixed(2) : '-'}</td>
+                            <td class="text-right">₹${openingBalance.toFixed(2)}</td>
+                        </tr>
                         ${transactions.map(trans => {
                             balance += trans.debit - trans.credit;
                             return `
@@ -5349,20 +5415,46 @@ function generateAccountLedger() {
                                     <td>${formatDate(trans.date)}</td>
                                     <td>${trans.type}</td>
                                     <td>${trans.reference}</td>
+                                    <td>${trans.description || '-'}</td>
                                     <td class="text-right">${trans.debit > 0 ? '₹' + trans.debit.toFixed(2) : '-'}</td>
                                     <td class="text-right">${trans.credit > 0 ? '₹' + trans.credit.toFixed(2) : '-'}</td>
                                     <td class="text-right">₹${balance.toFixed(2)}</td>
                                 </tr>
                             `;
                         }).join('')}
+                        <tr style="background: #fff3cd; font-weight: bold;">
+                            <td colspan="4">Closing Balance</td>
+                            <td class="text-right">${closingBalance > 0 ? '₹' + closingBalance.toFixed(2) : '-'}</td>
+                            <td class="text-right">${closingBalance < 0 ? '₹' + Math.abs(closingBalance).toFixed(2) : '-'}</td>
+                            <td class="text-right">₹${closingBalance.toFixed(2)}</td>
+                        </tr>
                     </tbody>
                     <tfoot>
-                        <tr>
-                            <td colspan="3" class="text-right"><strong>Final Balance:</strong></td>
-                            <td colspan="3" class="text-right"><strong>₹${balance.toFixed(2)}</strong></td>
+                        <tr style="background: #f8f9fa;">
+                            <td colspan="4" class="text-right"><strong>Period Totals:</strong></td>
+                            <td class="text-right"><strong>₹${totalDebit.toFixed(2)}</strong></td>
+                            <td class="text-right"><strong>₹${totalCredit.toFixed(2)}</strong></td>
+                            <td class="text-right"><strong>Net: ₹${(totalDebit - totalCredit).toFixed(2)}</strong></td>
+                        </tr>
+                        <tr style="background: #d4edda; font-weight: bold;">
+                            <td colspan="6" class="text-right"><strong>Final Balance (Closing):</strong></td>
+                            <td class="text-right"><strong>₹${closingBalance.toFixed(2)}</strong></td>
                         </tr>
                     </tfoot>
                 </table>
+                <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                    <p style="margin: 0;"><strong>Summary:</strong></p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Opening Balance: ₹${openingBalance.toFixed(2)}</li>
+                        <li>Total Debits: ₹${totalDebit.toFixed(2)}</li>
+                        <li>Total Credits: ₹${totalCredit.toFixed(2)}</li>
+                        <li>Net Change: ₹${(totalDebit - totalCredit).toFixed(2)}</li>
+                        <li><strong>Closing Balance: ₹${closingBalance.toFixed(2)}</strong></li>
+                    </ul>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #666;">
+                        <em>Note: This closing balance (₹${closingBalance.toFixed(2)}) becomes the opening balance for the next period.</em>
+                    </p>
+                </div>
             ` : '<p class="text-center">No transactions found</p>'}
         </div>
     `;
@@ -6503,4 +6595,442 @@ function applyDateFilter(filterId) {
             toDateInput.value = new Date().toISOString().split('T')[0];
         }
     }
+}
+
+// Journal Report - Shows all transactions in chronological order (Double Entry)
+function showJournalReport() {
+    const modal = createModal('Transaction Journal', `
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date Filter</label>
+                <select class="form-control" id="journalFilter" onchange="applyDateFilter('journalFilter')">
+                    <option value="custom">Custom Date Range</option>
+                    <option value="current_month">Current Month</option>
+                    <option value="last_month">Last Month</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>From Date</label>
+                <input type="date" class="form-control" id="journalFromDate">
+            </div>
+            <div class="form-group">
+                <label>To Date</label>
+                <input type="date" class="form-control" id="journalToDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateJournalReport()">Generate Journal</button>
+        <div id="journalReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportJournalToPDF()">
+                <i class="fas fa-download"></i> Print Journal
+            </button>
+        </div>
+    `, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateJournalReport() {
+    const fromDate = document.getElementById('journalFromDate').value;
+    const toDate = document.getElementById('journalToDate').value;
+    
+    // Collect all transactions
+    let allTransactions = [];
+    
+    // Add invoices (Debit: Client, Credit: Sales)
+    AppState.invoices.forEach(inv => {
+        const client = AppState.clients.find(c => c.id === inv.clientId);
+        if (!fromDate || inv.date >= fromDate) {
+            if (!toDate || inv.date <= toDate) {
+                allTransactions.push({
+                    date: inv.date,
+                    reference: inv.invoiceNo,
+                    description: \`Sales Invoice - \${client ? client.name : 'N/A'}\`,
+                    debitAccount: client ? client.name : 'Unknown Client',
+                    creditAccount: 'Sales',
+                    amount: inv.total
+                });
+            }
+        }
+    });
+    
+    // Add purchases (Debit: Purchases, Credit: Vendor)
+    AppState.purchases.forEach(pur => {
+        const vendor = AppState.vendors.find(v => v.id === pur.vendorId);
+        const vendorName = vendor ? vendor.name : (pur.vendorName || 'N/A');
+        if (!fromDate || pur.date >= fromDate) {
+            if (!toDate || pur.date <= toDate) {
+                allTransactions.push({
+                    date: pur.date,
+                    reference: pur.purchaseNo,
+                    description: \`Purchase - \${vendorName}\`,
+                    debitAccount: 'Purchases',
+                    creditAccount: vendorName,
+                    amount: pur.total
+                });
+            }
+        }
+    });
+    
+    // Add payments
+    AppState.payments.forEach(pay => {
+        const client = pay.clientId ? AppState.clients.find(c => c.id === pay.clientId) : null;
+        const vendor = pay.vendorId ? AppState.vendors.find(v => v.id === pay.vendorId) : null;
+        const partyName = client ? client.name : (vendor ? vendor.name : (pay.vendorName || 'N/A'));
+        
+        if (!fromDate || pay.date >= fromDate) {
+            if (!toDate || pay.date <= toDate) {
+                if (pay.type === 'receipt') {
+                    // Receipt: Debit: Cash/Bank, Credit: Client
+                    allTransactions.push({
+                        date: pay.date,
+                        reference: pay.paymentNo,
+                        description: \`Receipt from \${partyName}\`,
+                        debitAccount: pay.method === 'cash' ? 'Cash' : 'Bank',
+                        creditAccount: partyName,
+                        amount: pay.amount
+                    });
+                } else {
+                    // Payment: Debit: Vendor, Credit: Cash/Bank
+                    allTransactions.push({
+                        date: pay.date,
+                        reference: pay.paymentNo,
+                        description: \`Payment to \${partyName}\`,
+                        debitAccount: partyName,
+                        creditAccount: pay.method === 'cash' ? 'Cash' : 'Bank',
+                        amount: pay.amount
+                    });
+                }
+            }
+        }
+    });
+    
+    // Sort by date
+    allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    const totalAmount = allTransactions.reduce((sum, t) => sum + t.amount, 0);
+    
+    const reportHTML = \`
+        <div class="print-preview-container">
+            <h3 class="text-center">Transaction Journal</h3>
+            <p class="text-center">Period: \${fromDate ? formatDate(fromDate) : 'Start'} to \${toDate ? formatDate(toDate) : 'End'}</p>
+            \${allTransactions.length > 0 ? \`
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Reference</th>
+                            <th>Description</th>
+                            <th>Debit Account</th>
+                            <th>Credit Account</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        \${allTransactions.map(trans => \`
+                            <tr>
+                                <td>\${formatDate(trans.date)}</td>
+                                <td>\${trans.reference}</td>
+                                <td>\${trans.description}</td>
+                                <td style="padding-left: 1rem;">\${trans.debitAccount} Dr.</td>
+                                <td style="padding-left: 2rem;">\${trans.creditAccount} Cr.</td>
+                                <td class="text-right">₹\${trans.amount.toFixed(2)}</td>
+                            </tr>
+                        \`).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="text-right"><strong>Total Transactions:</strong></td>
+                            <td class="text-right"><strong>₹\${totalAmount.toFixed(2)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="6" style="padding-top: 1rem;">
+                                <em>Note: This journal follows double-entry accounting principles. Each transaction has equal debits and credits.</em>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            \` : '<p class="text-center">No transactions found</p>'}
+        </div>
+    \`;
+    
+    document.getElementById('journalReport').innerHTML = reportHTML;
+}
+
+function exportJournalToPDF() {
+    const content = document.getElementById('journalReport').innerHTML;
+    if (!content || content.trim() === '') {
+        alert('Please generate the journal report first');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(\`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Transaction Journal</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                thead { background: #f0f0f0; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                @media print {
+                    @page { size: A4 landscape; margin: 15mm; }
+                    body { margin: 0; padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            \${content}
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+                window.onafterprint = function() {
+                    setTimeout(function() { window.close(); }, 100);
+                };
+            </script>
+        </body>
+        </html>
+    \`);
+    printWindow.document.close();
+}
+
+// Trial Balance Report
+function showTrialBalance() {
+    const modal = createModal('Trial Balance', \`
+        <div class="form-row">
+            <div class="form-group">
+                <label>As On Date</label>
+                <input type="date" class="form-control" id="trialBalanceDate" value="\${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateTrialBalance()">Generate Trial Balance</button>
+        <div id="trialBalanceReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportTrialBalanceToPDF()">
+                <i class="fas fa-download"></i> Print Trial Balance
+            </button>
+        </div>
+    \`, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateTrialBalance() {
+    const asOnDate = document.getElementById('trialBalanceDate').value;
+    
+    // Calculate balances for each account as on date
+    const accounts = {};
+    
+    // Process client accounts
+    AppState.clients.forEach(client => {
+        const invoices = AppState.invoices.filter(inv => 
+            inv.clientId === client.id && inv.date <= asOnDate
+        );
+        const payments = AppState.payments.filter(pay => 
+            pay.clientId === client.id && pay.date <= asOnDate
+        );
+        
+        const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+        const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+        const finalBalance = (client.openingBalance || 0) + totalInvoices - totalPayments;
+        
+        if (finalBalance !== 0 || totalInvoices > 0 || totalPayments > 0) {
+            accounts[client.name] = {
+                type: 'Client (Debtor)',
+                debit: finalBalance > 0 ? finalBalance : 0,
+                credit: finalBalance < 0 ? Math.abs(finalBalance) : 0
+            };
+        }
+    });
+    
+    // Process vendor accounts
+    AppState.vendors.forEach(vendor => {
+        const purchases = AppState.purchases.filter(pur => 
+            pur.vendorId === vendor.id && pur.date <= asOnDate
+        );
+        const payments = AppState.payments.filter(pay => 
+            pay.vendorId === vendor.id && pay.date <= asOnDate
+        );
+        
+        const totalPurchases = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
+        const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+        const finalBalance = (vendor.openingBalance || 0) + totalPurchases - totalPayments;
+        
+        if (finalBalance !== 0 || totalPurchases > 0 || totalPayments > 0) {
+            accounts[vendor.name] = {
+                type: 'Vendor (Creditor)',
+                debit: finalBalance < 0 ? Math.abs(finalBalance) : 0,
+                credit: finalBalance > 0 ? finalBalance : 0
+            };
+        }
+    });
+    
+    // Add Sales account
+    const totalSales = AppState.invoices
+        .filter(inv => inv.date <= asOnDate)
+        .reduce((sum, inv) => sum + (inv.total || 0), 0);
+    if (totalSales > 0) {
+        accounts['Sales'] = {
+            type: 'Income',
+            debit: 0,
+            credit: totalSales
+        };
+    }
+    
+    // Add Purchases account
+    const totalPurchases = AppState.purchases
+        .filter(pur => pur.date <= asOnDate)
+        .reduce((sum, pur) => sum + (pur.total || 0), 0);
+    if (totalPurchases > 0) {
+        accounts['Purchases'] = {
+            type: 'Expense',
+            debit: totalPurchases,
+            credit: 0
+        };
+    }
+    
+    // Add Cash/Bank accounts
+    const cashReceipts = AppState.payments
+        .filter(pay => pay.type === 'receipt' && pay.method === 'cash' && pay.date <= asOnDate)
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const cashPayments = AppState.payments
+        .filter(pay => pay.type === 'payment' && pay.method === 'cash' && pay.date <= asOnDate)
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const cashBalance = cashReceipts - cashPayments;
+    if (cashBalance !== 0 || cashReceipts > 0 || cashPayments > 0) {
+        accounts['Cash'] = {
+            type: 'Asset',
+            debit: cashBalance > 0 ? cashBalance : 0,
+            credit: cashBalance < 0 ? Math.abs(cashBalance) : 0
+        };
+    }
+    
+    const bankReceipts = AppState.payments
+        .filter(pay => pay.type === 'receipt' && pay.method !== 'cash' && pay.date <= asOnDate)
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const bankPayments = AppState.payments
+        .filter(pay => pay.type === 'payment' && pay.method !== 'cash' && pay.date <= asOnDate)
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const bankBalance = bankReceipts - bankPayments;
+    if (bankBalance !== 0 || bankReceipts > 0 || bankPayments > 0) {
+        accounts['Bank'] = {
+            type: 'Asset',
+            debit: bankBalance > 0 ? bankBalance : 0,
+            credit: bankBalance < 0 ? Math.abs(bankBalance) : 0
+        };
+    }
+    
+    // Calculate totals
+    let totalDebit = 0;
+    let totalCredit = 0;
+    Object.values(accounts).forEach(acc => {
+        totalDebit += acc.debit;
+        totalCredit += acc.credit;
+    });
+    
+    const reportHTML = \`
+        <div class="print-preview-container">
+            <h3 class="text-center">Trial Balance</h3>
+            <p class="text-center">As on: \${formatDate(asOnDate)}</p>
+            \${Object.keys(accounts).length > 0 ? \`
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Account Name</th>
+                            <th>Account Type</th>
+                            <th class="text-right">Debit (₹)</th>
+                            <th class="text-right">Credit (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        \${Object.entries(accounts).map(([name, acc]) => \`
+                            <tr>
+                                <td>\${name}</td>
+                                <td>\${acc.type}</td>
+                                <td class="text-right">\${acc.debit > 0 ? acc.debit.toFixed(2) : '-'}</td>
+                                <td class="text-right">\${acc.credit > 0 ? acc.credit.toFixed(2) : '-'}</td>
+                            </tr>
+                        \`).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: #f8f9fa; font-weight: bold;">
+                            <td colspan="2" class="text-right"><strong>Total:</strong></td>
+                            <td class="text-right"><strong>₹\${totalDebit.toFixed(2)}</strong></td>
+                            <td class="text-right"><strong>₹\${totalCredit.toFixed(2)}</strong></td>
+                        </tr>
+                        <tr style="background: \${Math.abs(totalDebit - totalCredit) < 0.01 ? '#d4edda' : '#f8d7da'};">
+                            <td colspan="4" class="text-center">
+                                <strong>
+                                    \${Math.abs(totalDebit - totalCredit) < 0.01 
+                                        ? '✓ Trial Balance is balanced!' 
+                                        : '⚠ Trial Balance is not balanced - Difference: ₹' + Math.abs(totalDebit - totalCredit).toFixed(2)}
+                                </strong>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                    <p style="margin: 0;"><strong>Note:</strong></p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Trial Balance shows all account balances as on the selected date</li>
+                        <li>In double-entry accounting, Total Debits should equal Total Credits</li>
+                        <li>This helps verify the accuracy of recorded transactions</li>
+                    </ul>
+                </div>
+            \` : '<p class="text-center">No accounts found</p>'}
+        </div>
+    \`;
+    
+    document.getElementById('trialBalanceReport').innerHTML = reportHTML;
+}
+
+function exportTrialBalanceToPDF() {
+    const content = document.getElementById('trialBalanceReport').innerHTML;
+    if (!content || content.trim() === '') {
+        alert('Please generate the trial balance first');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(\`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Trial Balance</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                thead { background: #f0f0f0; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                @media print {
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { margin: 0; padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            \${content}
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+                window.onafterprint = function() {
+                    setTimeout(function() { window.close(); }, 100);
+                };
+            </script>
+        </body>
+        </html>
+    \`);
+    printWindow.document.close();
 }
