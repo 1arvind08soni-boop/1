@@ -14,11 +14,8 @@ function initKeyboardShortcuts() {
  */
 function handleKeyboardShortcut(event) {
     // Don't trigger shortcuts if user is typing in an input field
-    const isInputField =
-        event.target.tagName === 'INPUT' ||
-        event.target.tagName === 'TEXTAREA' ||
-        event.target.tagName === 'SELECT' ||
-        event.target.isContentEditable;
+    const inputTags = ['INPUT', 'TEXTAREA', 'SELECT'];
+    const isInputField = inputTags.includes(event.target.tagName) || event.target.isContentEditable;
 
     // Ctrl/Cmd + N - New Invoice (only when not in input field)
     if ((event.ctrlKey || event.metaKey) && event.key === 'n' && !isInputField) {
