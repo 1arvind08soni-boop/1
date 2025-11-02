@@ -1185,12 +1185,18 @@ function loadClients() {
     }).join('');
 }
 
-function calculateClientBalance(clientId) {
+function calculateClientBalance(clientId, asOfDate) {
     const client = AppState.clients.find(c => c.id === clientId);
     const openingBalance = client ? (client.openingBalance || 0) : 0;
     
-    const invoices = AppState.invoices.filter(inv => inv.clientId === clientId);
-    const payments = AppState.payments.filter(pay => pay.clientId === clientId && pay.type === 'receipt');
+    let invoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+    let payments = AppState.payments.filter(pay => pay.clientId === clientId && pay.type === 'receipt');
+    
+    // Apply date filter if asOfDate is provided
+    if (asOfDate) {
+        invoices = invoices.filter(inv => inv.date <= asOfDate);
+        payments = payments.filter(pay => pay.date <= asOfDate);
+    }
     
     const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
     const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
@@ -1501,12 +1507,18 @@ function loadVendors() {
     }).join('');
 }
 
-function calculateVendorBalance(vendorId) {
+function calculateVendorBalance(vendorId, asOfDate) {
     const vendor = AppState.vendors.find(v => v.id === vendorId);
     const openingBalance = vendor ? (vendor.openingBalance || 0) : 0;
     
-    const purchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
-    const payments = AppState.payments.filter(pay => pay.vendorId === vendorId && pay.type === 'payment');
+    let purchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
+    let payments = AppState.payments.filter(pay => pay.vendorId === vendorId && pay.type === 'payment');
+    
+    // Apply date filter if asOfDate is provided
+    if (asOfDate) {
+        purchases = purchases.filter(pur => pur.date <= asOfDate);
+        payments = payments.filter(pay => pay.date <= asOfDate);
+    }
     
     const totalPurchases = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
     const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
@@ -6753,43 +6765,6 @@ function exportTrialBalanceToPDF() {
         </html>
     `);
     printWindow.document.close();
-}
-
-// Helper function to calculate balance up to a specific date
-function calculateClientBalance(clientId, asOfDate) {
-    const client = AppState.clients.find(c => c.id === clientId);
-    const openingBalance = client ? (client.openingBalance || 0) : 0;
-    
-    let invoices = AppState.invoices.filter(inv => inv.clientId === clientId);
-    let payments = AppState.payments.filter(pay => pay.clientId === clientId && pay.type === 'receipt');
-    
-    if (asOfDate) {
-        invoices = invoices.filter(inv => inv.date <= asOfDate);
-        payments = payments.filter(pay => pay.date <= asOfDate);
-    }
-    
-    const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-    const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
-    
-    return openingBalance + totalInvoices - totalPayments;
-}
-
-function calculateVendorBalance(vendorId, asOfDate) {
-    const vendor = AppState.vendors.find(v => v.id === vendorId);
-    const openingBalance = vendor ? (vendor.openingBalance || 0) : 0;
-    
-    let purchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
-    let payments = AppState.payments.filter(pay => pay.vendorId === vendorId && pay.type === 'payment');
-    
-    if (asOfDate) {
-        purchases = purchases.filter(pur => pur.date <= asOfDate);
-        payments = payments.filter(pay => pay.date <= asOfDate);
-    }
-    
-    const totalPurchases = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
-    const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
-    
-    return openingBalance + totalPurchases - totalPayments;
 }
 
 // Profit & Loss Statement
