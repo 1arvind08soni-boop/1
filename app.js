@@ -325,10 +325,49 @@ function updateDashboard() {
     const totalSales = AppState.invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
     const totalPurchase = AppState.purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
     
+    // Calculate profit
+    const grossProfit = totalSales - totalPurchase;
+    const profitMargin = totalSales > 0 ? (grossProfit / totalSales * 100) : 0;
+    
+    // Calculate outstanding receivables
+    let totalReceivables = 0;
+    AppState.clients.forEach(client => {
+        const balance = calculateClientBalance(client.id);
+        if (balance > 0) totalReceivables += balance;
+    });
+    
+    // Calculate outstanding payables
+    let totalPayables = 0;
+    AppState.vendors.forEach(vendor => {
+        const balance = calculateVendorBalance(vendor.id);
+        if (balance > 0) totalPayables += balance;
+    });
+    
     document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
     document.getElementById('totalPurchase').textContent = `₹${totalPurchase.toFixed(2)}`;
     document.getElementById('totalClients').textContent = AppState.clients.length;
     document.getElementById('totalProducts').textContent = AppState.products.length;
+    
+    // Update new dashboard metrics if they exist
+    const grossProfitElement = document.getElementById('grossProfit');
+    if (grossProfitElement) {
+        grossProfitElement.textContent = `₹${grossProfit.toFixed(2)}`;
+    }
+    
+    const profitMarginElement = document.getElementById('profitMargin');
+    if (profitMarginElement) {
+        profitMarginElement.textContent = `${profitMargin.toFixed(2)}%`;
+    }
+    
+    const receivablesElement = document.getElementById('totalReceivables');
+    if (receivablesElement) {
+        receivablesElement.textContent = `₹${totalReceivables.toFixed(2)}`;
+    }
+    
+    const payablesElement = document.getElementById('totalPayables');
+    if (payablesElement) {
+        payablesElement.textContent = `₹${totalPayables.toFixed(2)}`;
+    }
     
     // Recent Invoices
     const recentInvoices = AppState.invoices.slice(-5).reverse();
@@ -7476,5 +7515,164 @@ function exportBalanceSheetToPDF() {
         </body>
         </html>
     `);
+    printWindow.document.close();
+}
+
+// Cash Flow Statement
+function showCashFlow() {
+    const modal = createModal('Cash Flow Statement', `
+        <div class="form-row">
+            <div class="form-group">
+                <label>From Date</label>
+                <input type="date" class="form-control" id="cashFlowFromDate">
+            </div>
+            <div class="form-group">
+                <label>To Date</label>
+                <input type="date" class="form-control" id="cashFlowToDate" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateCashFlow()">Generate Statement</button>
+        <div id="cashFlowReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportCashFlowToPDF()">
+                <i class="fas fa-download"></i> Export PDF
+            </button>
+        </div>
+    `, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateCashFlow() {
+    const fromDate = document.getElementById('cashFlowFromDate').value;
+    const toDate = document.getElementById('cashFlowToDate').value;
+    
+    let receipts = AppState.payments.filter(pay => pay.type === 'receipt');
+    let payments = AppState.payments.filter(pay => pay.type === 'payment');
+    
+    if (fromDate) {
+        receipts = receipts.filter(pay => pay.date >= fromDate);
+        payments = payments.filter(pay => pay.date >= fromDate);
+    }
+    
+    if (toDate) {
+        receipts = receipts.filter(pay => pay.date <= toDate);
+        payments = payments.filter(pay => pay.date <= toDate);
+    }
+    
+    const cashFromCustomers = receipts.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const cashToVendors = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const netOperatingCashFlow = cashFromCustomers - cashToVendors;
+    const netCashFlow = netOperatingCashFlow;
+    
+    let openingReceipts = AppState.payments.filter(pay => pay.type === 'receipt');
+    let openingPayments = AppState.payments.filter(pay => pay.type === 'payment');
+    
+    if (fromDate) {
+        openingReceipts = openingReceipts.filter(pay => pay.date < fromDate);
+        openingPayments = openingPayments.filter(pay => pay.date < fromDate);
+    }
+    
+    const openingCash = openingReceipts.reduce((sum, pay) => sum + (pay.amount || 0), 0) - 
+                       openingPayments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const closingCash = openingCash + netCashFlow;
+    const dateRangeText = (fromDate && toDate) ? `${formatDate(fromDate)} to ${formatDate(toDate)}` : `${fromDate || 'Start'} to ${toDate || 'End'}`;
+    
+    document.getElementById('cashFlowReport').innerHTML = `
+        <div class="print-preview-container">
+            <h3 class="text-center">Cash Flow Statement</h3>
+            <p class="text-center"><strong>${AppState.currentCompany.name}</strong></p>
+            <p class="text-center">Period: ${dateRangeText}</p>
+            <table class="data-table">
+                <thead><tr><th>Particulars</th><th class="text-right">Amount (₹)</th></tr></thead>
+                <tbody>
+                    <tr style="background: #e8f5e9;"><td colspan="2"><strong>Cash Flows from Operating Activities</strong></td></tr>
+                    <tr><td style="padding-left: 2rem;">Cash received from customers</td><td class="text-right">₹${cashFromCustomers.toFixed(2)}</td></tr>
+                    <tr><td style="padding-left: 2rem;">Cash paid to suppliers</td><td class="text-right">(₹${cashToVendors.toFixed(2)})</td></tr>
+                    <tr style="font-weight: bold; background: ${netOperatingCashFlow >= 0 ? '#c8e6c9' : '#ffcdd2'};"><td>Net Cash from Operating Activities</td><td class="text-right">₹${netOperatingCashFlow.toFixed(2)}</td></tr>
+                    <tr style="background: #f5f5f5; font-weight: bold;"><td>Net Increase/(Decrease) in Cash</td><td class="text-right" style="color: ${netCashFlow >= 0 ? 'green' : 'red'};">₹${netCashFlow.toFixed(2)}</td></tr>
+                    <tr style="background: #fafafa;"><td>Cash at Beginning of Period</td><td class="text-right">₹${openingCash.toFixed(2)}</td></tr>
+                    <tr style="font-weight: bold; background: ${closingCash >= 0 ? '#a5d6a7' : '#ef9a9a'};"><td>Cash at End of Period</td><td class="text-right">₹${closingCash.toFixed(2)}</td></tr>
+                </tbody>
+            </table>
+        </div>`;
+}
+
+function exportCashFlowToPDF() {
+    const content = document.getElementById('cashFlowReport').innerHTML;
+    if (!content) { alert('Please generate the cash flow statement first'); return; }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Cash Flow</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd}.text-right{text-align:right}.text-center{text-align:center}</style></head><body>${content}<script>window.onload=()=>setTimeout(()=>window.print(),500)</script></body></html>`);
+    printWindow.document.close();
+}
+
+// Tax Report
+function showTaxReport() {
+    showModal(createModal('Tax Report (GST/VAT)', `
+        <div class="form-row">
+            <div class="form-group"><label>From Date</label><input type="date" class="form-control" id="taxFromDate"></div>
+            <div class="form-group"><label>To Date</label><input type="date" class="form-control" id="taxToDate" value="${new Date().toISOString().split('T')[0]}"></div>
+        </div>
+        <button class="btn btn-primary" onclick="generateTaxReport()">Generate Report</button>
+        <div id="taxReport" class="mt-3"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-success" onclick="exportTaxReportToPDF()"><i class="fas fa-download"></i> Export PDF</button>
+        </div>
+    `, 'modal-lg'));
+}
+
+function generateTaxReport() {
+    const fromDate = document.getElementById('taxFromDate').value;
+    const toDate = document.getElementById('taxToDate').value;
+    let invoices = AppState.invoices.filter(inv => (!fromDate || inv.date >= fromDate) && (!toDate || inv.date <= toDate));
+    let purchases = AppState.purchases.filter(pur => (!fromDate || pur.date >= fromDate) && (!toDate || pur.date <= toDate));
+    
+    let totalSalesWithoutTax = 0, totalOutputTax = 0, totalSalesWithTax = 0;
+    invoices.forEach(inv => {
+        const subtotal = inv.subtotal || 0;
+        const taxAmount = subtotal * (inv.tax || 0) / 100;
+        totalSalesWithoutTax += subtotal;
+        totalOutputTax += taxAmount;
+        totalSalesWithTax += inv.total || 0;
+    });
+    
+    let totalPurchasesWithoutTax = 0, totalInputTax = 0, totalPurchasesWithTax = 0;
+    purchases.forEach(pur => {
+        const total = pur.total || 0;
+        const taxRate = pur.taxRate || 18;
+        const amountWithoutTax = total / (1 + taxRate / 100);
+        totalPurchasesWithoutTax += amountWithoutTax;
+        totalInputTax += total - amountWithoutTax;
+        totalPurchasesWithTax += total;
+    });
+    
+    const netTaxLiability = totalOutputTax - totalInputTax;
+    const dateRangeText = (fromDate && toDate) ? `${formatDate(fromDate)} to ${formatDate(toDate)}` : `${fromDate || 'Start'} to ${toDate || 'End'}`;
+    
+    document.getElementById('taxReport').innerHTML = `
+        <div class="print-preview-container">
+            <h3 class="text-center">Tax Report (GST/VAT Analysis)</h3>
+            <p class="text-center"><strong>${AppState.currentCompany.name}</strong> | Period: ${dateRangeText}</p>
+            <table class="data-table">
+                <tbody>
+                    <tr style="background: #e8f5e9;"><td colspan="2"><strong>Output Tax (Sales)</strong></td></tr>
+                    <tr><td style="padding-left: 2rem;">Sales (Excluding Tax)</td><td class="text-right">₹${totalSalesWithoutTax.toFixed(2)}</td></tr>
+                    <tr><td style="padding-left: 2rem;">Output Tax Collected</td><td class="text-right">₹${totalOutputTax.toFixed(2)}</td></tr>
+                    <tr style="background: #fff3e0;"><td colspan="2"><strong>Input Tax (Purchases)</strong></td></tr>
+                    <tr><td style="padding-left: 2rem;">Purchases (Excluding Tax)</td><td class="text-right">₹${totalPurchasesWithoutTax.toFixed(2)}</td></tr>
+                    <tr><td style="padding-left: 2rem;">Input Tax Credit</td><td class="text-right">₹${totalInputTax.toFixed(2)}</td></tr>
+                    <tr style="font-weight: bold; background: ${netTaxLiability >= 0 ? '#ffcdd2' : '#c8e6c9'};"><td>Net Tax Liability/(Refund)</td><td class="text-right">${netTaxLiability >= 0 ? '₹' + netTaxLiability.toFixed(2) + ' Payable' : '₹' + Math.abs(netTaxLiability).toFixed(2) + ' Refundable'}</td></tr>
+                </tbody>
+            </table>
+        </div>`;
+}
+
+function exportTaxReportToPDF() {
+    const content = document.getElementById('taxReport').innerHTML;
+    if (!content) { alert('Please generate the tax report first'); return; }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Tax Report</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd}.text-right{text-align:right}.text-center{text-align:center}</style></head><body>${content}<script>window.onload=()=>setTimeout(()=>window.print(),500)</script></body></html>`);
     printWindow.document.close();
 }
