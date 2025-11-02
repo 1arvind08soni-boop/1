@@ -6466,7 +6466,9 @@ function showError(message) {
     closeButton.style.fontSize = '18px';
     closeButton.style.padding = '0';
     closeButton.style.lineHeight = '1';
-    closeButton.innerHTML = '<i class="fas fa-times"></i>';
+    const closeIcon = document.createElement('i');
+    closeIcon.className = 'fas fa-times';
+    closeButton.appendChild(closeIcon);
     closeButton.addEventListener('click', () => notification.remove());
     
     notification.appendChild(contentWrapper);
@@ -6530,7 +6532,9 @@ function showSuccess(message) {
     closeButton.style.fontSize = '18px';
     closeButton.style.padding = '0';
     closeButton.style.lineHeight = '1';
-    closeButton.innerHTML = '<i class="fas fa-times"></i>';
+    const closeIcon = document.createElement('i');
+    closeIcon.className = 'fas fa-times';
+    closeButton.appendChild(closeIcon);
     closeButton.addEventListener('click', () => notification.remove());
     
     notification.appendChild(contentWrapper);
