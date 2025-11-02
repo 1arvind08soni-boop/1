@@ -78,6 +78,17 @@ export default [
                 formatDate: 'readonly',
                 getCurrentMonthDates: 'readonly',
                 getLastMonthDates: 'readonly',
+
+                // Keyboard shortcuts from keyboard-shortcuts.js
+                initKeyboardShortcuts: 'readonly',
+                handleKeyboardShortcut: 'readonly',
+                showKeyboardShortcutsHelp: 'readonly',
+
+                // App.js functions used in keyboard shortcuts
+                showContentScreen: 'readonly',
+                closeModal: 'readonly',
+                createModal: 'readonly',
+                showModal: 'readonly',
             },
         },
         rules: {

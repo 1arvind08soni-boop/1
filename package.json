@@ -42,6 +42,7 @@
       "app.js",
       "utils.js",
       "constants.js",
+      "keyboard-shortcuts.js",
       "styles.css",
       "icon.png",
       "icon.ico"
