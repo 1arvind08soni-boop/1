@@ -4894,14 +4894,12 @@ function toggleGoodsReturnInvoice() {
             })
             .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
             .map(item => {
-                // Escape all dynamic content to prevent XSS vulnerabilities
+                // Escape only string content to prevent XSS vulnerabilities
+                // Numeric values are safe and don't need escaping
                 const safeInvoiceId = escapeHtml(item.inv.id);
                 const safeInvoiceNo = escapeHtml(item.inv.invoiceNo);
-                const safeTotal = escapeHtml(item.inv.total);
-                const safeReturned = escapeHtml(item.returnedAmount);
-                const safeRemaining = escapeHtml(item.remainingAmount);
                 
-                return `<option value="${safeInvoiceId}" data-total="${safeTotal}" data-returned="${safeReturned}" data-remaining="${safeRemaining}">
+                return `<option value="${safeInvoiceId}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
                     ${safeInvoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
                 </option>`;
             })
