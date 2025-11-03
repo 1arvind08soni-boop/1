@@ -7406,10 +7406,26 @@ function createModal(title, content, size = '') {
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
+    
+    // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
+    requestAnimationFrame(() => {
+        // Find the first focusable input field in the modal and focus it
+        const firstInput = container.querySelector('input:not([readonly]):not([type="hidden"]), textarea, select');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    });
 }
 
 function closeModal() {
     const container = document.getElementById('modalContainer');
+    
+    // Remove focus from any active element in the modal before closing
+    const activeElement = document.activeElement;
+    if (activeElement && container.contains(activeElement)) {
+        activeElement.blur();
+    }
+    
     container.innerHTML = '';
 }
 
