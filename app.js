@@ -6374,9 +6374,6 @@ function switchToFinancialYear(fyId) {
         updateDashboard();
     }
 }
-        updateDashboard();
-    }
-}
 
 function deleteFinancialYear(fyId) {
     const fy = AppState.financialYears.find(f => f.id === fyId);
