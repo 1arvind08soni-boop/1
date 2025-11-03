@@ -7403,6 +7403,11 @@ function createModal(title, content, size = '') {
     `;
 }
 
+// Helper function to find the first focusable element in a container
+function getFirstFocusableElement(container) {
+    return container.querySelector('input:not([readonly]):not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+}
+
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
@@ -7410,7 +7415,7 @@ function showModal(modalHTML) {
     // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
     requestAnimationFrame(() => {
         // Find the first focusable input field in the modal and focus it
-        const firstInput = container.querySelector('input:not([readonly]):not([type="hidden"]), textarea, select');
+        const firstInput = getFirstFocusableElement(container);
         if (firstInput) {
             firstInput.focus();
         }
@@ -7602,7 +7607,7 @@ function showInlineModal(modalHTML) {
         
         // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
         requestAnimationFrame(() => {
-            const firstInput = inlineContainer.querySelector('input:not([readonly]):not([type="hidden"]), textarea, select');
+            const firstInput = getFirstFocusableElement(inlineContainer);
             if (firstInput) {
                 firstInput.focus();
             }
@@ -7614,7 +7619,7 @@ function showInlineModal(modalHTML) {
         
         // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
         requestAnimationFrame(() => {
-            const firstInput = container.querySelector('input:not([readonly]):not([type="hidden"]), textarea, select');
+            const firstInput = getFirstFocusableElement(container);
             if (firstInput) {
                 firstInput.focus();
             }
@@ -7637,7 +7642,7 @@ function closeInlineModal() {
         requestAnimationFrame(() => {
             const parentModal = document.getElementById('modalContainer').querySelector('.modal');
             if (parentModal) {
-                const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                const firstInput = getFirstFocusableElement(parentModal);
                 if (firstInput) {
                     firstInput.focus();
                 }
