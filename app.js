@@ -4894,14 +4894,14 @@ function toggleGoodsReturnInvoice() {
             })
             .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
             .map(item => {
-                // Escape HTML to prevent XSS vulnerabilities
-                const escapeHtml = (str) => {
-                    const div = document.createElement('div');
-                    div.textContent = str;
-                    return div.innerHTML;
-                };
+                // Escape all dynamic content to prevent XSS vulnerabilities
+                const safeInvoiceId = escapeHtml(item.inv.id);
                 const safeInvoiceNo = escapeHtml(item.inv.invoiceNo);
-                return `<option value="${escapeHtml(item.inv.id)}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
+                const safeTotal = escapeHtml(item.inv.total);
+                const safeReturned = escapeHtml(item.returnedAmount);
+                const safeRemaining = escapeHtml(item.remainingAmount);
+                
+                return `<option value="${safeInvoiceId}" data-total="${safeTotal}" data-returned="${safeReturned}" data-remaining="${safeRemaining}">
                     ${safeInvoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
                 </option>`;
             })
@@ -7664,6 +7664,14 @@ function closeInlineModal() {
 // Utility Functions
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Helper function to escape HTML and prevent XSS attacks
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
 }
 
 function formatDate(dateString) {
