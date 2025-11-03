@@ -7430,10 +7430,7 @@ function showModal(modalHTML) {
 }
 
 function closeModal() {
-    const container = document.getElementById('modalContainer');
-    container.innerHTML = '';
-    
-    // Clean up any residual modal state
+    // Clean up any residual modal state (which includes clearing the container)
     cleanupModalState();
     
     // Restore focus to the previously focused element
@@ -7465,28 +7462,35 @@ function cleanupModalState() {
 function restoreFocus() {
     setTimeout(() => {
         try {
-            // First, try to restore to the previously focused element
-            if (window._lastFocusedElement && 
-                document.body.contains(window._lastFocusedElement) &&
-                window._lastFocusedElement !== document.body) {
-                window._lastFocusedElement.focus();
-                window._lastFocusedElement = null;
-                return;
-            }
+            // Check if there are any open modals (main or inline)
+            const hasOpenModals = document.getElementById('modalContainer').querySelector('.modal') || 
+                                  document.getElementById('inlineModalContainer');
             
-            // If no previous element, try to focus on the search input of the current screen
-            const activeScreen = document.querySelector('.content-screen.active');
-            if (activeScreen) {
-                const searchInput = activeScreen.querySelector(UI_CONSTANTS.SEARCH_INPUT_SELECTOR);
-                if (searchInput) {
-                    searchInput.focus();
+            // Only clear and restore focus if there are no modals open
+            if (!hasOpenModals) {
+                // First, try to restore to the previously focused element
+                if (window._lastFocusedElement && 
+                    document.body.contains(window._lastFocusedElement) &&
+                    window._lastFocusedElement !== document.body) {
+                    window._lastFocusedElement.focus();
+                    window._lastFocusedElement = null;
                     return;
                 }
                 
-                // Otherwise, focus on the first visible input field
-                const firstInput = activeScreen.querySelector('input:not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
-                if (firstInput) {
-                    firstInput.focus();
+                // If no previous element, try to focus on the search input of the current screen
+                const activeScreen = document.querySelector('.content-screen.active');
+                if (activeScreen) {
+                    const searchInput = activeScreen.querySelector(UI_CONSTANTS.SEARCH_INPUT_SELECTOR);
+                    if (searchInput) {
+                        searchInput.focus();
+                        return;
+                    }
+                    
+                    // Otherwise, focus on the first visible input field
+                    const firstInput = activeScreen.querySelector('input:not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                    if (firstInput) {
+                        firstInput.focus();
+                    }
                 }
             }
         } catch (e) {
