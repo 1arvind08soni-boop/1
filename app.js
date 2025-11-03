@@ -4577,11 +4577,16 @@ function showAddPaymentModal() {
 }
 
 function togglePaymentFields() {
-    const type = document.getElementById('paymentType').value;
+    const typeElement = document.getElementById('paymentType');
     const clientField = document.getElementById('clientField');
     const vendorField = document.getElementById('vendorField');
     
-    if (type === 'receipt') {
+    // Add null checks to prevent errors if elements don't exist
+    if (!typeElement || !clientField || !vendorField) {
+        return;
+    }
+    
+    if (typeElement.value === 'receipt') {
         clientField.style.display = 'block';
         vendorField.style.display = 'none';
     } else {
@@ -5756,20 +5761,28 @@ function showAccountLedger() {
 }
 
 function toggleAccountSelection() {
-    const accountType = document.getElementById('accountType').value;
+    const accountTypeElement = document.getElementById('accountType');
     const accountSelect = document.getElementById('accountSelect');
     
-    if (accountType === 'client') {
-        accountSelect.innerHTML = `
-            <option value="">-- Select Client --</option>
-            ${window.accountClientOptions}
-        `;
-    } else {
-        accountSelect.innerHTML = `
-            <option value="">-- Select Vendor --</option>
-            ${window.accountVendorOptions}
-        `;
+    // Add null checks to prevent errors if elements don't exist
+    if (!accountTypeElement || !accountSelect) {
+        return;
     }
+    
+    // Use requestAnimationFrame to defer DOM manipulation and prevent input disruption
+    requestAnimationFrame(() => {
+        if (accountTypeElement.value === 'client') {
+            accountSelect.innerHTML = `
+                <option value="">-- Select Client --</option>
+                ${window.accountClientOptions || ''}
+            `;
+        } else {
+            accountSelect.innerHTML = `
+                <option value="">-- Select Vendor --</option>
+                ${window.accountVendorOptions || ''}
+            `;
+        }
+    });
 }
 
 // Helper function to calculate opening balance for a period
