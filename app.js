@@ -27,11 +27,11 @@ const UI_MESSAGES = {
 };
 
 // Modal focus selector constant - includes all interactive form elements that can receive focus
-const FOCUSABLE_ELEMENTS_SELECTOR = `
-    input:not([readonly]):not([type="hidden"]):not([disabled]),
-    select:not([disabled]),
-    textarea:not([readonly]):not([disabled])
-`.replace(/\s+/g, ' ').trim();
+const FOCUSABLE_ELEMENTS_SELECTOR = [
+    'input:not([readonly]):not([type="hidden"]):not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([readonly]):not([disabled])'
+].join(', ');
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
@@ -7648,8 +7648,8 @@ function closeInlineModal() {
         
         // Restore focus to the parent modal if it exists
         requestAnimationFrame(() => {
-            const modalContainer = document.getElementById('modalContainer');
-            const parentModal = modalContainer.querySelector('.modal');
+            const parentModalContainer = document.getElementById('modalContainer');
+            const parentModal = parentModalContainer.querySelector('.modal');
             if (parentModal) {
                 const firstInput = getFirstFocusableElement(parentModal);
                 if (firstInput) {
