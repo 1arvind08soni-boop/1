@@ -27,7 +27,10 @@ const UI_MESSAGES = {
 };
 
 // Modal focus selector constant
-const FOCUSABLE_ELEMENTS_SELECTOR = 'input:not([readonly]):not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])';
+const FOCUSABLE_ELEMENTS_SELECTOR = 
+    'input:not([readonly]):not([type="hidden"]):not([disabled]), ' +
+    'select:not([disabled]), ' +
+    'textarea:not([readonly]):not([disabled])';
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
@@ -7632,7 +7635,6 @@ function showInlineModal(modalHTML) {
 
 function closeInlineModal() {
     const inlineContainer = document.getElementById('inlineModalContainer');
-    const modalContainer = document.getElementById('modalContainer');
     
     if (inlineContainer) {
         // Remove focus from any active element in the inline modal before closing
@@ -7645,6 +7647,7 @@ function closeInlineModal() {
         
         // Restore focus to the parent modal if it exists
         requestAnimationFrame(() => {
+            const modalContainer = document.getElementById('modalContainer');
             const parentModal = modalContainer.querySelector('.modal');
             if (parentModal) {
                 const firstInput = getFirstFocusableElement(parentModal);
@@ -7655,6 +7658,8 @@ function closeInlineModal() {
         });
     } else {
         // Fallback to regular close if no inline container
+        const modalContainer = document.getElementById('modalContainer');
+        
         // Remove focus from any active element in the modal before closing
         const activeElement = document.activeElement;
         if (activeElement && modalContainer.contains(activeElement)) {
