@@ -2,6 +2,7 @@
 const AppState = {
     currentCompany: null,
     currentFinancialYear: null,
+    financialYears: [],
     companies: [],
     products: [],
     clients: [],
@@ -63,7 +64,18 @@ function loadCompanyData() {
         AppState.purchases = data.purchases || [];
         AppState.payments = data.payments || [];
         AppState.deletedInvoices = data.deletedInvoices || [];
-        AppState.currentFinancialYear = data.currentFinancialYear || getCurrentFinancialYear();
+        AppState.financialYears = data.financialYears || [];
+        
+        // Initialize financial years if empty
+        if (AppState.financialYears.length === 0) {
+            const currentFY = createDefaultFinancialYear();
+            AppState.financialYears = [currentFY];
+            AppState.currentFinancialYear = currentFY;
+        } else {
+            // Find current financial year or use the latest one
+            const currentFY = AppState.financialYears.find(fy => fy.isCurrent);
+            AppState.currentFinancialYear = currentFY || AppState.financialYears[AppState.financialYears.length - 1];
+        }
     } else {
         AppState.products = [];
         AppState.clients = [];
@@ -72,7 +84,9 @@ function loadCompanyData() {
         AppState.purchases = [];
         AppState.payments = [];
         AppState.deletedInvoices = [];
-        AppState.currentFinancialYear = getCurrentFinancialYear();
+        const currentFY = createDefaultFinancialYear();
+        AppState.financialYears = [currentFY];
+        AppState.currentFinancialYear = currentFY;
     }
 }
 
@@ -88,6 +102,7 @@ function saveCompanyData() {
         purchases: AppState.purchases,
         payments: AppState.payments,
         deletedInvoices: AppState.deletedInvoices,
+        financialYears: AppState.financialYears,
         currentFinancialYear: AppState.currentFinancialYear
     };
     localStorage.setItem(companyKey, JSON.stringify(data));
@@ -103,6 +118,30 @@ function getCurrentFinancialYear() {
     } else {
         return `${year - 1}-${year}`;
     }
+}
+
+function createDefaultFinancialYear() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    let startYear, endYear;
+    if (month >= 3) { // April onwards
+        startYear = year;
+        endYear = year + 1;
+    } else {
+        startYear = year - 1;
+        endYear = year;
+    }
+    
+    return {
+        id: generateId(),
+        name: `${startYear}-${endYear}`,
+        startDate: `${startYear}-04-01`,
+        endDate: `${endYear}-03-31`,
+        isCurrent: true,
+        createdAt: new Date().toISOString()
+    };
 }
 
 // Initialize App
@@ -435,6 +474,11 @@ function showAddProductModal() {
                 </div>
             </div>
             <div class="form-group">
+                <label>Opening Stock (Units)</label>
+                <input type="number" class="form-control" name="openingStock" step="1" min="0" value="0">
+                <small style="color: #666;">Opening stock quantity for the current financial year</small>
+            </div>
+            <div class="form-group">
                 <label>Description</label>
                 <textarea class="form-control" name="description" rows="3"></textarea>
             </div>
@@ -519,6 +563,7 @@ function addProduct(event) {
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
+        openingStock: parseFloat(formData.get('openingStock')) || 0,
         clientPrices: clientPrices,
         description: formData.get('description'),
         createdAt: new Date().toISOString()
@@ -700,6 +745,11 @@ function editProduct(productId) {
                 </div>
             </div>
             <div class="form-group">
+                <label>Opening Stock (Units)</label>
+                <input type="number" class="form-control" name="openingStock" step="1" min="0" value="${product.openingStock || 0}">
+                <small style="color: #666;">Opening stock quantity for the current financial year</small>
+            </div>
+            <div class="form-group">
                 <label>Description</label>
                 <textarea class="form-control" name="description" rows="3">${product.description || ''}</textarea>
             </div>
@@ -790,6 +840,7 @@ function updateProduct(event, productId) {
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
+        openingStock: parseFloat(formData.get('openingStock')) || 0,
         clientPrices: clientPrices,
         description: formData.get('description'),
         updatedAt: new Date().toISOString()
@@ -6142,23 +6193,336 @@ function updateCompanySettings(event) {
 }
 
 function showFinancialYearSettings() {
-    const modal = createModal('Financial Year Settings', `
-        <div class="form-group">
-            <label>Current Financial Year</label>
-            <input type="text" class="form-control" value="${AppState.currentFinancialYear}" readonly>
+    const fyList = AppState.financialYears
+        .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+        .map(fy => `
+            <div class="fy-item" style="border: 1px solid #ddd; padding: 1rem; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; background: ${fy.isCurrent ? '#e8f4f8' : '#fff'};">
+                <div>
+                    <strong>${fy.name}</strong> ${fy.isCurrent ? '<span style="color: #28a745;">(Current)</span>' : ''}
+                    <div style="font-size: 0.9rem; color: #666;">
+                        ${formatDate(fy.startDate)} to ${formatDate(fy.endDate)}
+                        ${fy.closedDate ? `<br><em>Closed on: ${formatDate(fy.closedDate)}</em>` : ''}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    ${!fy.isCurrent ? `<button class="btn btn-sm btn-primary" onclick="switchToFinancialYear('${fy.id}')">Switch</button>` : ''}
+                    ${!fy.isCurrent && !fy.closedDate ? `<button class="btn btn-sm btn-danger" onclick="deleteFinancialYear('${fy.id}')">Delete</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+
+    const modal = createModal('Financial Year Management', `
+        <div style="max-height: 60vh; overflow-y: auto;">
+            <h4>Financial Years</h4>
+            <div style="margin-bottom: 1rem;">
+                ${fyList || '<p>No financial years found</p>'}
+            </div>
+            
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #ddd;">
+                <h4>Actions</h4>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="showCreateFinancialYearModal()">
+                        <i class="fas fa-plus"></i> Create New Financial Year
+                    </button>
+                    <button class="btn btn-secondary" onclick="showEditFinancialYearDatesModal()">
+                        <i class="fas fa-edit"></i> Edit Current FY Dates
+                    </button>
+                    <button class="btn btn-warning" onclick="showYearEndProcessModal()">
+                        <i class="fas fa-calendar-check"></i> Year-End Process
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Select Financial Year</label>
-            <select class="form-control" id="fySelect">
-                <option value="${AppState.currentFinancialYear}">${AppState.currentFinancialYear} (Current)</option>
-            </select>
-        </div>
-        <p><em>Note: Data is automatically segregated by financial year. Current year: ${AppState.currentFinancialYear}</em></p>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
         </div>
     `);
     showModal(modal);
+}
+
+function showCreateFinancialYearModal() {
+    closeModal();
+    const modal = createModal('Create New Financial Year', `
+        <form id="createFYForm" onsubmit="createFinancialYear(event)">
+            <div class="form-group">
+                <label>Financial Year Name *</label>
+                <input type="text" class="form-control" name="name" placeholder="e.g., 2024-2025" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Start Date *</label>
+                    <input type="date" class="form-control" name="startDate" required>
+                </div>
+                <div class="form-group">
+                    <label>End Date *</label>
+                    <input type="date" class="form-control" name="endDate" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="makeCurrent">
+                    Make this the current financial year
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="showFinancialYearSettings()">Back</button>
+                <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+        </form>
+    `);
+    showModal(modal);
+}
+
+function createFinancialYear(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const newFY = {
+        id: generateId(),
+        name: formData.get('name'),
+        startDate: formData.get('startDate'),
+        endDate: formData.get('endDate'),
+        isCurrent: formData.get('makeCurrent') === 'on',
+        createdAt: new Date().toISOString()
+    };
+    
+    // If making this current, unmark all others
+    if (newFY.isCurrent) {
+        AppState.financialYears.forEach(fy => fy.isCurrent = false);
+        AppState.currentFinancialYear = newFY;
+    }
+    
+    AppState.financialYears.push(newFY);
+    saveCompanyData();
+    showFinancialYearSettings();
+}
+
+function showEditFinancialYearDatesModal() {
+    closeModal();
+    const currentFY = AppState.currentFinancialYear;
+    
+    const modal = createModal('Edit Financial Year Dates', `
+        <form id="editFYDatesForm" onsubmit="updateFinancialYearDates(event)">
+            <div class="form-group">
+                <label>Financial Year</label>
+                <input type="text" class="form-control" value="${currentFY.name}" readonly>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Start Date *</label>
+                    <input type="date" class="form-control" name="startDate" value="${currentFY.startDate}" required>
+                </div>
+                <div class="form-group">
+                    <label>End Date *</label>
+                    <input type="date" class="form-control" name="endDate" value="${currentFY.endDate}" required>
+                </div>
+            </div>
+            <p style="color: #666; font-size: 0.9rem;">
+                <i class="fas fa-info-circle"></i> Note: Changing dates will affect transaction filtering
+            </p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="showFinancialYearSettings()">Back</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    `);
+    showModal(modal);
+}
+
+function updateFinancialYearDates(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const fyIndex = AppState.financialYears.findIndex(fy => fy.id === AppState.currentFinancialYear.id);
+    if (fyIndex !== -1) {
+        AppState.financialYears[fyIndex].startDate = formData.get('startDate');
+        AppState.financialYears[fyIndex].endDate = formData.get('endDate');
+        AppState.currentFinancialYear = AppState.financialYears[fyIndex];
+        saveCompanyData();
+    }
+    
+    showFinancialYearSettings();
+}
+
+function switchToFinancialYear(fyId) {
+    const fy = AppState.financialYears.find(f => f.id === fyId);
+    if (!fy) return;
+    
+    // Unmark all as current
+    AppState.financialYears.forEach(f => f.isCurrent = false);
+    
+    // Mark selected as current
+    fy.isCurrent = true;
+    AppState.currentFinancialYear = fy;
+    
+    saveCompanyData();
+    showFinancialYearSettings();
+    
+    // Refresh dashboard if visible
+    if (document.getElementById('dashboardScreen').classList.contains('active')) {
+        updateDashboard();
+    }
+}
+
+function deleteFinancialYear(fyId) {
+    const fy = AppState.financialYears.find(f => f.id === fyId);
+    if (!fy) return;
+    
+    if (!confirm(`Are you sure you want to delete financial year "${fy.name}"? This will delete all transactions within this period.`)) {
+        return;
+    }
+    
+    // Delete all transactions in this FY period
+    const startDate = new Date(fy.startDate);
+    const endDate = new Date(fy.endDate);
+    
+    AppState.invoices = AppState.invoices.filter(inv => {
+        const invDate = new Date(inv.date);
+        return invDate < startDate || invDate > endDate;
+    });
+    
+    AppState.purchases = AppState.purchases.filter(pur => {
+        const purDate = new Date(pur.date);
+        return purDate < startDate || purDate > endDate;
+    });
+    
+    AppState.payments = AppState.payments.filter(pay => {
+        const payDate = new Date(pay.date);
+        return payDate < startDate || payDate > endDate;
+    });
+    
+    // Remove the FY
+    AppState.financialYears = AppState.financialYears.filter(f => f.id !== fyId);
+    
+    saveCompanyData();
+    showFinancialYearSettings();
+}
+
+function showYearEndProcessModal() {
+    closeModal();
+    
+    const currentFY = AppState.currentFinancialYear;
+    if (currentFY.closedDate) {
+        alert('This financial year is already closed.');
+        showFinancialYearSettings();
+        return;
+    }
+    
+    // Calculate closing balances
+    const clientBalances = AppState.clients.map(client => ({
+        client,
+        balance: calculateClientBalance(client.id)
+    }));
+    
+    const vendorBalances = AppState.vendors.map(vendor => ({
+        vendor,
+        balance: calculateVendorBalance(vendor.id)
+    }));
+    
+    const modal = createModal('Year-End Process', `
+        <div style="max-height: 60vh; overflow-y: auto;">
+            <p>This will close the current financial year (${currentFY.name}) and create a new one.</p>
+            
+            <h4>Summary</h4>
+            <ul>
+                <li>Current FY will be marked as closed</li>
+                <li>Client and vendor balances will be carried forward</li>
+                <li>Product data will be retained</li>
+                <li>A new financial year will be created</li>
+            </ul>
+            
+            <h4>Closing Balances</h4>
+            <div style="margin-bottom: 1rem;">
+                <strong>Clients:</strong>
+                <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-top: 0.5rem;">
+                    ${clientBalances.map(cb => `
+                        <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;">
+                            <span>${cb.client.name}</span>
+                            <span style="font-weight: bold;">₹${cb.balance.toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <strong>Vendors:</strong>
+                <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-top: 0.5rem;">
+                    ${vendorBalances.map(vb => `
+                        <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;">
+                            <span>${vb.vendor.name}</span>
+                            <span style="font-weight: bold;">₹${vb.balance.toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <form id="yearEndForm" onsubmit="processYearEnd(event)">
+                <div class="form-group">
+                    <label>New Financial Year Name *</label>
+                    <input type="text" class="form-control" name="newFYName" placeholder="e.g., 2025-2026" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>New FY Start Date *</label>
+                        <input type="date" class="form-control" name="newStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>New FY End Date *</label>
+                        <input type="date" class="form-control" name="newEndDate" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="showFinancialYearSettings()">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Process Year-End</button>
+                </div>
+            </form>
+        </div>
+    `);
+    showModal(modal);
+}
+
+function processYearEnd(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Close current FY
+    const currentFY = AppState.currentFinancialYear;
+    const fyIndex = AppState.financialYears.findIndex(fy => fy.id === currentFY.id);
+    if (fyIndex !== -1) {
+        AppState.financialYears[fyIndex].closedDate = new Date().toISOString();
+        AppState.financialYears[fyIndex].isCurrent = false;
+    }
+    
+    // Update opening balances for all clients and vendors
+    AppState.clients.forEach(client => {
+        client.openingBalance = calculateClientBalance(client.id);
+    });
+    
+    AppState.vendors.forEach(vendor => {
+        vendor.openingBalance = calculateVendorBalance(vendor.id);
+    });
+    
+    // Create new FY
+    const newFY = {
+        id: generateId(),
+        name: formData.get('newFYName'),
+        startDate: formData.get('newStartDate'),
+        endDate: formData.get('newEndDate'),
+        isCurrent: true,
+        createdAt: new Date().toISOString()
+    };
+    
+    AppState.financialYears.push(newFY);
+    AppState.currentFinancialYear = newFY;
+    
+    saveCompanyData();
+    closeModal();
+    
+    alert('Year-end process completed successfully! New financial year has been created.');
+    showFinancialYearSettings();
 }
 
 function showTemplateSettings() {
