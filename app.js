@@ -4729,6 +4729,12 @@ function loadGoodsReturns() {
     const tbody = document.getElementById('goodsReturnTableBody');
     if (!tbody) return;
     
+    // Validate goodsReturns array exists
+    if (!AppState.goodsReturns || !Array.isArray(AppState.goodsReturns)) {
+        tbody.innerHTML = '';
+        return;
+    }
+    
     tbody.innerHTML = AppState.goodsReturns.map(gr => {
         const client = AppState.clients.find(c => c.id === gr.clientId);
         const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
@@ -4851,22 +4857,32 @@ function toggleGoodsReturnInvoice() {
         invoiceGroup.style.display = 'block';
         invoiceSelect.required = true;
         
-        // Get all invoices for the selected client that don't already have full returns
+        // Get all invoices for the selected client that have remaining amount
         const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
         
         invoiceSelect.innerHTML = '<option value="">-- Select Invoice --</option>' + 
-            clientInvoices.map(inv => {
-                // Calculate already returned amount for this invoice
-                const returnedAmount = AppState.goodsReturns
-                    .filter(gr => gr.invoiceId === inv.id)
-                    .reduce((sum, gr) => sum + gr.amount, 0);
-                
-                const remainingAmount = inv.total - returnedAmount;
-                
-                return `<option value="${inv.id}" data-total="${inv.total}" data-returned="${returnedAmount}" data-remaining="${remainingAmount}">
-                    ${inv.invoiceNo} - ₹${inv.total.toFixed(2)} (Remaining: ₹${remainingAmount.toFixed(2)})
-                </option>`;
-            }).join('');
+            clientInvoices
+                .map(inv => {
+                    // Calculate already returned amount for this invoice
+                    const returnedAmount = AppState.goodsReturns
+                        .filter(gr => gr.invoiceId === inv.id)
+                        .reduce((sum, gr) => sum + gr.amount, 0);
+                    
+                    const remainingAmount = inv.total - returnedAmount;
+                    
+                    return {
+                        inv,
+                        returnedAmount,
+                        remainingAmount
+                    };
+                })
+                .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
+                .map(item => {
+                    return `<option value="${item.inv.id}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
+                        ${item.inv.invoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
+                    </option>`;
+                })
+                .join('');
     } else {
         invoiceGroup.style.display = 'none';
         invoiceSelect.required = false;
@@ -5225,7 +5241,13 @@ function generateSalesLedger() {
     `;
     
     if (invoices.length > 0 || standaloneGoodsReturns.length > 0) {
-        // Show LESS category first if there are any LESS invoices
+        // Create client lookup map for better performance
+        const clientMap = {};
+        AppState.clients.forEach(c => {
+            clientMap[c.id] = c;
+        });
+        
+        // Show LESS category first if there are any LESS invoices or standalone returns
         if (lessInvoices.length > 0 || standaloneGoodsReturns.length > 0) {
             reportHTML += `
                 <h4 style="margin-top: 20px; color: #d9534f;">LESS/Discount Category Invoices</h4>
@@ -5240,7 +5262,7 @@ function generateSalesLedger() {
                     </thead>
                     <tbody>
                         ${lessInvoices.map(inv => {
-                            const client = AppState.clients.find(c => c.id === inv.clientId);
+                            const client = clientMap[inv.clientId];
                             return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
@@ -5251,7 +5273,7 @@ function generateSalesLedger() {
                             `;
                         }).join('')}
                         ${standaloneGoodsReturns.map(gr => {
-                            const client = AppState.clients.find(c => c.id === gr.clientId);
+                            const client = clientMap[gr.clientId];
                             return `
                                 <tr style="color: #d9534f;">
                                     <td>${formatDate(gr.date)}</td>
@@ -5307,7 +5329,7 @@ function generateSalesLedger() {
                     </thead>
                     <tbody>
                         ${netInvoices.map(inv => {
-                            const client = AppState.clients.find(c => c.id === inv.clientId);
+                            const client = clientMap[inv.clientId];
                             return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
