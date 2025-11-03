@@ -4293,14 +4293,14 @@ function getNextGRNumber() {
 }
 
 function showAddGoodsReturnModal() {
-    const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    const clientOptions = AppState.clients.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
     
     const modal = createModal('New Goods Return', `
         <form id="addGoodsReturnForm" onsubmit="addGoodsReturn(event)">
             <div class="form-row">
                 <div class="form-group">
                     <label>GR Number *</label>
-                    <input type="text" class="form-control" name="grNo" value="${getNextGRNumber()}" required>
+                    <input type="text" class="form-control" name="grNo" value="${escapeHtml(getNextGRNumber())}" required>
                 </div>
                 <div class="form-group">
                     <label>Date *</label>
@@ -4353,7 +4353,7 @@ function loadClientInvoices() {
     
     let options = '<option value="">-- No Invoice (Standalone Entry) --</option>';
     clientInvoices.forEach(inv => {
-        options += `<option value="${inv.id}">${inv.invoiceNo} - ₹${inv.total.toFixed(2)} (${formatDate(inv.date)})</option>`;
+        options += `<option value="${escapeHtml(inv.id)}">${escapeHtml(inv.invoiceNo)} - ₹${inv.total.toFixed(2)} (${formatDate(inv.date)})</option>`;
     });
     
     invoiceSelect.innerHTML = options;
@@ -4433,14 +4433,14 @@ function viewGoodsReturn(grId) {
     let invoiceInfo = 'N/A (Standalone Entry)';
     if (gr.invoiceId) {
         const invoice = AppState.invoices.find(inv => inv.id === gr.invoiceId);
-        invoiceInfo = invoice ? `${invoice.invoiceNo} - ₹${invoice.total.toFixed(2)}` : 'Deleted Invoice';
+        invoiceInfo = invoice ? `${escapeHtml(invoice.invoiceNo)} - ₹${invoice.total.toFixed(2)}` : 'Deleted Invoice';
     }
     
     const modal = createModal('Goods Return Details', `
         <div class="details-view">
             <div class="detail-row">
                 <span class="detail-label">GR Number:</span>
-                <span class="detail-value">${gr.grNo}</span>
+                <span class="detail-value">${escapeHtml(gr.grNo)}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Date:</span>
@@ -4448,7 +4448,7 @@ function viewGoodsReturn(grId) {
             </div>
             <div class="detail-row">
                 <span class="detail-label">Client:</span>
-                <span class="detail-value">${clientName}</span>
+                <span class="detail-value">${escapeHtml(clientName)}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Linked Invoice:</span>
@@ -4460,7 +4460,7 @@ function viewGoodsReturn(grId) {
             </div>
             <div class="detail-row">
                 <span class="detail-label">Reason:</span>
-                <span class="detail-value">${gr.reason || 'N/A'}</span>
+                <span class="detail-value">${escapeHtml(gr.reason) || 'N/A'}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Created:</span>
@@ -5120,8 +5120,8 @@ function generateSalesLedger() {
                             return `
                                 <tr>
                                     <td>${formatDate(gr.date)}</td>
-                                    <td>${gr.grNo}</td>
-                                    ${!clientId ? `<td>${client ? client.name : 'N/A'}</td>` : ''}
+                                    <td>${escapeHtml(gr.grNo)}</td>
+                                    ${!clientId ? `<td>${escapeHtml(client ? client.name : 'N/A')}</td>` : ''}
                                     <td style="color: #d9534f;">-₹${gr.amount.toFixed(2)}</td>
                                 </tr>
                             `;
@@ -5682,7 +5682,7 @@ function generateAccountLedger() {
                 date: gr.date,
                 type: 'Goods Return',
                 reference: gr.grNo,
-                description: gr.reason || 'Goods Return (Standalone)',
+                description: escapeHtml(gr.reason) || 'Goods Return (Standalone)',
                 debit: 0,
                 credit: gr.amount
             });
@@ -7057,6 +7057,18 @@ function closeInlineModal() {
 // Utility Functions
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
 }
 
 function formatDate(dateString) {
