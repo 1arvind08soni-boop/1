@@ -5,14 +5,30 @@ A comprehensive desktop application for Windows that helps manage billing, invoi
 ## Features
 
 - **Multi-Company Support**: Manage multiple companies with separate data
-- **Product Management**: Track products with categories, pricing, and client-specific pricing
-- **Client & Vendor Management**: Maintain client and vendor databases with ledgers
+- **Financial Year Management**: Track multiple financial years, carry forward balances, and maintain historical data
+- **Product Management**: Track products with categories, pricing, opening stock, and client-specific pricing
+- **Client & Vendor Management**: Maintain client and vendor databases with ledgers and opening balances
 - **Sales Invoicing**: Create and manage sales invoices with detailed line items
 - **Purchase Management**: Track purchases from vendors
 - **Payment Tracking**: Record receipts and payments
 - **Reports & Ledgers**: Generate sales, purchase, payment, and account ledgers
+- **Year-End Process**: Automated closing of financial years with balance carry forward
 - **Data Export**: Export data to CSV/Excel format
-- **Backup & Restore**: Backup and restore company data
+- **Backup & Restore**: Backup and restore company data with full financial year support
+
+## New: Financial Year Management
+
+The application now supports comprehensive financial year management:
+
+- **Create Multiple Financial Years**: Define custom start and end dates for each financial year
+- **Year-End Processing**: Automated closing with balance carry forward for clients and vendors
+- **Historical Data**: View and manage data from previous financial years
+- **Opening Balances**: Track opening balances for clients, vendors, and product stock
+- **Data Segregation**: Transactions automatically filtered by financial year dates
+- **Compliance Ready**: Maintain historical records for auditing and compliance
+
+📖 **Documentation**: See [Financial Year Management Guide](FINANCIAL-YEAR-MANAGEMENT.md) for detailed information
+📖 **Quick Guide**: See [Financial Year User Guide](FINANCIAL-YEAR-USER-GUIDE.md) for step-by-step instructions
 
 ## Windows Installation
 
