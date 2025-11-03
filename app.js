@@ -653,6 +653,7 @@ function addInlineProduct(event) {
     }
     
     closeInlineModal();
+    showSuccess(`Product "${product.name}" created successfully!`);
 }
 
 
@@ -1330,6 +1331,7 @@ function addInlineClient(event) {
     }
     
     closeInlineModal();
+    showSuccess(`Client "${client.name}" created successfully!`);
 }
 
 
@@ -6580,6 +6582,16 @@ function closeInlineModal() {
     const inlineContainer = document.getElementById('inlineModalContainer');
     if (inlineContainer) {
         inlineContainer.remove();
+        // Restore focus to the parent modal if it exists
+        setTimeout(() => {
+            const parentModal = document.getElementById('modalContainer').querySelector('.modal');
+            if (parentModal) {
+                const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            }
+        }, 100);
     } else {
         // Fallback to regular close if no inline container
         const container = document.getElementById('modalContainer');
