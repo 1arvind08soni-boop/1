@@ -5197,8 +5197,20 @@ function generateSalesLedger() {
         goodsReturns = goodsReturns.filter(gr => gr.date <= toDate);
     }
     
-    // Filter out goods returns that are invoice-based (to prevent double deduction)
+    // Separate standalone and invoice-based returns
     const standaloneGoodsReturns = goodsReturns.filter(gr => gr.type === 'without_invoice');
+    const invoiceBasedReturns = goodsReturns.filter(gr => gr.type === 'with_invoice');
+    
+    // Create a map of invoice returns for quick lookup
+    const invoiceReturnsMap = {};
+    invoiceBasedReturns.forEach(gr => {
+        if (gr.invoiceId) {
+            if (!invoiceReturnsMap[gr.invoiceId]) {
+                invoiceReturnsMap[gr.invoiceId] = 0;
+            }
+            invoiceReturnsMap[gr.invoiceId] += gr.amount;
+        }
+    });
     
     // Format date range
     const dateRangeText = (fromDate && toDate) ? `${formatDate(fromDate)} to ${formatDate(toDate)}` : `${fromDate || 'Start'} to ${toDate || 'End'}`;
@@ -5220,17 +5232,27 @@ function generateSalesLedger() {
     // Note: Discount is only applied when a specific client is selected.
     // When "All Clients" view is used, no discount is applied since different
     // clients may have different discount percentages.
-    const lessSubtotal = lessInvoices.reduce((sum, inv) => sum + inv.total, 0);
     
-    // Calculate goods returns total (only standalone returns, as invoice-based returns
-    // are already deducted from invoice amounts in the account ledger)
+    // Calculate LESS subtotal with invoice-based returns deducted
+    const lessSubtotal = lessInvoices.reduce((sum, inv) => {
+        const returnAmount = invoiceReturnsMap[inv.id] || 0;
+        return sum + (inv.total - returnAmount);
+    }, 0);
+    
+    // Calculate goods returns total (only standalone returns)
     const goodsReturnsTotal = standaloneGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
     
     // Deduct goods returns BEFORE discount
     const lessAfterReturns = lessSubtotal - goodsReturnsTotal;
     const lessDiscount = clientId ? (lessAfterReturns * discountPercentage / 100) : 0;
     const lessTotal = lessAfterReturns - lessDiscount;
-    const netTotal = netInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    
+    // Calculate NET total with invoice-based returns deducted
+    const netTotal = netInvoices.reduce((sum, inv) => {
+        const returnAmount = invoiceReturnsMap[inv.id] || 0;
+        return sum + (inv.total - returnAmount);
+    }, 0);
+    
     const grandTotal = lessTotal + netTotal;
     
     let reportHTML = `
@@ -5263,12 +5285,15 @@ function generateSalesLedger() {
                     <tbody>
                         ${lessInvoices.map(inv => {
                             const client = clientMap[inv.clientId];
+                            const returnAmount = invoiceReturnsMap[inv.id] || 0;
+                            const netAmount = inv.total - returnAmount;
+                            
                             return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
-                                    <td>${inv.invoiceNo}</td>
+                                    <td>${inv.invoiceNo}${returnAmount > 0 ? ` (Net after ₹${returnAmount.toFixed(2)} return)` : ''}</td>
                                     ${!clientId ? `<td>${client ? client.name : 'N/A'}</td>` : ''}
-                                    <td>₹${inv.total.toFixed(2)}</td>
+                                    <td>₹${netAmount.toFixed(2)}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -5330,12 +5355,15 @@ function generateSalesLedger() {
                     <tbody>
                         ${netInvoices.map(inv => {
                             const client = clientMap[inv.clientId];
+                            const returnAmount = invoiceReturnsMap[inv.id] || 0;
+                            const netAmount = inv.total - returnAmount;
+                            
                             return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
-                                    <td>${inv.invoiceNo}</td>
+                                    <td>${inv.invoiceNo}${returnAmount > 0 ? ` (Net after ₹${returnAmount.toFixed(2)} return)` : ''}</td>
                                     ${!clientId ? `<td>${client ? client.name : 'N/A'}</td>` : ''}
-                                    <td>₹${inv.total.toFixed(2)}</td>
+                                    <td>₹${netAmount.toFixed(2)}</td>
                                 </tr>
                             `;
                         }).join('')}
