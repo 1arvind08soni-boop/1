@@ -7428,6 +7428,9 @@ function createModal(title, content, size = '') {
 }
 
 function showModal(modalHTML) {
+    // Clean up any existing modals first to prevent stacking
+    cleanupModalState();
+    
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
     
