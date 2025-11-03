@@ -5153,6 +5153,17 @@ function generateSalesLedger() {
     const lessInvoices = invoices.filter(inv => inv.category === 'LESS');
     const netInvoices = invoices.filter(inv => !inv.category || inv.category === 'NET');
     
+    // Pre-compute invoice returns map for performance
+    const invoiceReturnsMap = new Map();
+    AppState.goodsReturns.forEach(gr => {
+        if (gr.invoiceId) {
+            if (!invoiceReturnsMap.has(gr.invoiceId)) {
+                invoiceReturnsMap.set(gr.invoiceId, 0);
+            }
+            invoiceReturnsMap.set(gr.invoiceId, invoiceReturnsMap.get(gr.invoiceId) + gr.amount);
+        }
+    });
+    
     // Get goods returns for the same filters (only those without specific invoice)
     let goodsReturns = AppState.goodsReturns.filter(gr => !gr.invoiceId);
     
@@ -5170,14 +5181,20 @@ function generateSalesLedger() {
     
     const totalGoodsReturns = goodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
     
-    // Calculate totals
+    // Calculate totals with net amounts (after invoice-linked returns)
     // Note: Discount is only applied when a specific client is selected.
     // When "All Clients" view is used, no discount is applied since different
     // clients may have different discount percentages.
-    const lessSubtotal = lessInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    const lessSubtotal = lessInvoices.reduce((sum, inv) => {
+        const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
+        return sum + (inv.total - invoiceReturns);
+    }, 0);
     const lessDiscount = clientId ? (lessSubtotal * discountPercentage / 100) : 0;
     const lessTotal = lessSubtotal - lessDiscount;
-    const netTotal = netInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    const netTotal = netInvoices.reduce((sum, inv) => {
+        const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
+        return sum + (inv.total - invoiceReturns);
+    }, 0);
     const grandTotal = lessTotal + netTotal - totalGoodsReturns;
     
     let reportHTML = `
@@ -5204,12 +5221,17 @@ function generateSalesLedger() {
                     <tbody>
                         ${lessInvoices.map(inv => {
                             const client = AppState.clients.find(c => c.id === inv.clientId);
+                            const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
+                            const netAmount = inv.total - invoiceReturns;
+                            const amountDisplay = invoiceReturns > 0 
+                                ? `<span style="text-decoration: line-through; color: #999;">₹${inv.total.toFixed(2)}</span> <span style="color: #5cb85c;">₹${netAmount.toFixed(2)}</span>`
+                                : `₹${inv.total.toFixed(2)}`;
                             return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
                                     <td>${inv.invoiceNo}</td>
                                     ${!clientId ? `<td>${client ? client.name : 'N/A'}</td>` : ''}
-                                    <td>₹${inv.total.toFixed(2)}</td>
+                                    <td>${amountDisplay}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -5250,12 +5272,17 @@ function generateSalesLedger() {
                     <tbody>
                         ${netInvoices.map(inv => {
                             const client = AppState.clients.find(c => c.id === inv.clientId);
+                            const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
+                            const netAmount = inv.total - invoiceReturns;
+                            const amountDisplay = invoiceReturns > 0 
+                                ? `<span style="text-decoration: line-through; color: #999;">₹${inv.total.toFixed(2)}</span> <span style="color: #5cb85c;">₹${netAmount.toFixed(2)}</span>`
+                                : `₹${inv.total.toFixed(2)}`;
                             return `
                                 <tr>
                                     <td>${formatDate(inv.date)}</td>
                                     <td>${inv.invoiceNo}</td>
                                     ${!clientId ? `<td>${client ? client.name : 'N/A'}</td>` : ''}
-                                    <td>₹${inv.total.toFixed(2)}</td>
+                                    <td>${amountDisplay}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -5693,7 +5720,22 @@ function calculateOpeningBalanceForPeriod(accountType, accountId, beforeDate) {
         const invoices = AppState.invoices.filter(inv => 
             inv.clientId === accountId && inv.date < beforeDate
         );
-        balance += invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+        
+        // Pre-compute invoice returns for net amounts
+        const invoiceReturnsMap = new Map();
+        AppState.goodsReturns.forEach(gr => {
+            if (gr.invoiceId && gr.clientId === accountId) {
+                if (!invoiceReturnsMap.has(gr.invoiceId)) {
+                    invoiceReturnsMap.set(gr.invoiceId, 0);
+                }
+                invoiceReturnsMap.set(gr.invoiceId, invoiceReturnsMap.get(gr.invoiceId) + gr.amount);
+            }
+        });
+        
+        balance += invoices.reduce((sum, inv) => {
+            const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
+            return sum + (inv.total - invoiceReturns);
+        }, 0);
         
         // Subtract all receipts before the period
         const payments = AppState.payments.filter(pay => 
@@ -5778,13 +5820,26 @@ function generateAccountLedger() {
             goodsReturns = goodsReturns.filter(gr => gr.date <= toDate);
         }
         
+        // Pre-compute invoice returns for net amounts
+        const invoiceReturnsMap = new Map();
+        AppState.goodsReturns.forEach(gr => {
+            if (gr.invoiceId && gr.clientId === id) {
+                if (!invoiceReturnsMap.has(gr.invoiceId)) {
+                    invoiceReturnsMap.set(gr.invoiceId, 0);
+                }
+                invoiceReturnsMap.set(gr.invoiceId, invoiceReturnsMap.get(gr.invoiceId) + gr.amount);
+            }
+        });
+        
         invoices.forEach(inv => {
+            const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
+            const netAmount = inv.total - invoiceReturns;
             transactions.push({
                 date: inv.date,
                 type: 'Invoice',
                 reference: inv.invoiceNo,
-                description: inv.description || 'Sales Invoice',
-                debit: inv.total,
+                description: invoiceReturns > 0 ? `Sales Invoice (Net after ₹${invoiceReturns.toFixed(2)} return)` : (inv.description || 'Sales Invoice'),
+                debit: netAmount,
                 credit: 0
             });
         });
@@ -6970,7 +7025,12 @@ function createModal(title, content, size = '') {
 
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
-    container.innerHTML = modalHTML;
+    // Clear any existing content first to ensure clean state
+    container.innerHTML = '';
+    // Use a small delay to ensure the DOM is cleared before adding new content
+    setTimeout(() => {
+        container.innerHTML = modalHTML;
+    }, 10);
 }
 
 function closeModal() {
