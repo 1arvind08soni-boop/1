@@ -4876,31 +4876,40 @@ function toggleGoodsReturnInvoice() {
         // Get all invoices for the selected client that have remaining amount
         const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId.value);
         
+        // Pre-calculate filtered invoices to avoid computational overhead in requestAnimationFrame
+        const invoiceOptions = clientInvoices
+            .map(inv => {
+                // Calculate already returned amount for this invoice
+                const returnedAmount = AppState.goodsReturns
+                    .filter(gr => gr.invoiceId === inv.id)
+                    .reduce((sum, gr) => sum + gr.amount, 0);
+                
+                const remainingAmount = inv.total - returnedAmount;
+                
+                return {
+                    inv,
+                    returnedAmount,
+                    remainingAmount
+                };
+            })
+            .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
+            .map(item => {
+                // Escape HTML to prevent XSS vulnerabilities
+                const escapeHtml = (str) => {
+                    const div = document.createElement('div');
+                    div.textContent = str;
+                    return div.innerHTML;
+                };
+                const safeInvoiceNo = escapeHtml(item.inv.invoiceNo);
+                return `<option value="${escapeHtml(item.inv.id)}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
+                    ${safeInvoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
+                </option>`;
+            })
+            .join('');
+        
         // Use requestAnimationFrame to defer DOM manipulation and prevent input disruption
         requestAnimationFrame(() => {
-            invoiceSelect.innerHTML = '<option value="">-- Select Invoice --</option>' + 
-                clientInvoices
-                    .map(inv => {
-                        // Calculate already returned amount for this invoice
-                        const returnedAmount = AppState.goodsReturns
-                            .filter(gr => gr.invoiceId === inv.id)
-                            .reduce((sum, gr) => sum + gr.amount, 0);
-                        
-                        const remainingAmount = inv.total - returnedAmount;
-                        
-                        return {
-                            inv,
-                            returnedAmount,
-                            remainingAmount
-                        };
-                    })
-                    .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
-                    .map(item => {
-                        return `<option value="${item.inv.id}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
-                            ${item.inv.invoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
-                        </option>`;
-                    })
-                    .join('');
+            invoiceSelect.innerHTML = '<option value="">-- Select Invoice --</option>' + invoiceOptions;
         });
     } else {
         invoiceGroup.style.display = 'none';
@@ -5769,17 +5778,22 @@ function toggleAccountSelection() {
         return;
     }
     
+    // Pre-calculate options to avoid computational overhead in requestAnimationFrame
+    const clientOptions = window.accountClientOptions || '';
+    const vendorOptions = window.accountVendorOptions || '';
+    const selectedType = accountTypeElement.value;
+    
     // Use requestAnimationFrame to defer DOM manipulation and prevent input disruption
     requestAnimationFrame(() => {
-        if (accountTypeElement.value === 'client') {
+        if (selectedType === 'client') {
             accountSelect.innerHTML = `
                 <option value="">-- Select Client --</option>
-                ${window.accountClientOptions || ''}
+                ${clientOptions}
             `;
         } else {
             accountSelect.innerHTML = `
                 <option value="">-- Select Vendor --</option>
-                ${window.accountVendorOptions || ''}
+                ${vendorOptions}
             `;
         }
     });
