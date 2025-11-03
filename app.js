@@ -6506,6 +6506,96 @@ function showInlineModal(modalHTML) {
             inlineContainer.style.left = '0';
             inlineContainer.style.width = '100%';
             inlineContainer.style.height = '100%';
+            inlineContainer.style.zIndex = '10001';
+            document.body.appendChild(inlineContainer);
+        }
+        inlineContainer.innerHTML = modalHTML;
+    } else {
+        // No existing modal, use the regular container
+        const container = document.getElementById('modalContainer');
+        container.innerHTML = modalHTML;
+    }
+}
+
+function closeInlineModal() {
+    const inlineContainer = document.getElementById('inlineModalContainer');
+    if (inlineContainer) {
+        inlineContainer.remove();
+    } else {
+        // Fallback to regular close if no inline container
+        const container = document.getElementById('modalContainer');
+        container.innerHTML = '';
+    }
+}
+
+
+// Utility Functions
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+// Date range helper functions
+function getCurrentMonthDates() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    const fromDate = new Date(year, month, 1);
+    const toDate = new Date(year, month + 1, 0);
+    
+    return {
+        from: fromDate.toISOString().split('T')[0],
+        to: toDate.toISOString().split('T')[0]
+    };
+}
+
+function getLastMonthDates() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    const fromDate = new Date(year, month - 1, 1);
+    const toDate = new Date(year, month, 0);
+    
+    return {
+        from: fromDate.toISOString().split('T')[0],
+        to: toDate.toISOString().split('T')[0]
+    };
+}
+
+function applyDateFilter(filterId) {
+    const filter = document.getElementById(filterId).value;
+    const fromDateInput = document.getElementById(filterId.replace('Filter', 'FromDate'));
+    const toDateInput = document.getElementById(filterId.replace('Filter', 'ToDate'));
+    
+    if (!fromDateInput || !toDateInput) return;
+    
+    if (filter === 'current_month') {
+        const dates = getCurrentMonthDates();
+        fromDateInput.value = dates.from;
+        toDateInput.value = dates.to;
+    } else if (filter === 'last_month') {
+        const dates = getLastMonthDates();
+        fromDateInput.value = dates.from;
+        toDateInput.value = dates.to;
+    } else if (filter === 'custom') {
+        // Keep current values or clear if empty
+        if (!fromDateInput.value || !toDateInput.value) {
+            fromDateInput.value = '';
+            toDateInput.value = new Date().toISOString().split('T')[0];
+        }
+    }
+}
 
 // Journal Report - Shows all transactions in chronological order (Double Entry)
 function showJournalReport() {
@@ -6558,7 +6648,7 @@ function generateJournalReport() {
                 allTransactions.push({
                     date: inv.date,
                     reference: inv.invoiceNo,
-                    description: `Sales Invoice - ${client ? client.name : 'N/A'}`,
+                    description: 'Sales Invoice - ' + (client ? client.name : 'N/A'),
                     debitAccount: client ? client.name : 'Unknown Client',
                     creditAccount: 'Sales',
                     amount: inv.total
@@ -6576,7 +6666,7 @@ function generateJournalReport() {
                 allTransactions.push({
                     date: pur.date,
                     reference: pur.purchaseNo,
-                    description: `Purchase - ${vendorName}`,
+                    description: 'Purchase - ' + vendorName,
                     debitAccount: 'Purchases',
                     creditAccount: vendorName,
                     amount: pur.total
@@ -6598,7 +6688,7 @@ function generateJournalReport() {
                     allTransactions.push({
                         date: pay.date,
                         reference: pay.paymentNo,
-                        description: `Receipt from ${partyName}`,
+                        description: 'Receipt from ' + partyName,
                         debitAccount: pay.method === 'cash' ? 'Cash' : 'Bank',
                         creditAccount: partyName,
                         amount: pay.amount
@@ -6608,7 +6698,7 @@ function generateJournalReport() {
                     allTransactions.push({
                         date: pay.date,
                         reference: pay.paymentNo,
-                        description: `Payment to ${partyName}`,
+                        description: 'Payment to ' + partyName,
                         debitAccount: partyName,
                         creditAccount: pay.method === 'cash' ? 'Cash' : 'Bank',
                         amount: pay.amount
@@ -6623,49 +6713,40 @@ function generateJournalReport() {
     
     const totalAmount = allTransactions.reduce((sum, t) => sum + t.amount, 0);
     
-    const reportHTML = `
-        <div class="print-preview-container">
-            <h3 class="text-center">Transaction Journal</h3>
-            <p class="text-center">Period: ${fromDate ? formatDate(fromDate) : 'Start'} to ${toDate ? formatDate(toDate) : 'End'}</p>
-            ${allTransactions.length > 0 ? `
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Reference</th>
-                            <th>Description</th>
-                            <th>Debit Account</th>
-                            <th>Credit Account</th>
-                            <th class="text-right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${allTransactions.map(trans => `
-                            <tr>
-                                <td>${formatDate(trans.date)}</td>
-                                <td>${trans.reference}</td>
-                                <td>${trans.description}</td>
-                                <td style="padding-left: 1rem;">${trans.debitAccount} Dr.</td>
-                                <td style="padding-left: 2rem;">${trans.creditAccount} Cr.</td>
-                                <td class="text-right">₹${trans.amount.toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" class="text-right"><strong>Total Transactions:</strong></td>
-                            <td class="text-right"><strong>₹${totalAmount.toFixed(2)}</strong></td>
-                        </tr>
-                        <tr>
-                            <td colspan="6" style="padding-top: 1rem;">
-                                <em>Note: This journal follows double-entry accounting principles. Each transaction has equal debits and credits.</em>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            ` : '<p class="text-center">No transactions found</p>'}
-        </div>
-    `;
+    let reportHTML = '<div class="print-preview-container">';
+    reportHTML += '<h3 class="text-center">Transaction Journal</h3>';
+    reportHTML += '<p class="text-center">Period: ' + (fromDate ? formatDate(fromDate) : 'Start') + ' to ' + (toDate ? formatDate(toDate) : 'End') + '</p>';
+    
+    if (allTransactions.length > 0) {
+        reportHTML += '<table class="data-table"><thead><tr>';
+        reportHTML += '<th>Date</th><th>Reference</th><th>Description</th>';
+        reportHTML += '<th>Debit Account</th><th>Credit Account</th>';
+        reportHTML += '<th class="text-right">Amount</th>';
+        reportHTML += '</tr></thead><tbody>';
+        
+        allTransactions.forEach(trans => {
+            reportHTML += '<tr>';
+            reportHTML += '<td>' + formatDate(trans.date) + '</td>';
+            reportHTML += '<td>' + trans.reference + '</td>';
+            reportHTML += '<td>' + trans.description + '</td>';
+            reportHTML += '<td style="padding-left: 1rem;">' + trans.debitAccount + ' Dr.</td>';
+            reportHTML += '<td style="padding-left: 2rem;">' + trans.creditAccount + ' Cr.</td>';
+            reportHTML += '<td class="text-right">₹' + trans.amount.toFixed(2) + '</td>';
+            reportHTML += '</tr>';
+        });
+        
+        reportHTML += '</tbody><tfoot><tr>';
+        reportHTML += '<td colspan="5" class="text-right"><strong>Total Transactions:</strong></td>';
+        reportHTML += '<td class="text-right"><strong>₹' + totalAmount.toFixed(2) + '</strong></td>';
+        reportHTML += '</tr><tr>';
+        reportHTML += '<td colspan="6" style="padding-top: 1rem;">';
+        reportHTML += '<em>Note: This journal follows double-entry accounting principles. Each transaction has equal debits and credits.</em>';
+        reportHTML += '</td></tr></tfoot></table>';
+    } else {
+        reportHTML += '<p class="text-center">No transactions found</p>';
+    }
+    
+    reportHTML += '</div>';
     
     document.getElementById('journalReport').innerHTML = reportHTML;
 }
@@ -6678,37 +6759,21 @@ function exportJournalToPDF() {
     }
     
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Transaction Journal</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-                thead { background: #f0f0f0; }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                @media print {
-                    @page { size: A4 landscape; margin: 15mm; }
-                    body { margin: 0; padding: 0; }
-                }
-            </style>
-        </head>
-        <body>
-            ${content}
-            <script>
-                window.onload = function() {
-                    setTimeout(function() { window.print(); }, 500);
-                };
-                window.onafterprint = function() {
-                    setTimeout(function() { window.close(); }, 100);
-                };
-            </script>
-        </body>
-        </html>
-    `);
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Transaction Journal</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-top: 1rem; }');
+    printWindow.document.write('th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }');
+    printWindow.document.write('thead { background: #f0f0f0; }');
+    printWindow.document.write('.text-center { text-align: center; }');
+    printWindow.document.write('.text-right { text-align: right; }');
+    printWindow.document.write('@media print { @page { size: A4 landscape; margin: 15mm; } body { margin: 0; padding: 0; } }');
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write(content);
+    printWindow.document.write('<script>');
+    printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
+    printWindow.document.write('window.onafterprint = function() { setTimeout(function() { window.close(); }, 100); };');
+    printWindow.document.write('</script></body></html>');
     printWindow.document.close();
 }
 
@@ -6847,58 +6912,54 @@ function generateTrialBalance() {
         totalCredit += acc.credit;
     });
     
-    const reportHTML = `
-        <div class="print-preview-container">
-            <h3 class="text-center">Trial Balance</h3>
-            <p class="text-center">As on: ${formatDate(asOnDate)}</p>
-            ${Object.keys(accounts).length > 0 ? `
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Account Name</th>
-                            <th>Account Type</th>
-                            <th class="text-right">Debit (₹)</th>
-                            <th class="text-right">Credit (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${Object.entries(accounts).map(([name, acc]) => `
-                            <tr>
-                                <td>${name}</td>
-                                <td>${acc.type}</td>
-                                <td class="text-right">${acc.debit > 0 ? acc.debit.toFixed(2) : '-'}</td>
-                                <td class="text-right">${acc.credit > 0 ? acc.credit.toFixed(2) : '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr style="background: #f8f9fa; font-weight: bold;">
-                            <td colspan="2" class="text-right"><strong>Total:</strong></td>
-                            <td class="text-right"><strong>₹${totalDebit.toFixed(2)}</strong></td>
-                            <td class="text-right"><strong>₹${totalCredit.toFixed(2)}</strong></td>
-                        </tr>
-                        <tr style="background: ${Math.abs(totalDebit - totalCredit) < 0.01 ? '#d4edda' : '#f8d7da'};">
-                            <td colspan="4" class="text-center">
-                                <strong>
-                                    ${Math.abs(totalDebit - totalCredit) < 0.01 
-                                        ? '✓ Trial Balance is balanced!' 
-                                        : '⚠ Trial Balance is not balanced - Difference: ₹' + Math.abs(totalDebit - totalCredit).toFixed(2)}
-                                </strong>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-                <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
-                    <p style="margin: 0;"><strong>Note:</strong></p>
-                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-                        <li>Trial Balance shows all account balances as on the selected date</li>
-                        <li>In double-entry accounting, Total Debits should equal Total Credits</li>
-                        <li>This helps verify the accuracy of recorded transactions</li>
-                    </ul>
-                </div>
-            ` : '<p class="text-center">No accounts found</p>'}
-        </div>
-    `;
+    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+    const bgColor = isBalanced ? '#d4edda' : '#f8d7da';
+    const balanceText = isBalanced ? '✓ Trial Balance is balanced!' : 
+        '⚠ Trial Balance is not balanced - Difference: ₹' + Math.abs(totalDebit - totalCredit).toFixed(2);
+    
+    let reportHTML = '<div class="print-preview-container">';
+    reportHTML += '<h3 class="text-center">Trial Balance</h3>';
+    reportHTML += '<p class="text-center">As on: ' + formatDate(asOnDate) + '</p>';
+    
+    if (Object.keys(accounts).length > 0) {
+        reportHTML += '<table class="data-table"><thead><tr>';
+        reportHTML += '<th>Account Name</th><th>Account Type</th>';
+        reportHTML += '<th class="text-right">Debit (₹)</th>';
+        reportHTML += '<th class="text-right">Credit (₹)</th>';
+        reportHTML += '</tr></thead><tbody>';
+        
+        Object.entries(accounts).forEach(([name, acc]) => {
+            reportHTML += '<tr>';
+            reportHTML += '<td>' + name + '</td>';
+            reportHTML += '<td>' + acc.type + '</td>';
+            reportHTML += '<td class="text-right">' + (acc.debit > 0 ? acc.debit.toFixed(2) : '-') + '</td>';
+            reportHTML += '<td class="text-right">' + (acc.credit > 0 ? acc.credit.toFixed(2) : '-') + '</td>';
+            reportHTML += '</tr>';
+        });
+        
+        reportHTML += '</tbody><tfoot>';
+        reportHTML += '<tr style="background: #f8f9fa; font-weight: bold;">';
+        reportHTML += '<td colspan="2" class="text-right"><strong>Total:</strong></td>';
+        reportHTML += '<td class="text-right"><strong>₹' + totalDebit.toFixed(2) + '</strong></td>';
+        reportHTML += '<td class="text-right"><strong>₹' + totalCredit.toFixed(2) + '</strong></td>';
+        reportHTML += '</tr>';
+        reportHTML += '<tr style="background: ' + bgColor + ';">';
+        reportHTML += '<td colspan="4" class="text-center"><strong>' + balanceText + '</strong></td>';
+        reportHTML += '</tr>';
+        reportHTML += '</tfoot></table>';
+        
+        reportHTML += '<div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">';
+        reportHTML += '<p style="margin: 0;"><strong>Note:</strong></p>';
+        reportHTML += '<ul style="margin: 0.5rem 0; padding-left: 1.5rem;">';
+        reportHTML += '<li>Trial Balance shows all account balances as on the selected date</li>';
+        reportHTML += '<li>In double-entry accounting, Total Debits should equal Total Credits</li>';
+        reportHTML += '<li>This helps verify the accuracy of recorded transactions</li>';
+        reportHTML += '</ul></div>';
+    } else {
+        reportHTML += '<p class="text-center">No accounts found</p>';
+    }
+    
+    reportHTML += '</div>';
     
     document.getElementById('trialBalanceReport').innerHTML = reportHTML;
 }
@@ -6911,78 +6972,20 @@ function exportTrialBalanceToPDF() {
     }
     
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Trial Balance</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-                thead { background: #f0f0f0; }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                @media print {
-                    @page { size: A4 portrait; margin: 15mm; }
-                    body { margin: 0; padding: 0; }
-                }
-            </style>
-        </head>
-        <body>
-            ${content}
-            <script>
-                window.onload = function() {
-                    setTimeout(function() { window.print(); }, 500);
-                };
-                window.onafterprint = function() {
-                    setTimeout(function() { window.close(); }, 100);
-                };
-            </script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-}
-
-function exportTrialBalanceToPDF() {
-    const content = document.getElementById('trialBalanceReport').innerHTML;
-    if (!content || content.trim() === '') {
-        alert('Please generate the trial balance first');
-        return;
-    }
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Trial Balance</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-                thead { background: #f0f0f0; }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                @media print {
-                    @page { size: A4 portrait; margin: 15mm; }
-                    body { margin: 0; padding: 0; }
-                }
-            </style>
-        </head>
-        <body>
-            ${content}
-            <script>
-                window.onload = function() {
-                    setTimeout(function() { window.print(); }, 500);
-                };
-                window.onafterprint = function() {
-                    setTimeout(function() { window.close(); }, 100);
-                };
-            </script>
-        </body>
-        </html>
-    `);
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Trial Balance</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-top: 1rem; }');
+    printWindow.document.write('th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }');
+    printWindow.document.write('thead { background: #f0f0f0; }');
+    printWindow.document.write('.text-center { text-align: center; }');
+    printWindow.document.write('.text-right { text-align: right; }');
+    printWindow.document.write('@media print { @page { size: A4 portrait; margin: 15mm; } body { margin: 0; padding: 0; } }');
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write(content);
+    printWindow.document.write('<script>');
+    printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
+    printWindow.document.write('window.onafterprint = function() { setTimeout(function() { window.close(); }, 100); };');
+    printWindow.document.write('</script></body></html>');
     printWindow.document.close();
 }
