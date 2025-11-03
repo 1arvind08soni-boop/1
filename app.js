@@ -7464,29 +7464,34 @@ function cleanupModalState() {
 // Helper function to restore focus after modal operations
 function restoreFocus() {
     setTimeout(() => {
-        // First, try to restore to the previously focused element
-        if (window._lastFocusedElement && 
-            document.body.contains(window._lastFocusedElement) &&
-            window._lastFocusedElement !== document.body) {
-            window._lastFocusedElement.focus();
-            window._lastFocusedElement = null;
-            return;
-        }
-        
-        // If no previous element, try to focus on the search input of the current screen
-        const activeScreen = document.querySelector('.content-screen.active');
-        if (activeScreen) {
-            const searchInput = activeScreen.querySelector(UI_CONSTANTS.SEARCH_INPUT_SELECTOR);
-            if (searchInput) {
-                searchInput.focus();
+        try {
+            // First, try to restore to the previously focused element
+            if (window._lastFocusedElement && 
+                document.body.contains(window._lastFocusedElement) &&
+                window._lastFocusedElement !== document.body) {
+                window._lastFocusedElement.focus();
+                window._lastFocusedElement = null;
                 return;
             }
             
-            // Otherwise, focus on the first visible input field
-            const firstInput = activeScreen.querySelector('input:not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
-            if (firstInput) {
-                firstInput.focus();
+            // If no previous element, try to focus on the search input of the current screen
+            const activeScreen = document.querySelector('.content-screen.active');
+            if (activeScreen) {
+                const searchInput = activeScreen.querySelector(UI_CONSTANTS.SEARCH_INPUT_SELECTOR);
+                if (searchInput) {
+                    searchInput.focus();
+                    return;
+                }
+                
+                // Otherwise, focus on the first visible input field
+                const firstInput = activeScreen.querySelector('input:not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                if (firstInput) {
+                    firstInput.focus();
+                }
             }
+        } catch (e) {
+            // Silently handle focus errors - element might not be focusable
+            console.warn('Focus restoration failed:', e);
         }
     }, UI_CONSTANTS.FOCUS_RESTORE_DELAY_MS);
 }
@@ -7494,9 +7499,14 @@ function restoreFocus() {
 // Helper function to restore focus to a specific search input after CRUD operations
 function restoreSearchInputFocus(searchInputId) {
     setTimeout(() => {
-        const searchInput = document.getElementById(searchInputId);
-        if (searchInput) {
-            searchInput.focus();
+        try {
+            const searchInput = document.getElementById(searchInputId);
+            if (searchInput) {
+                searchInput.focus();
+            }
+        } catch (e) {
+            // Silently handle focus errors - element might not be focusable
+            console.warn('Search input focus restoration failed:', e);
         }
     }, UI_CONSTANTS.FOCUS_RESTORE_DELAY_MS);
 }
@@ -7692,15 +7702,20 @@ function closeInlineModal() {
         
         // Restore focus to the parent modal if it exists
         setTimeout(() => {
-            const parentModal = document.getElementById('modalContainer').querySelector('.modal');
-            if (parentModal) {
-                const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
-                if (firstInput) {
-                    firstInput.focus();
+            try {
+                const parentModal = document.getElementById('modalContainer').querySelector('.modal');
+                if (parentModal) {
+                    const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                    if (firstInput) {
+                        firstInput.focus();
+                    }
+                } else {
+                    // If no parent modal, restore focus to main content
+                    restoreFocus();
                 }
-            } else {
-                // If no parent modal, restore focus to main content
-                restoreFocus();
+            } catch (e) {
+                // Silently handle focus errors
+                console.warn('Inline modal focus restoration failed:', e);
             }
         }, UI_CONSTANTS.FOCUS_RESTORE_DELAY_MS);
     } else {
