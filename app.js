@@ -4894,12 +4894,11 @@ function toggleGoodsReturnInvoice() {
             })
             .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
             .map(item => {
-                // Escape only string content to prevent XSS vulnerabilities
-                // Numeric values are safe and don't need escaping
-                const safeInvoiceId = escapeHtml(item.inv.id);
+                // Escape user-provided content to prevent XSS vulnerabilities
+                // Invoice number needs escaping as it can contain user input
                 const safeInvoiceNo = escapeHtml(item.inv.invoiceNo);
                 
-                return `<option value="${safeInvoiceId}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
+                return `<option value="${item.inv.id}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
                     ${safeInvoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
                 </option>`;
             })
@@ -7667,9 +7666,13 @@ function generateId() {
 // Helper function to escape HTML and prevent XSS attacks
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
+    // Use string replacement for better performance than DOM createElement
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function formatDate(dateString) {
