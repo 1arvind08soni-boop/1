@@ -872,6 +872,14 @@ function deleteProduct(productId) {
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
     loadProducts();
+    
+    // Restore focus to search input after deletion
+    setTimeout(() => {
+        const searchInput = document.getElementById('productSearchInput');
+        if (searchInput) {
+            searchInput.focus();
+        }
+    }, 100);
 }
 
 // Filter Products based on search
@@ -2586,6 +2594,14 @@ function deleteInvoice(invoiceId) {
     saveCompanyData();
     loadInvoices();
     updateDashboard();
+    
+    // Restore focus to search input after deletion
+    setTimeout(() => {
+        const searchInput = document.getElementById('invoiceSearchInput');
+        if (searchInput) {
+            searchInput.focus();
+        }
+    }, 100);
 }
 
 function showRestoreInvoiceModal() {
@@ -5114,6 +5130,14 @@ function deleteGoodsReturn(returnId) {
     saveCompanyData();
     loadGoodsReturns();
     updateDashboard();
+    
+    // Restore focus to search input after deletion
+    setTimeout(() => {
+        const searchInput = document.getElementById('goodsReturnSearchInput');
+        if (searchInput) {
+            searchInput.focus();
+        }
+    }, 100);
 }
 
 function filterGoodsReturns() {
@@ -7406,11 +7430,71 @@ function createModal(title, content, size = '') {
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
+    
+    // Store the currently focused element so we can restore it when modal closes
+    window._lastFocusedElement = document.activeElement;
 }
 
 function closeModal() {
     const container = document.getElementById('modalContainer');
     container.innerHTML = '';
+    
+    // Clean up any residual modal state
+    cleanupModalState();
+    
+    // Restore focus to the previously focused element
+    restoreFocus();
+}
+
+// Helper function to clean up any modal-related state
+function cleanupModalState() {
+    // Remove any leftover inline modal containers
+    const inlineContainer = document.getElementById('inlineModalContainer');
+    if (inlineContainer) {
+        inlineContainer.remove();
+    }
+    
+    // Remove any orphaned modal overlays
+    const modalContainer = document.getElementById('modalContainer');
+    if (modalContainer) {
+        // Ensure it's completely empty
+        modalContainer.innerHTML = '';
+        // Remove any inline styles that might have been added
+        modalContainer.removeAttribute('style');
+    }
+    
+    // Clear any global modal-related references
+    window.inlineProductButton = null;
+}
+
+// Helper function to restore focus after modal operations
+function restoreFocus() {
+    setTimeout(() => {
+        // First, try to restore to the previously focused element
+        if (window._lastFocusedElement && 
+            document.body.contains(window._lastFocusedElement) &&
+            window._lastFocusedElement !== document.body) {
+            window._lastFocusedElement.focus();
+            window._lastFocusedElement = null;
+            return;
+        }
+        
+        // If no previous element, try to focus on the search input of the current screen
+        const activeScreen = document.querySelector('.content-screen.active');
+        if (activeScreen) {
+            const searchInput = activeScreen.querySelector('input[type="text"][placeholder*="Search"]');
+            if (searchInput) {
+                searchInput.focus();
+                return;
+            }
+            
+            // Otherwise, focus on the first visible input field
+            const firstInput = activeScreen.querySelector('input:not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }
+    }, 100);
 }
 
 // Helper function to get or create notification container
@@ -7566,6 +7650,11 @@ function showSuccess(message) {
 
 // Inline Modal Management (for nested modals)
 function showInlineModal(modalHTML) {
+    // Store the currently focused element for later restoration (if not already stored)
+    if (!window._lastFocusedElement) {
+        window._lastFocusedElement = document.activeElement;
+    }
+    
     // Check if there's already a modal open
     const existingModal = document.getElementById('modalContainer').querySelector('.modal');
     if (existingModal) {
@@ -7594,6 +7683,9 @@ function closeInlineModal() {
     const inlineContainer = document.getElementById('inlineModalContainer');
     if (inlineContainer) {
         inlineContainer.remove();
+        // Clean up any global references
+        window.inlineProductButton = null;
+        
         // Restore focus to the parent modal if it exists
         setTimeout(() => {
             const parentModal = document.getElementById('modalContainer').querySelector('.modal');
@@ -7602,12 +7694,17 @@ function closeInlineModal() {
                 if (firstInput) {
                     firstInput.focus();
                 }
+            } else {
+                // If no parent modal, restore focus to main content
+                restoreFocus();
             }
         }, 100);
     } else {
         // Fallback to regular close if no inline container
         const container = document.getElementById('modalContainer');
         container.innerHTML = '';
+        cleanupModalState();
+        restoreFocus();
     }
 }
 
