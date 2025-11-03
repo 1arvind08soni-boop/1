@@ -4894,8 +4894,10 @@ function toggleGoodsReturnInvoice() {
             })
             .filter(item => item.remainingAmount > 0); // Only show invoices with remaining amount
         
-        // Clear existing options
-        invoiceSelect.innerHTML = '';
+        // Remove all existing options using DOM methods (avoid innerHTML to prevent focus issues)
+        while (invoiceSelect.firstChild) {
+            invoiceSelect.removeChild(invoiceSelect.firstChild);
+        }
         
         // Add default option
         const defaultOption = document.createElement('option');
@@ -4903,7 +4905,7 @@ function toggleGoodsReturnInvoice() {
         defaultOption.textContent = '-- Select Invoice --';
         invoiceSelect.appendChild(defaultOption);
         
-        // Add invoice options using DOM methods to avoid innerHTML issues
+        // Add invoice options using DOM methods
         filteredInvoices.forEach(item => {
             const option = document.createElement('option');
             option.value = item.inv.id;
@@ -5782,8 +5784,10 @@ function toggleAccountSelection() {
     
     const selectedType = accountTypeElement.value;
     
-    // Clear existing options
-    accountSelect.innerHTML = '';
+    // Remove all existing options using DOM methods (avoid innerHTML to prevent focus issues)
+    while (accountSelect.firstChild) {
+        accountSelect.removeChild(accountSelect.firstChild);
+    }
     
     // Add default option
     const defaultOption = document.createElement('option');
