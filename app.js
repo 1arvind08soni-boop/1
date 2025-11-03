@@ -4876,8 +4876,8 @@ function toggleGoodsReturnInvoice() {
         // Get all invoices for the selected client that have remaining amount
         const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId.value);
         
-        // Pre-calculate filtered invoices to avoid computational overhead in requestAnimationFrame
-        const invoiceOptions = clientInvoices
+        // Calculate filtered invoices
+        const filteredInvoices = clientInvoices
             .map(inv => {
                 // Calculate already returned amount for this invoice
                 const returnedAmount = AppState.goodsReturns
@@ -4892,21 +4892,26 @@ function toggleGoodsReturnInvoice() {
                     remainingAmount
                 };
             })
-            .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
-            .map(item => {
-                // Escape user-provided content to prevent XSS vulnerabilities
-                // Invoice number needs escaping as it can contain user input
-                const safeInvoiceNo = escapeHtml(item.inv.invoiceNo);
-                
-                return `<option value="${item.inv.id}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
-                    ${safeInvoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
-                </option>`;
-            })
-            .join('');
+            .filter(item => item.remainingAmount > 0); // Only show invoices with remaining amount
         
-        // Use requestAnimationFrame to defer DOM manipulation and prevent input disruption
-        requestAnimationFrame(() => {
-            invoiceSelect.innerHTML = '<option value="">-- Select Invoice --</option>' + invoiceOptions;
+        // Clear existing options
+        invoiceSelect.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '-- Select Invoice --';
+        invoiceSelect.appendChild(defaultOption);
+        
+        // Add invoice options using DOM methods to avoid innerHTML issues
+        filteredInvoices.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.inv.id;
+            option.setAttribute('data-total', item.inv.total);
+            option.setAttribute('data-returned', item.returnedAmount);
+            option.setAttribute('data-remaining', item.remainingAmount);
+            option.textContent = `${item.inv.invoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})`;
+            invoiceSelect.appendChild(option);
         });
     } else {
         invoiceGroup.style.display = 'none';
@@ -5775,25 +5780,38 @@ function toggleAccountSelection() {
         return;
     }
     
-    // Pre-calculate options to avoid computational overhead in requestAnimationFrame
-    const clientOptions = window.accountClientOptions || '';
-    const vendorOptions = window.accountVendorOptions || '';
     const selectedType = accountTypeElement.value;
     
-    // Use requestAnimationFrame to defer DOM manipulation and prevent input disruption
-    requestAnimationFrame(() => {
-        if (selectedType === 'client') {
-            accountSelect.innerHTML = `
-                <option value="">-- Select Client --</option>
-                ${clientOptions}
-            `;
-        } else {
-            accountSelect.innerHTML = `
-                <option value="">-- Select Vendor --</option>
-                ${vendorOptions}
-            `;
-        }
-    });
+    // Clear existing options
+    accountSelect.innerHTML = '';
+    
+    // Add default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    
+    if (selectedType === 'client') {
+        defaultOption.textContent = '-- Select Client --';
+        accountSelect.appendChild(defaultOption);
+        
+        // Add client options
+        AppState.clients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = 'client_' + client.id;
+            option.textContent = client.name;
+            accountSelect.appendChild(option);
+        });
+    } else {
+        defaultOption.textContent = '-- Select Vendor --';
+        accountSelect.appendChild(defaultOption);
+        
+        // Add vendor options
+        AppState.vendors.forEach(vendor => {
+            const option = document.createElement('option');
+            option.value = 'vendor_' + vendor.id;
+            option.textContent = vendor.name;
+            accountSelect.appendChild(option);
+        });
+    }
 }
 
 // Helper function to calculate opening balance for a period
