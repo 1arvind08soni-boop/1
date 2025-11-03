@@ -10,6 +10,7 @@ const AppState = {
     purchases: [],
     payments: [],
     deletedInvoices: [],
+    goodsReturns: [],
     settings: {
         invoiceTemplate: 'modern',
         printSize: 'a4',
@@ -63,6 +64,7 @@ function loadCompanyData() {
         AppState.purchases = data.purchases || [];
         AppState.payments = data.payments || [];
         AppState.deletedInvoices = data.deletedInvoices || [];
+        AppState.goodsReturns = data.goodsReturns || [];
         AppState.currentFinancialYear = data.currentFinancialYear || getCurrentFinancialYear();
     } else {
         AppState.products = [];
@@ -72,6 +74,7 @@ function loadCompanyData() {
         AppState.purchases = [];
         AppState.payments = [];
         AppState.deletedInvoices = [];
+        AppState.goodsReturns = [];
         AppState.currentFinancialYear = getCurrentFinancialYear();
     }
 }
@@ -88,6 +91,7 @@ function saveCompanyData() {
         purchases: AppState.purchases,
         payments: AppState.payments,
         deletedInvoices: AppState.deletedInvoices,
+        goodsReturns: AppState.goodsReturns,
         currentFinancialYear: AppState.currentFinancialYear
     };
     localStorage.setItem(companyKey, JSON.stringify(data));
@@ -310,6 +314,9 @@ function showContentScreen(screenName) {
             break;
         case 'sales':
             loadInvoices();
+            break;
+        case 'goodsReturns':
+            loadGoodsReturns();
             break;
         case 'purchase':
             loadPurchases();
@@ -1741,12 +1748,23 @@ function loadInvoices() {
     
     tbody.innerHTML = AppState.invoices.map(invoice => {
         const client = AppState.clients.find(c => c.id === invoice.clientId);
+        
+        // Calculate total returns for this invoice
+        const invoiceReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoice.id);
+        const totalReturned = invoiceReturns.reduce((sum, gr) => sum + gr.amount, 0);
+        const netAmount = invoice.total - totalReturned;
+        
+        // Show net amount if there are returns
+        const amountDisplay = totalReturned > 0 
+            ? `<span style="text-decoration: line-through; color: #999;">₹${invoice.total.toFixed(2)}</span><br><strong style="color: #5cb85c;">₹${netAmount.toFixed(2)}</strong>`
+            : `₹${invoice.total.toFixed(2)}`;
+        
         return `
             <tr>
                 <td>${invoice.invoiceNo}</td>
                 <td>${formatDate(invoice.date)}</td>
                 <td>${client ? client.name : 'N/A'}</td>
-                <td>₹${invoice.total.toFixed(2)}</td>
+                <td>${amountDisplay}</td>
                 <td>
                     <button class="action-btn view" onclick="viewInvoice('${invoice.id}')">
                         <i class="fas fa-eye"></i> View
@@ -4658,6 +4676,365 @@ function deletePayment(paymentId) {
     updateDashboard();
 }
 
+// Goods Returns Functions
+function filterGoodsReturns() {
+    const searchInput = document.getElementById('goodsReturnSearchInput');
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    const tbody = document.getElementById('goodsReturnsTableBody');
+    if (!tbody) return;
+    
+    const rows = tbody.getElementsByTagName('tr');
+    for (let row of rows) {
+        if (!row.textContent) continue;
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    }
+}
+
+function loadGoodsReturns() {
+    const tbody = document.getElementById('goodsReturnsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    AppState.goodsReturns.forEach(goodsReturn => {
+        const client = AppState.clients.find(c => c.id === goodsReturn.clientId);
+        const clientName = client ? client.name : 'N/A';
+        const invoiceNo = goodsReturn.invoiceId ? (AppState.invoices.find(inv => inv.id === goodsReturn.invoiceId)?.invoiceNo || 'Deleted') : 'N/A';
+        
+        const row = `
+            <tr>
+                <td>${goodsReturn.returnNo}</td>
+                <td>${formatDate(goodsReturn.date)}</td>
+                <td>${clientName}</td>
+                <td>${invoiceNo}</td>
+                <td>₹${goodsReturn.amount.toFixed(2)}</td>
+                <td>
+                    <button class="btn-icon" onclick="editGoodsReturn('${goodsReturn.id}')" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon" onclick="deleteGoodsReturn('${goodsReturn.id}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function getNextReturnNumber() {
+    if (AppState.goodsReturns.length === 0) return 'GR-001';
+    
+    const numbers = AppState.goodsReturns.map(gr => {
+        const match = gr.returnNo.match(/\d+/);
+        return match ? parseInt(match[0]) : 0;
+    });
+    
+    const maxNumber = Math.max(...numbers);
+    return `GR-${String(maxNumber + 1).padStart(3, '0')}`;
+}
+
+function showAddGoodsReturnModal() {
+    const clientOptions = AppState.clients.map(c => 
+        `<option value="${c.id}">${c.name}</option>`
+    ).join('');
+    
+    const modal = createModal('New Goods Return', `
+        <form id="addGoodsReturnForm" onsubmit="addGoodsReturn(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Return Number *</label>
+                    <input type="text" class="form-control" name="returnNo" value="${getNextReturnNumber()}" required>
+                </div>
+                <div class="form-group">
+                    <label>Date *</label>
+                    <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Select Client *</label>
+                <select class="form-control" name="clientId" id="returnClientId" onchange="loadClientInvoices()" required>
+                    <option value="">-- Select Client --</option>
+                    ${clientOptions}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Select Invoice (Optional)</label>
+                <select class="form-control" name="invoiceId" id="returnInvoiceId" onchange="updateReturnInvoiceDetails()">
+                    <option value="">-- No specific invoice (Create separate entry) --</option>
+                </select>
+                <small class="form-text text-muted">
+                    If you select an invoice, the return amount will be deducted directly from that invoice and won't create a separate ledger entry.
+                    If you don't select an invoice, it will create a proper entry in sales and account ledger.
+                </small>
+            </div>
+            <div id="invoiceDetailsSection" style="display: none; padding: 10px; background: #f5f5f5; border-radius: 4px; margin-bottom: 15px;">
+                <strong>Invoice Details:</strong>
+                <div id="invoiceDetailsContent"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Return Amount *</label>
+                    <input type="number" class="form-control" name="amount" step="0.01" min="0.01" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Reason for Return</label>
+                <textarea class="form-control" name="reason" rows="3" placeholder="Enter reason for goods return..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea class="form-control" name="notes" rows="2"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Goods Return</button>
+            </div>
+        </form>
+    `);
+    
+    showModal(modal);
+}
+
+function loadClientInvoices() {
+    const clientId = document.getElementById('returnClientId').value;
+    const invoiceSelect = document.getElementById('returnInvoiceId');
+    
+    if (!clientId) {
+        invoiceSelect.innerHTML = '<option value="">-- No specific invoice (Create separate entry) --</option>';
+        return;
+    }
+    
+    const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+    
+    let options = '<option value="">-- No specific invoice (Create separate entry) --</option>';
+    clientInvoices.forEach(inv => {
+        options += `<option value="${inv.id}">Invoice #${inv.invoiceNo} - ${formatDate(inv.date)} - ₹${inv.total.toFixed(2)}</option>`;
+    });
+    
+    invoiceSelect.innerHTML = options;
+}
+
+function updateReturnInvoiceDetails() {
+    const invoiceId = document.getElementById('returnInvoiceId').value;
+    const detailsSection = document.getElementById('invoiceDetailsSection');
+    const detailsContent = document.getElementById('invoiceDetailsContent');
+    
+    if (!invoiceId) {
+        detailsSection.style.display = 'none';
+        return;
+    }
+    
+    const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) {
+        detailsSection.style.display = 'none';
+        return;
+    }
+    
+    // Calculate total returns for this invoice
+    const existingReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
+    const totalReturned = existingReturns.reduce((sum, gr) => sum + gr.amount, 0);
+    const remainingAmount = invoice.total - totalReturned;
+    
+    detailsContent.innerHTML = `
+        <p style="margin: 5px 0;">Invoice #: ${invoice.invoiceNo}</p>
+        <p style="margin: 5px 0;">Original Amount: ₹${invoice.total.toFixed(2)}</p>
+        <p style="margin: 5px 0;">Already Returned: ₹${totalReturned.toFixed(2)}</p>
+        <p style="margin: 5px 0;"><strong>Remaining Amount: ₹${remainingAmount.toFixed(2)}</strong></p>
+    `;
+    
+    detailsSection.style.display = 'block';
+}
+
+function addGoodsReturn(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const returnNo = formData.get('returnNo').trim();
+    if (!returnNo) {
+        showError('Please enter a return number');
+        return;
+    }
+    
+    // Check for duplicate return number
+    const duplicateReturn = AppState.goodsReturns.find(gr => gr.returnNo === returnNo);
+    if (duplicateReturn) {
+        showError(`Return number "${returnNo}" already exists. Please use a different return number.`);
+        return;
+    }
+    
+    const clientId = formData.get('clientId');
+    const invoiceId = formData.get('invoiceId') || null;
+    const amount = parseFloat(formData.get('amount'));
+    
+    // Validate amount against invoice if selected
+    if (invoiceId) {
+        const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
+        if (invoice) {
+            const existingReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
+            const totalReturned = existingReturns.reduce((sum, gr) => sum + gr.amount, 0);
+            const remainingAmount = invoice.total - totalReturned;
+            
+            if (amount > remainingAmount) {
+                showError(`Return amount cannot exceed remaining invoice amount of ₹${remainingAmount.toFixed(2)}`);
+                return;
+            }
+        }
+    }
+    
+    const goodsReturn = {
+        id: generateId(),
+        returnNo: returnNo,
+        date: formData.get('date'),
+        clientId: clientId,
+        invoiceId: invoiceId,
+        amount: amount,
+        reason: formData.get('reason'),
+        notes: formData.get('notes'),
+        createdAt: new Date().toISOString()
+    };
+    
+    AppState.goodsReturns.push(goodsReturn);
+    saveCompanyData();
+    loadGoodsReturns();
+    updateDashboard();
+    closeModal();
+    showSuccess('Goods return added successfully');
+}
+
+function editGoodsReturn(returnId) {
+    const goodsReturn = AppState.goodsReturns.find(gr => gr.id === returnId);
+    if (!goodsReturn) return;
+    
+    const clientOptions = AppState.clients.map(c => 
+        `<option value="${c.id}" ${c.id === goodsReturn.clientId ? 'selected' : ''}>${c.name}</option>`
+    ).join('');
+    
+    const modal = createModal('Edit Goods Return', `
+        <form id="editGoodsReturnForm" onsubmit="updateGoodsReturn(event, '${returnId}')">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Return Number *</label>
+                    <input type="text" class="form-control" name="returnNo" value="${goodsReturn.returnNo}" required>
+                </div>
+                <div class="form-group">
+                    <label>Date *</label>
+                    <input type="date" class="form-control" name="date" value="${goodsReturn.date}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Select Client *</label>
+                <select class="form-control" name="clientId" id="editReturnClientId" onchange="loadClientInvoicesForEdit('${returnId}')" required>
+                    <option value="">-- Select Client --</option>
+                    ${clientOptions}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Select Invoice (Optional)</label>
+                <select class="form-control" name="invoiceId" id="editReturnInvoiceId">
+                    <option value="">-- No specific invoice (Create separate entry) --</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Return Amount *</label>
+                    <input type="number" class="form-control" name="amount" value="${goodsReturn.amount}" step="0.01" min="0.01" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Reason for Return</label>
+                <textarea class="form-control" name="reason" rows="3">${goodsReturn.reason || ''}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea class="form-control" name="notes" rows="2">${goodsReturn.notes || ''}</textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Goods Return</button>
+            </div>
+        </form>
+    `);
+    
+    showModal(modal);
+    
+    // Load invoices for the selected client
+    setTimeout(() => {
+        loadClientInvoicesForEdit(returnId);
+    }, 100);
+}
+
+function loadClientInvoicesForEdit(returnId) {
+    const goodsReturn = AppState.goodsReturns.find(gr => gr.id === returnId);
+    const clientId = document.getElementById('editReturnClientId').value;
+    const invoiceSelect = document.getElementById('editReturnInvoiceId');
+    
+    if (!clientId) {
+        invoiceSelect.innerHTML = '<option value="">-- No specific invoice (Create separate entry) --</option>';
+        return;
+    }
+    
+    const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+    
+    let options = '<option value="">-- No specific invoice (Create separate entry) --</option>';
+    clientInvoices.forEach(inv => {
+        const selected = goodsReturn && inv.id === goodsReturn.invoiceId ? 'selected' : '';
+        options += `<option value="${inv.id}" ${selected}>Invoice #${inv.invoiceNo} - ${formatDate(inv.date)} - ₹${inv.total.toFixed(2)}</option>`;
+    });
+    
+    invoiceSelect.innerHTML = options;
+}
+
+function updateGoodsReturn(event, returnId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const index = AppState.goodsReturns.findIndex(gr => gr.id === returnId);
+    if (index === -1) return;
+    
+    const returnNo = formData.get('returnNo').trim();
+    
+    // Check for duplicate return number (excluding current one)
+    const duplicateReturn = AppState.goodsReturns.find(gr => gr.returnNo === returnNo && gr.id !== returnId);
+    if (duplicateReturn) {
+        showError(`Return number "${returnNo}" already exists. Please use a different return number.`);
+        return;
+    }
+    
+    AppState.goodsReturns[index] = {
+        ...AppState.goodsReturns[index],
+        returnNo: returnNo,
+        date: formData.get('date'),
+        clientId: formData.get('clientId'),
+        invoiceId: formData.get('invoiceId') || null,
+        amount: parseFloat(formData.get('amount')),
+        reason: formData.get('reason'),
+        notes: formData.get('notes'),
+        updatedAt: new Date().toISOString()
+    };
+    
+    saveCompanyData();
+    loadGoodsReturns();
+    updateDashboard();
+    closeModal();
+    showSuccess('Goods return updated successfully');
+}
+
+function deleteGoodsReturn(returnId) {
+    if (!confirm('Are you sure you want to delete this goods return?')) return;
+    
+    AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
+    saveCompanyData();
+    loadGoodsReturns();
+    updateDashboard();
+    showSuccess('Goods return deleted successfully');
+}
+
 // Reports Functions
 function showSalesLedger() {
     const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -4741,6 +5118,23 @@ function generateSalesLedger() {
     const lessInvoices = invoices.filter(inv => inv.category === 'LESS');
     const netInvoices = invoices.filter(inv => !inv.category || inv.category === 'NET');
     
+    // Get goods returns for the same filters (only those without specific invoice)
+    let goodsReturns = AppState.goodsReturns.filter(gr => !gr.invoiceId);
+    
+    if (clientId) {
+        goodsReturns = goodsReturns.filter(gr => gr.clientId === clientId);
+    }
+    
+    if (fromDate) {
+        goodsReturns = goodsReturns.filter(gr => gr.date >= fromDate);
+    }
+    
+    if (toDate) {
+        goodsReturns = goodsReturns.filter(gr => gr.date <= toDate);
+    }
+    
+    const totalGoodsReturns = goodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
+    
     // Calculate totals
     // Note: Discount is only applied when a specific client is selected.
     // When "All Clients" view is used, no discount is applied since different
@@ -4749,7 +5143,7 @@ function generateSalesLedger() {
     const lessDiscount = clientId ? (lessSubtotal * discountPercentage / 100) : 0;
     const lessTotal = lessSubtotal - lessDiscount;
     const netTotal = netInvoices.reduce((sum, inv) => sum + inv.total, 0);
-    const grandTotal = lessTotal + netTotal;
+    const grandTotal = lessTotal + netTotal - totalGoodsReturns;
     
     let reportHTML = `
         <div class="print-preview-container">
@@ -4835,6 +5229,42 @@ function generateSalesLedger() {
                         <tr>
                             <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Total (NET):</strong></td>
                             <td><strong>₹${netTotal.toFixed(2)}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+        }
+        
+        // Show Goods Returns (only those without specific invoice)
+        if (goodsReturns.length > 0) {
+            reportHTML += `
+                <h4 style="margin-top: 20px; color: #f0ad4e;">Goods Returns</h4>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Return No</th>
+                            ${!clientId ? '<th>Client</th>' : ''}
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${goodsReturns.map(gr => {
+                            const client = AppState.clients.find(c => c.id === gr.clientId);
+                            return `
+                                <tr>
+                                    <td>${formatDate(gr.date)}</td>
+                                    <td>${gr.returnNo}</td>
+                                    ${!clientId ? `<td>${client ? client.name : 'N/A'}</td>` : ''}
+                                    <td style="color: #f0ad4e;">-₹${gr.amount.toFixed(2)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Total Returns:</strong></td>
+                            <td><strong style="color: #f0ad4e;">-₹${totalGoodsReturns.toFixed(2)}</strong></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -5236,6 +5666,12 @@ function calculateOpeningBalanceForPeriod(accountType, accountId, beforeDate) {
         );
         balance -= payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
         
+        // Subtract all goods returns (only those without specific invoice) before the period
+        const goodsReturns = AppState.goodsReturns.filter(gr => 
+            gr.clientId === accountId && !gr.invoiceId && gr.date < beforeDate
+        );
+        balance -= goodsReturns.reduce((sum, gr) => sum + (gr.amount || 0), 0);
+        
     } else if (accountType === 'vendor') {
         const vendor = AppState.vendors.find(v => v.id === accountId);
         if (!vendor) return 0;
@@ -5293,15 +5729,18 @@ function generateAccountLedger() {
         
         let invoices = AppState.invoices.filter(inv => inv.clientId === id);
         let payments = AppState.payments.filter(pay => pay.clientId === id);
+        let goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === id && !gr.invoiceId);
         
         if (fromDate) {
             invoices = invoices.filter(inv => inv.date >= fromDate);
             payments = payments.filter(pay => pay.date >= fromDate);
+            goodsReturns = goodsReturns.filter(gr => gr.date >= fromDate);
         }
         
         if (toDate) {
             invoices = invoices.filter(inv => inv.date <= toDate);
             payments = payments.filter(pay => pay.date <= toDate);
+            goodsReturns = goodsReturns.filter(gr => gr.date <= toDate);
         }
         
         invoices.forEach(inv => {
@@ -5323,6 +5762,17 @@ function generateAccountLedger() {
                 description: pay.description || 'Payment Received',
                 debit: 0,
                 credit: pay.amount
+            });
+        });
+        
+        goodsReturns.forEach(gr => {
+            transactions.push({
+                date: gr.date,
+                type: 'Goods Return',
+                reference: gr.returnNo,
+                description: gr.reason || 'Goods Return',
+                debit: 0,
+                credit: gr.amount
             });
         });
     } else if (accountType === 'vendor') {

@@ -49,6 +49,9 @@
                 <a href="#" class="nav-item" onclick="showContentScreen('sales')">
                     <i class="fas fa-shopping-cart"></i> Sales Invoice
                 </a>
+                <a href="#" class="nav-item" onclick="showContentScreen('goodsReturns')">
+                    <i class="fas fa-undo"></i> Goods Returns
+                </a>
                 <a href="#" class="nav-item" onclick="showContentScreen('purchase')">
                     <i class="fas fa-truck"></i> Purchase
                 </a>
@@ -220,6 +223,33 @@
                             </tr>
                         </thead>
                         <tbody id="invoicesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="goodsReturnsScreen" class="content-screen">
+                <div class="screen-header">
+                    <h1 class="page-title">Goods Returns</h1>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="goodsReturnSearchInput" class="form-control" placeholder="Search returns..." style="width: 300px;" onkeyup="filterGoodsReturns()">
+                        <button class="btn btn-primary" onclick="showAddGoodsReturnModal()">
+                            <i class="fas fa-plus"></i> New Goods Return
+                        </button>
+                    </div>
+                </div>
+                <div class="data-table-container">
+                    <table class="data-table" id="goodsReturnsTable">
+                        <thead>
+                            <tr>
+                                <th>Return No</th>
+                                <th>Date</th>
+                                <th>Client</th>
+                                <th>Invoice No</th>
+                                <th>Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="goodsReturnsTableBody"></tbody>
                     </table>
                 </div>
             </div>
