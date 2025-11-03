@@ -29,6 +29,8 @@ const UI_MESSAGES = {
 // UI Constants
 const UI_CONSTANTS = {
     FOCUS_RESTORE_DELAY_MS: 100,
+    // Note: This selector relies on placeholder text pattern. For better maintainability,
+    // consider adding a data-search-input attribute to search inputs in future refactoring.
     SEARCH_INPUT_SELECTOR: 'input[type="text"][placeholder*="Search"]'
 };
 
@@ -7463,8 +7465,9 @@ function restoreFocus() {
     setTimeout(() => {
         try {
             // Check if there are any open modals (main or inline)
-            const hasOpenModals = document.getElementById('modalContainer').querySelector('.modal') || 
-                                  document.getElementById('inlineModalContainer');
+            const mainModal = document.getElementById('modalContainer')?.querySelector('.modal');
+            const inlineModal = document.getElementById('inlineModalContainer')?.querySelector('.modal');
+            const hasOpenModals = mainModal || inlineModal;
             
             // Only clear and restore focus if there are no modals open
             if (!hasOpenModals) {
@@ -7472,9 +7475,16 @@ function restoreFocus() {
                 if (window._lastFocusedElement && 
                     document.body.contains(window._lastFocusedElement) &&
                     window._lastFocusedElement !== document.body) {
-                    window._lastFocusedElement.focus();
-                    window._lastFocusedElement = null;
-                    return;
+                    // Check if element is focusable before attempting to focus
+                    const isHidden = window._lastFocusedElement.offsetParent === null;
+                    const isDisabled = window._lastFocusedElement.disabled;
+                    const isReadonly = window._lastFocusedElement.readOnly;
+                    
+                    if (!isHidden && !isDisabled && !isReadonly) {
+                        window._lastFocusedElement.focus();
+                        window._lastFocusedElement = null;
+                        return;
+                    }
                 }
                 
                 // If no previous element, try to focus on the search input of the current screen
@@ -7724,8 +7734,6 @@ function closeInlineModal() {
         }, UI_CONSTANTS.FOCUS_RESTORE_DELAY_MS);
     } else {
         // Fallback to regular close if no inline container
-        const container = document.getElementById('modalContainer');
-        container.innerHTML = '';
         cleanupModalState();
         restoreFocus();
     }
