@@ -4835,10 +4835,15 @@ function showAddGoodsReturnModal() {
 }
 
 function toggleGoodsReturnType() {
-    const clientId = document.getElementById('goodsReturnClientId').value;
+    const clientIdElement = document.getElementById('goodsReturnClientId');
     const typeSelect = document.getElementById('goodsReturnType');
     
-    if (!clientId) {
+    // Add null checks to prevent errors if elements don't exist
+    if (!clientIdElement || !typeSelect) {
+        return;
+    }
+    
+    if (!clientIdElement.value) {
         typeSelect.disabled = true;
         typeSelect.value = '';
     } else {
@@ -4847,57 +4852,74 @@ function toggleGoodsReturnType() {
 }
 
 function toggleGoodsReturnInvoice() {
-    const type = document.getElementById('goodsReturnType').value;
+    const type = document.getElementById('goodsReturnType');
     const invoiceGroup = document.getElementById('goodsReturnInvoiceGroup');
     const invoiceSelect = document.getElementById('goodsReturnInvoiceId');
-    const clientId = document.getElementById('goodsReturnClientId').value;
+    const clientId = document.getElementById('goodsReturnClientId');
+    const invoiceAmountHint = document.getElementById('invoiceAmountHint');
     
-    if (type === 'with_invoice') {
+    // Add null checks to prevent errors if elements don't exist
+    if (!type || !invoiceGroup || !invoiceSelect || !clientId) {
+        return;
+    }
+    
+    if (type.value === 'with_invoice') {
         // Show invoice dropdown and populate with client's invoices
         invoiceGroup.style.display = 'block';
         invoiceSelect.required = true;
         
         // Get all invoices for the selected client that have remaining amount
-        const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+        const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId.value);
         
-        invoiceSelect.innerHTML = '<option value="">-- Select Invoice --</option>' + 
-            clientInvoices
-                .map(inv => {
-                    // Calculate already returned amount for this invoice
-                    const returnedAmount = AppState.goodsReturns
-                        .filter(gr => gr.invoiceId === inv.id)
-                        .reduce((sum, gr) => sum + gr.amount, 0);
-                    
-                    const remainingAmount = inv.total - returnedAmount;
-                    
-                    return {
-                        inv,
-                        returnedAmount,
-                        remainingAmount
-                    };
-                })
-                .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
-                .map(item => {
-                    return `<option value="${item.inv.id}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
-                        ${item.inv.invoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
-                    </option>`;
-                })
-                .join('');
+        // Use requestAnimationFrame to defer DOM manipulation and prevent input disruption
+        requestAnimationFrame(() => {
+            invoiceSelect.innerHTML = '<option value="">-- Select Invoice --</option>' + 
+                clientInvoices
+                    .map(inv => {
+                        // Calculate already returned amount for this invoice
+                        const returnedAmount = AppState.goodsReturns
+                            .filter(gr => gr.invoiceId === inv.id)
+                            .reduce((sum, gr) => sum + gr.amount, 0);
+                        
+                        const remainingAmount = inv.total - returnedAmount;
+                        
+                        return {
+                            inv,
+                            returnedAmount,
+                            remainingAmount
+                        };
+                    })
+                    .filter(item => item.remainingAmount > 0) // Only show invoices with remaining amount
+                    .map(item => {
+                        return `<option value="${item.inv.id}" data-total="${item.inv.total}" data-returned="${item.returnedAmount}" data-remaining="${item.remainingAmount}">
+                            ${item.inv.invoiceNo} - ₹${item.inv.total.toFixed(2)} (Remaining: ₹${item.remainingAmount.toFixed(2)})
+                        </option>`;
+                    })
+                    .join('');
+        });
     } else {
         invoiceGroup.style.display = 'none';
         invoiceSelect.required = false;
         invoiceSelect.value = '';
-        document.getElementById('invoiceAmountHint').style.display = 'none';
+        if (invoiceAmountHint) {
+            invoiceAmountHint.style.display = 'none';
+        }
     }
 }
 
 function updateGoodsReturnInvoiceAmount() {
     const invoiceSelect = document.getElementById('goodsReturnInvoiceId');
-    const selectedOption = invoiceSelect.options[invoiceSelect.selectedIndex];
     const amountInput = document.getElementById('goodsReturnAmount');
     const amountHint = document.getElementById('invoiceAmountHint');
     
-    if (selectedOption.value) {
+    // Add null checks to prevent errors if elements don't exist
+    if (!invoiceSelect || !amountInput || !amountHint) {
+        return;
+    }
+    
+    const selectedOption = invoiceSelect.options[invoiceSelect.selectedIndex];
+    
+    if (selectedOption && selectedOption.value) {
         const remaining = parseFloat(selectedOption.dataset.remaining);
         amountHint.textContent = `Invoice Total: ₹${parseFloat(selectedOption.dataset.total).toFixed(2)}, Already Returned: ₹${parseFloat(selectedOption.dataset.returned).toFixed(2)}, Remaining: ₹${remaining.toFixed(2)}`;
         amountHint.style.display = 'block';
