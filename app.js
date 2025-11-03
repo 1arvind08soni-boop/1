@@ -5181,20 +5181,32 @@ function generateSalesLedger() {
     
     const totalGoodsReturns = goodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
     
-    // Calculate totals with net amounts (after invoice-linked returns)
+    // Calculate totals with proper order: original subtotal -> discount -> returns deduction
     // Note: Discount is only applied when a specific client is selected.
     // When "All Clients" view is used, no discount is applied since different
     // clients may have different discount percentages.
-    const lessSubtotal = lessInvoices.reduce((sum, inv) => {
-        const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
-        return sum + (inv.total - invoiceReturns);
+    
+    // First, calculate original subtotals (before returns)
+    const lessOriginalSubtotal = lessInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    const netOriginalSubtotal = netInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    
+    // Apply discount on original subtotal (before returns)
+    const lessDiscount = clientId ? (lessOriginalSubtotal * discountPercentage / 100) : 0;
+    const lessAfterDiscount = lessOriginalSubtotal - lessDiscount;
+    
+    // Calculate total invoice-linked returns for LESS category
+    const lessInvoiceReturns = lessInvoices.reduce((sum, inv) => {
+        return sum + (invoiceReturnsMap.get(inv.id) || 0);
     }, 0);
-    const lessDiscount = clientId ? (lessSubtotal * discountPercentage / 100) : 0;
-    const lessTotal = lessSubtotal - lessDiscount;
-    const netTotal = netInvoices.reduce((sum, inv) => {
-        const invoiceReturns = invoiceReturnsMap.get(inv.id) || 0;
-        return sum + (inv.total - invoiceReturns);
+    
+    // Calculate total invoice-linked returns for NET category
+    const netInvoiceReturns = netInvoices.reduce((sum, inv) => {
+        return sum + (invoiceReturnsMap.get(inv.id) || 0);
     }, 0);
+    
+    // Final totals after subtracting returns
+    const lessTotal = lessAfterDiscount - lessInvoiceReturns;
+    const netTotal = netOriginalSubtotal - netInvoiceReturns;
     const grandTotal = lessTotal + netTotal - totalGoodsReturns;
     
     let reportHTML = `
@@ -5239,7 +5251,7 @@ function generateSalesLedger() {
                     <tfoot>
                         <tr>
                             <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Subtotal (LESS):</strong></td>
-                            <td><strong>₹${lessSubtotal.toFixed(2)}</strong></td>
+                            <td><strong>₹${lessOriginalSubtotal.toFixed(2)}</strong></td>
                         </tr>
                         ${clientId && discountPercentage > 0 ? `
                         <tr>
@@ -5247,10 +5259,20 @@ function generateSalesLedger() {
                             <td><strong style="color: #d9534f;">-₹${lessDiscount.toFixed(2)}</strong></td>
                         </tr>
                         <tr>
-                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Total After Discount:</strong></td>
-                            <td><strong>₹${lessTotal.toFixed(2)}</strong></td>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>After Discount:</strong></td>
+                            <td><strong>₹${lessAfterDiscount.toFixed(2)}</strong></td>
                         </tr>
                         ` : ''}
+                        ${lessInvoiceReturns > 0 ? `
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Returns (from invoices):</strong></td>
+                            <td><strong style="color: #f0ad4e;">-₹${lessInvoiceReturns.toFixed(2)}</strong></td>
+                        </tr>
+                        ` : ''}
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Final Total (LESS):</strong></td>
+                            <td><strong>₹${lessTotal.toFixed(2)}</strong></td>
+                        </tr>
                     </tfoot>
                 </table>
             `;
@@ -5289,7 +5311,17 @@ function generateSalesLedger() {
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Total (NET):</strong></td>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Subtotal (NET):</strong></td>
+                            <td><strong>₹${netOriginalSubtotal.toFixed(2)}</strong></td>
+                        </tr>
+                        ${netInvoiceReturns > 0 ? `
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Returns (from invoices):</strong></td>
+                            <td><strong style="color: #f0ad4e;">-₹${netInvoiceReturns.toFixed(2)}</strong></td>
+                        </tr>
+                        ` : ''}
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Final Total (NET):</strong></td>
                             <td><strong>₹${netTotal.toFixed(2)}</strong></td>
                         </tr>
                     </tfoot>
@@ -7025,12 +7057,9 @@ function createModal(title, content, size = '') {
 
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
-    // Clear any existing content first to ensure clean state
+    // Clear and immediately set new content for proper initialization
     container.innerHTML = '';
-    // Use a small delay to ensure the DOM is cleared before adding new content
-    setTimeout(() => {
-        container.innerHTML = modalHTML;
-    }, 10);
+    container.innerHTML = modalHTML;
 }
 
 function closeModal() {
