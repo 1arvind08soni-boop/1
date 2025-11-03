@@ -7599,19 +7599,42 @@ function showInlineModal(modalHTML) {
             document.body.appendChild(inlineContainer);
         }
         inlineContainer.innerHTML = modalHTML;
+        
+        // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
+        requestAnimationFrame(() => {
+            const firstInput = inlineContainer.querySelector('input:not([readonly]):not([type="hidden"]), textarea, select');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        });
     } else {
         // No existing modal, use the regular container
         const container = document.getElementById('modalContainer');
         container.innerHTML = modalHTML;
+        
+        // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
+        requestAnimationFrame(() => {
+            const firstInput = container.querySelector('input:not([readonly]):not([type="hidden"]), textarea, select');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        });
     }
 }
 
 function closeInlineModal() {
     const inlineContainer = document.getElementById('inlineModalContainer');
     if (inlineContainer) {
+        // Remove focus from any active element in the inline modal before closing
+        const activeElement = document.activeElement;
+        if (activeElement && inlineContainer.contains(activeElement)) {
+            activeElement.blur();
+        }
+        
         inlineContainer.remove();
+        
         // Restore focus to the parent modal if it exists
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             const parentModal = document.getElementById('modalContainer').querySelector('.modal');
             if (parentModal) {
                 const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
@@ -7619,10 +7642,17 @@ function closeInlineModal() {
                     firstInput.focus();
                 }
             }
-        }, 100);
+        });
     } else {
         // Fallback to regular close if no inline container
         const container = document.getElementById('modalContainer');
+        
+        // Remove focus from any active element in the modal before closing
+        const activeElement = document.activeElement;
+        if (activeElement && container.contains(activeElement)) {
+            activeElement.blur();
+        }
+        
         container.innerHTML = '';
     }
 }
