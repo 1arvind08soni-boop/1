@@ -1746,12 +1746,22 @@ function loadInvoices() {
         return;
     }
     
+    // Pre-compute invoice returns map for better performance
+    const invoiceReturnsMap = new Map();
+    AppState.goodsReturns.forEach(gr => {
+        if (gr.invoiceId) {
+            if (!invoiceReturnsMap.has(gr.invoiceId)) {
+                invoiceReturnsMap.set(gr.invoiceId, 0);
+            }
+            invoiceReturnsMap.set(gr.invoiceId, invoiceReturnsMap.get(gr.invoiceId) + gr.amount);
+        }
+    });
+    
     tbody.innerHTML = AppState.invoices.map(invoice => {
         const client = AppState.clients.find(c => c.id === invoice.clientId);
         
-        // Calculate total returns for this invoice
-        const invoiceReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoice.id);
-        const totalReturned = invoiceReturns.reduce((sum, gr) => sum + gr.amount, 0);
+        // Get total returns for this invoice from pre-computed map
+        const totalReturned = invoiceReturnsMap.get(invoice.id) || 0;
         const netAmount = invoice.total - totalReturned;
         
         // Show net amount if there are returns
@@ -4874,15 +4884,18 @@ function addGoodsReturn(event) {
     // Validate amount against invoice if selected
     if (invoiceId) {
         const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
-        if (invoice) {
-            const existingReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
-            const totalReturned = existingReturns.reduce((sum, gr) => sum + gr.amount, 0);
-            const remainingAmount = invoice.total - totalReturned;
-            
-            if (amount > remainingAmount) {
-                showError(`Return amount cannot exceed remaining invoice amount of ₹${remainingAmount.toFixed(2)}`);
-                return;
-            }
+        if (!invoice) {
+            showError('Selected invoice not found. Please select a valid invoice.');
+            return;
+        }
+        
+        const existingReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
+        const totalReturned = existingReturns.reduce((sum, gr) => sum + gr.amount, 0);
+        const remainingAmount = invoice.total - totalReturned;
+        
+        if (amount > remainingAmount) {
+            showError(`Return amount cannot exceed remaining invoice amount of ₹${remainingAmount.toFixed(2)}`);
+            return;
         }
     }
     
@@ -5006,13 +5019,35 @@ function updateGoodsReturn(event, returnId) {
         return;
     }
     
+    const invoiceId = formData.get('invoiceId') || null;
+    const amount = parseFloat(formData.get('amount'));
+    
+    // Validate amount against invoice if selected
+    if (invoiceId) {
+        const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
+        if (!invoice) {
+            showError('Selected invoice not found. Please select a valid invoice.');
+            return;
+        }
+        
+        // Calculate existing returns excluding the current one being updated
+        const existingReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId && gr.id !== returnId);
+        const totalReturned = existingReturns.reduce((sum, gr) => sum + gr.amount, 0);
+        const remainingAmount = invoice.total - totalReturned;
+        
+        if (amount > remainingAmount) {
+            showError(`Return amount cannot exceed remaining invoice amount of ₹${remainingAmount.toFixed(2)}`);
+            return;
+        }
+    }
+    
     AppState.goodsReturns[index] = {
         ...AppState.goodsReturns[index],
         returnNo: returnNo,
         date: formData.get('date'),
         clientId: formData.get('clientId'),
-        invoiceId: formData.get('invoiceId') || null,
-        amount: parseFloat(formData.get('amount')),
+        invoiceId: invoiceId,
+        amount: amount,
         reason: formData.get('reason'),
         notes: formData.get('notes'),
         updatedAt: new Date().toISOString()
