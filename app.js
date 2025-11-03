@@ -26,11 +26,12 @@ const UI_MESSAGES = {
         `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
 };
 
-// Modal focus selector constant
-const FOCUSABLE_ELEMENTS_SELECTOR = 
-    'input:not([readonly]):not([type="hidden"]):not([disabled]), ' +
-    'select:not([disabled]), ' +
-    'textarea:not([readonly]):not([disabled])';
+// Modal focus selector constant - includes all interactive form elements that can receive focus
+const FOCUSABLE_ELEMENTS_SELECTOR = `
+    input:not([readonly]):not([type="hidden"]):not([disabled]),
+    select:not([disabled]),
+    textarea:not([readonly]):not([disabled])
+`.replace(/\s+/g, ' ').trim();
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
