@@ -489,7 +489,7 @@ function addProduct(event) {
     );
     
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
         return;
     }
     
@@ -499,7 +499,7 @@ function addProduct(event) {
     );
     
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        showError('A product with this code already exists in the same category. Please use a different code or select a different category.');
         return;
     }
     
@@ -601,7 +601,7 @@ function addInlineProduct(event) {
     );
     
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
         return;
     }
     
@@ -611,7 +611,7 @@ function addInlineProduct(event) {
     );
     
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        showError('A product with this code already exists in the same category. Please use a different code or select a different category.');
         return;
     }
     
@@ -653,6 +653,7 @@ function addInlineProduct(event) {
     }
     
     closeInlineModal();
+    showSuccess(`Product "${product.name}" created successfully!`);
 }
 
 
@@ -759,7 +760,7 @@ function updateProduct(event, productId) {
     );
     
     if (duplicateName) {
-        alert('A product with this name already exists in the same category. Please use a different name or select a different category.');
+        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
         return;
     }
     
@@ -769,7 +770,7 @@ function updateProduct(event, productId) {
     );
     
     if (duplicateCodeCategory) {
-        alert('A product with this code already exists in the same category. Please use a different code or select a different category.');
+        showError('A product with this code already exists in the same category. Please use a different code or select a different category.');
         return;
     }
     
@@ -1330,6 +1331,7 @@ function addInlineClient(event) {
     }
     
     closeInlineModal();
+    showSuccess(`Client "${client.name}" created successfully!`);
 }
 
 
@@ -2092,13 +2094,13 @@ function addInvoice(event) {
     // Check for duplicate invoice number
     const invoiceNo = formData.get('invoiceNo').trim();
     if (!invoiceNo) {
-        alert('Please enter an invoice number');
+        showError('Please enter an invoice number');
         return;
     }
     
     const duplicateInvoice = AppState.invoices.find(inv => inv.invoiceNo === invoiceNo);
     if (duplicateInvoice) {
-        alert(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
+        showError(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
         return;
     }
     
@@ -2132,7 +2134,7 @@ function addInvoice(event) {
     });
     
     if (items.length === 0) {
-        alert('Please add at least one item to the invoice');
+        showError('Please add at least one item to the invoice');
         return;
     }
     
@@ -2175,19 +2177,19 @@ function addSimplifiedInvoice(event) {
     // Check for duplicate invoice number
     const invoiceNo = formData.get('invoiceNo').trim();
     if (!invoiceNo) {
-        alert('Please enter an invoice number');
+        showError('Please enter an invoice number');
         return;
     }
     
     const duplicateInvoice = AppState.invoices.find(inv => inv.invoiceNo === invoiceNo);
     if (duplicateInvoice) {
-        alert(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
+        showError(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
         return;
     }
     
     const amount = parseFloat(formData.get('amount'));
     if (!amount || amount <= 0) {
-        alert('Please enter a valid amount');
+        showError('Please enter a valid amount');
         return;
     }
     
@@ -2429,7 +2431,7 @@ function updateInvoice(event, invoiceId) {
     });
     
     if (items.length === 0) {
-        alert('Please add at least one item to the invoice');
+        showError('Please add at least one item to the invoice');
         return;
     }
     
@@ -2471,7 +2473,7 @@ function updateSimplifiedInvoice(event, invoiceId) {
     
     const amount = parseFloat(formData.get('amount'));
     if (!amount || amount <= 0) {
-        alert('Please enter a valid amount');
+        showError('Please enter a valid amount');
         return;
     }
     
@@ -2522,7 +2524,7 @@ function deleteInvoice(invoiceId) {
 
 function showRestoreInvoiceModal() {
     if (AppState.deletedInvoices.length === 0) {
-        alert('No recently deleted invoices to restore.');
+        showError('No recently deleted invoices to restore.');
         return;
     }
     
@@ -2575,7 +2577,7 @@ function showRestoreInvoiceModal() {
 function restoreInvoice(invoiceId) {
     const invoice = AppState.deletedInvoices.find(inv => inv.id === invoiceId);
     if (!invoice) {
-        alert('Invoice not found.');
+        showError('Invoice not found.');
         return;
     }
     
@@ -2604,7 +2606,7 @@ function restoreInvoice(invoiceId) {
     updateDashboard();
     closeModal();
     
-    alert('Invoice restored successfully!');
+    showSuccess('Invoice restored successfully!');
 }
 
 // Continue in next part...
@@ -6491,6 +6493,157 @@ function closeModal() {
     container.innerHTML = '';
 }
 
+// Helper function to get or create notification container
+function getOrCreateNotificationContainer() {
+    let notificationContainer = document.getElementById('notificationContainer');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notificationContainer';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '10002';
+        notificationContainer.style.display = 'flex';
+        notificationContainer.style.flexDirection = 'column';
+        notificationContainer.style.gap = '10px';
+        notificationContainer.style.maxWidth = '400px';
+        document.body.appendChild(notificationContainer);
+    }
+    return notificationContainer;
+}
+
+// Show Error Notification (non-intrusive, doesn't break focus)
+function showError(message) {
+    const notificationContainer = getOrCreateNotificationContainer();
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    notification.style.backgroundColor = '#f8d7da';
+    notification.style.color = '#721c24';
+    notification.style.border = '1px solid #f5c6cb';
+    notification.style.padding = '15px 20px';
+    notification.style.borderRadius = '6px';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.style.display = 'flex';
+    notification.style.alignItems = 'center';
+    notification.style.justifyContent = 'space-between';
+    notification.style.gap = '10px';
+    notification.style.animation = 'slideInRight 0.3s ease-out';
+    
+    // Create content wrapper
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.display = 'flex';
+    contentWrapper.style.alignItems = 'center';
+    contentWrapper.style.gap = '10px';
+    contentWrapper.style.flex = '1';
+    
+    // Create icon
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-exclamation-circle';
+    icon.style.fontSize = '20px';
+    
+    // Create message span (using textContent to prevent XSS)
+    const messageSpan = document.createElement('span');
+    messageSpan.style.flex = '1';
+    messageSpan.textContent = message;
+    
+    contentWrapper.appendChild(icon);
+    contentWrapper.appendChild(messageSpan);
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.style.background = 'none';
+    closeButton.style.border = 'none';
+    closeButton.style.color = '#721c24';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.fontSize = '18px';
+    closeButton.style.padding = '0';
+    closeButton.style.lineHeight = '1';
+    const closeIcon = document.createElement('i');
+    closeIcon.className = 'fas fa-times';
+    closeButton.appendChild(closeIcon);
+    closeButton.addEventListener('click', () => notification.remove());
+    
+    notification.appendChild(contentWrapper);
+    notification.appendChild(closeButton);
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 5000);
+}
+
+// Show Success Notification
+function showSuccess(message) {
+    const notificationContainer = getOrCreateNotificationContainer();
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    notification.style.backgroundColor = '#d4edda';
+    notification.style.color = '#155724';
+    notification.style.border = '1px solid #c3e6cb';
+    notification.style.padding = '15px 20px';
+    notification.style.borderRadius = '6px';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.style.display = 'flex';
+    notification.style.alignItems = 'center';
+    notification.style.justifyContent = 'space-between';
+    notification.style.gap = '10px';
+    notification.style.animation = 'slideInRight 0.3s ease-out';
+    
+    // Create content wrapper
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.display = 'flex';
+    contentWrapper.style.alignItems = 'center';
+    contentWrapper.style.gap = '10px';
+    contentWrapper.style.flex = '1';
+    
+    // Create icon
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-check-circle';
+    icon.style.fontSize = '20px';
+    
+    // Create message span (using textContent to prevent XSS)
+    const messageSpan = document.createElement('span');
+    messageSpan.style.flex = '1';
+    messageSpan.textContent = message;
+    
+    contentWrapper.appendChild(icon);
+    contentWrapper.appendChild(messageSpan);
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.style.background = 'none';
+    closeButton.style.border = 'none';
+    closeButton.style.color = '#155724';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.fontSize = '18px';
+    closeButton.style.padding = '0';
+    closeButton.style.lineHeight = '1';
+    const closeIcon = document.createElement('i');
+    closeIcon.className = 'fas fa-times';
+    closeButton.appendChild(closeIcon);
+    closeButton.addEventListener('click', () => notification.remove());
+    
+    notification.appendChild(contentWrapper);
+    notification.appendChild(closeButton);
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 3000);
+}
+
 // Inline Modal Management (for nested modals)
 function showInlineModal(modalHTML) {
     // Check if there's already a modal open
@@ -6521,6 +6674,16 @@ function closeInlineModal() {
     const inlineContainer = document.getElementById('inlineModalContainer');
     if (inlineContainer) {
         inlineContainer.remove();
+        // Restore focus to the parent modal if it exists
+        setTimeout(() => {
+            const parentModal = document.getElementById('modalContainer').querySelector('.modal');
+            if (parentModal) {
+                const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            }
+        }, 100);
     } else {
         // Fallback to regular close if no inline container
         const container = document.getElementById('modalContainer');
