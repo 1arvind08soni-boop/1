@@ -284,9 +284,17 @@ function selectCompany(companyId) {
     loadCompanyData();
     
     document.getElementById('currentCompanyName').textContent = company.name;
+    updateFinancialYearDisplay();
     showScreen('main');
     showContentScreen('dashboard');
     updateDashboard();
+}
+
+function updateFinancialYearDisplay() {
+    const fyDisplay = document.getElementById('currentFinancialYearName');
+    if (fyDisplay && AppState.currentFinancialYear) {
+        fyDisplay.textContent = `FY: ${AppState.currentFinancialYear.name}`;
+    }
 }
 
 function showCompanySwitch() {
@@ -6358,10 +6366,14 @@ function switchToFinancialYear(fyId) {
     AppState.currentFinancialYear = fy;
     
     saveCompanyData();
+    updateFinancialYearDisplay();
     showFinancialYearSettings();
     
     // Refresh dashboard if visible
     if (document.getElementById('dashboardScreen').classList.contains('active')) {
+        updateDashboard();
+    }
+}
         updateDashboard();
     }
 }
@@ -6775,7 +6787,8 @@ function backupData() {
         invoices: AppState.invoices,
         purchases: AppState.purchases,
         payments: AppState.payments,
-        financialYear: AppState.currentFinancialYear,
+        financialYears: AppState.financialYears,
+        currentFinancialYear: AppState.currentFinancialYear,
         exportDate: new Date().toISOString()
     };
     
@@ -6811,7 +6824,24 @@ function restoreData() {
                     AppState.invoices = data.invoices || [];
                     AppState.purchases = data.purchases || [];
                     AppState.payments = data.payments || [];
-                    AppState.currentFinancialYear = data.financialYear || getCurrentFinancialYear();
+                    
+                    // Handle both old and new backup formats
+                    if (data.financialYears) {
+                        AppState.financialYears = data.financialYears;
+                        AppState.currentFinancialYear = data.currentFinancialYear || AppState.financialYears.find(fy => fy.isCurrent);
+                    } else if (data.financialYear) {
+                        // Old format - create FY from string
+                        const fyName = data.financialYear;
+                        const fy = createDefaultFinancialYear();
+                        fy.name = fyName;
+                        AppState.financialYears = [fy];
+                        AppState.currentFinancialYear = fy;
+                    } else {
+                        // No FY data - create default
+                        const fy = createDefaultFinancialYear();
+                        AppState.financialYears = [fy];
+                        AppState.currentFinancialYear = fy;
+                    }
                     
                     saveCompanyData();
                     alert('Data restored successfully');
