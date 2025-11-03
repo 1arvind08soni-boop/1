@@ -10,6 +10,7 @@ const AppState = {
     purchases: [],
     payments: [],
     deletedInvoices: [],
+    goodsReturns: [],
     settings: {
         invoiceTemplate: 'modern',
         printSize: 'a4',
@@ -63,6 +64,7 @@ function loadCompanyData() {
         AppState.purchases = data.purchases || [];
         AppState.payments = data.payments || [];
         AppState.deletedInvoices = data.deletedInvoices || [];
+        AppState.goodsReturns = data.goodsReturns || [];
         AppState.currentFinancialYear = data.currentFinancialYear || getCurrentFinancialYear();
     } else {
         AppState.products = [];
@@ -72,6 +74,7 @@ function loadCompanyData() {
         AppState.purchases = [];
         AppState.payments = [];
         AppState.deletedInvoices = [];
+        AppState.goodsReturns = [];
         AppState.currentFinancialYear = getCurrentFinancialYear();
     }
 }
@@ -88,6 +91,7 @@ function saveCompanyData() {
         purchases: AppState.purchases,
         payments: AppState.payments,
         deletedInvoices: AppState.deletedInvoices,
+        goodsReturns: AppState.goodsReturns,
         currentFinancialYear: AppState.currentFinancialYear
     };
     localStorage.setItem(companyKey, JSON.stringify(data));
@@ -310,6 +314,9 @@ function showContentScreen(screenName) {
             break;
         case 'sales':
             loadInvoices();
+            break;
+        case 'goodsReturn':
+            loadGoodsReturns();
             break;
         case 'purchase':
             loadPurchases();
@@ -4220,6 +4227,270 @@ async function saveReportToPDF(reportName, content) {
     }
 }
 
+// Goods Return Management
+function loadGoodsReturns() {
+    const tbody = document.getElementById('goodsReturnTableBody');
+    if (!tbody) return;
+    
+    if (AppState.goodsReturns.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No goods returns found. Click "New Goods Return" to create one.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    AppState.goodsReturns.forEach(gr => {
+        const client = AppState.clients.find(c => c.id === gr.clientId);
+        const clientName = client ? client.name : 'Unknown Client';
+        
+        let invoiceInfo = 'N/A (Standalone)';
+        if (gr.invoiceId) {
+            const invoice = AppState.invoices.find(inv => inv.id === gr.invoiceId);
+            invoiceInfo = invoice ? invoice.invoiceNo : 'Deleted Invoice';
+        }
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${gr.grNo}</td>
+            <td>${formatDate(gr.date)}</td>
+            <td>${clientName}</td>
+            <td>${invoiceInfo}</td>
+            <td>₹${gr.amount.toFixed(2)}</td>
+            <td>
+                <button class="action-btn view" onclick="viewGoodsReturn('${gr.id}')" title="View Details">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="action-btn delete" onclick="deleteGoodsReturn('${gr.id}')" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function filterGoodsReturns() {
+    const searchTerm = document.getElementById('goodsReturnSearchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#goodsReturnTableBody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+}
+
+function getNextGRNumber() {
+    if (AppState.goodsReturns.length === 0) return 'GR001';
+    
+    const numbers = AppState.goodsReturns
+        .map(gr => {
+            const match = gr.grNo.match(/\d+/);
+            return match ? parseInt(match[0]) : 0;
+        })
+        .filter(n => n > 0);
+    
+    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
+    return `GR${String(maxNumber + 1).padStart(3, '0')}`;
+}
+
+function showAddGoodsReturnModal() {
+    const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    
+    const modal = createModal('New Goods Return', `
+        <form id="addGoodsReturnForm" onsubmit="addGoodsReturn(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>GR Number *</label>
+                    <input type="text" class="form-control" name="grNo" value="${getNextGRNumber()}" required>
+                </div>
+                <div class="form-group">
+                    <label>Date *</label>
+                    <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Select Client *</label>
+                <select class="form-control" name="clientId" id="grClientSelect" onchange="loadClientInvoices()" required>
+                    <option value="">-- Select Client --</option>
+                    ${clientOptions}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Link to Invoice (Optional)</label>
+                <select class="form-control" name="invoiceId" id="grInvoiceSelect">
+                    <option value="">-- No Invoice (Standalone Entry) --</option>
+                </select>
+                <small class="form-text text-muted">If selected, amount will be deducted from invoice. If not, this will be a standalone entry.</small>
+            </div>
+            <div class="form-group">
+                <label>Amount *</label>
+                <input type="number" class="form-control" name="amount" step="0.01" min="0.01" required>
+            </div>
+            <div class="form-group">
+                <label>Reason for Return</label>
+                <textarea class="form-control" name="reason" rows="3" placeholder="Enter reason for goods return"></textarea>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Goods Return</button>
+            </div>
+        </form>
+    `);
+    
+    showModal(modal);
+}
+
+function loadClientInvoices() {
+    const clientId = document.getElementById('grClientSelect').value;
+    const invoiceSelect = document.getElementById('grInvoiceSelect');
+    
+    if (!clientId) {
+        invoiceSelect.innerHTML = '<option value="">-- No Invoice (Standalone Entry) --</option>';
+        return;
+    }
+    
+    const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+    
+    let options = '<option value="">-- No Invoice (Standalone Entry) --</option>';
+    clientInvoices.forEach(inv => {
+        options += `<option value="${inv.id}">${inv.invoiceNo} - ₹${inv.total.toFixed(2)} (${formatDate(inv.date)})</option>`;
+    });
+    
+    invoiceSelect.innerHTML = options;
+}
+
+function addGoodsReturn(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const grNo = formData.get('grNo').trim();
+    if (!grNo) {
+        showError('Please enter a GR number');
+        return;
+    }
+    
+    // Check for duplicate GR number
+    const duplicateGR = AppState.goodsReturns.find(gr => gr.grNo === grNo);
+    if (duplicateGR) {
+        showError(`GR number "${grNo}" already exists. Please use a different GR number.`);
+        return;
+    }
+    
+    const amount = parseFloat(formData.get('amount'));
+    if (!amount || amount <= 0) {
+        showError('Please enter a valid amount');
+        return;
+    }
+    
+    const invoiceId = formData.get('invoiceId') || null;
+    
+    // If invoice is selected, validate the amount doesn't exceed invoice total
+    if (invoiceId) {
+        const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
+        if (invoice) {
+            // Calculate total goods returns already linked to this invoice
+            const existingReturns = AppState.goodsReturns
+                .filter(gr => gr.invoiceId === invoiceId)
+                .reduce((sum, gr) => sum + gr.amount, 0);
+            
+            if (existingReturns + amount > invoice.total) {
+                showError(`Total goods returns (₹${(existingReturns + amount).toFixed(2)}) cannot exceed invoice amount (₹${invoice.total.toFixed(2)})`);
+                return;
+            }
+        }
+    }
+    
+    const goodsReturn = {
+        id: generateId(),
+        grNo: grNo,
+        date: formData.get('date'),
+        clientId: formData.get('clientId'),
+        invoiceId: invoiceId,
+        amount: amount,
+        reason: formData.get('reason') || '',
+        createdAt: new Date().toISOString()
+    };
+    
+    AppState.goodsReturns.push(goodsReturn);
+    saveCompanyData();
+    loadGoodsReturns();
+    updateDashboard();
+    closeModal();
+    showSuccess('Goods return created successfully');
+}
+
+function viewGoodsReturn(grId) {
+    const gr = AppState.goodsReturns.find(g => g.id === grId);
+    if (!gr) {
+        showError('Goods return not found');
+        return;
+    }
+    
+    const client = AppState.clients.find(c => c.id === gr.clientId);
+    const clientName = client ? client.name : 'Unknown Client';
+    
+    let invoiceInfo = 'N/A (Standalone Entry)';
+    if (gr.invoiceId) {
+        const invoice = AppState.invoices.find(inv => inv.id === gr.invoiceId);
+        invoiceInfo = invoice ? `${invoice.invoiceNo} - ₹${invoice.total.toFixed(2)}` : 'Deleted Invoice';
+    }
+    
+    const modal = createModal('Goods Return Details', `
+        <div class="details-view">
+            <div class="detail-row">
+                <span class="detail-label">GR Number:</span>
+                <span class="detail-value">${gr.grNo}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Date:</span>
+                <span class="detail-value">${formatDate(gr.date)}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Client:</span>
+                <span class="detail-value">${clientName}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Linked Invoice:</span>
+                <span class="detail-value">${invoiceInfo}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Amount:</span>
+                <span class="detail-value">₹${gr.amount.toFixed(2)}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Reason:</span>
+                <span class="detail-value">${gr.reason || 'N/A'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Created:</span>
+                <span class="detail-value">${new Date(gr.createdAt).toLocaleString()}</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+    `);
+    
+    showModal(modal);
+}
+
+function deleteGoodsReturn(grId) {
+    const gr = AppState.goodsReturns.find(g => g.id === grId);
+    if (!gr) {
+        showError('Goods return not found');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete goods return ${gr.grNo}?`)) {
+        AppState.goodsReturns = AppState.goodsReturns.filter(g => g.id !== grId);
+        saveCompanyData();
+        loadGoodsReturns();
+        updateDashboard();
+        showSuccess('Goods return deleted successfully');
+    }
+}
+
 // Purchase Management
 function loadPurchases() {
     const tbody = document.getElementById('purchaseTableBody');
@@ -4712,17 +4983,21 @@ function generateSalesLedger() {
     const toDate = document.getElementById('ledgerToDate').value;
     
     let invoices = AppState.invoices;
+    let goodsReturns = AppState.goodsReturns;
     
     if (clientId) {
         invoices = invoices.filter(inv => inv.clientId === clientId);
+        goodsReturns = goodsReturns.filter(gr => gr.clientId === clientId);
     }
     
     if (fromDate) {
         invoices = invoices.filter(inv => inv.date >= fromDate);
+        goodsReturns = goodsReturns.filter(gr => gr.date >= fromDate);
     }
     
     if (toDate) {
         invoices = invoices.filter(inv => inv.date <= toDate);
+        goodsReturns = goodsReturns.filter(gr => gr.date <= toDate);
     }
     
     // Format date range
@@ -4741,13 +5016,24 @@ function generateSalesLedger() {
     const lessInvoices = invoices.filter(inv => inv.category === 'LESS');
     const netInvoices = invoices.filter(inv => !inv.category || inv.category === 'NET');
     
+    // Separate goods returns: invoice-linked vs standalone
+    const invoiceLinkedReturns = goodsReturns.filter(gr => gr.invoiceId);
+    const standaloneReturns = goodsReturns.filter(gr => !gr.invoiceId);
+    
     // Calculate totals
     // Note: Discount is only applied when a specific client is selected.
     // When "All Clients" view is used, no discount is applied since different
     // clients may have different discount percentages.
     const lessSubtotal = lessInvoices.reduce((sum, inv) => sum + inv.total, 0);
-    const lessDiscount = clientId ? (lessSubtotal * discountPercentage / 100) : 0;
-    const lessTotal = lessSubtotal - lessDiscount;
+    
+    // Calculate total standalone goods returns (not linked to invoices)
+    const standaloneReturnsTotal = standaloneReturns.reduce((sum, gr) => sum + gr.amount, 0);
+    
+    // Subtract standalone goods returns from LESS subtotal BEFORE discount
+    const lessAfterReturns = lessSubtotal - standaloneReturnsTotal;
+    const lessDiscount = clientId ? (lessAfterReturns * discountPercentage / 100) : 0;
+    const lessTotal = lessAfterReturns - lessDiscount;
+    
     const netTotal = netInvoices.reduce((sum, inv) => sum + inv.total, 0);
     const grandTotal = lessTotal + netTotal;
     
@@ -4758,7 +5044,7 @@ function generateSalesLedger() {
             <p class="text-center">Period: ${dateRangeText}</p>
     `;
     
-    if (invoices.length > 0) {
+    if (invoices.length > 0 || goodsReturns.length > 0) {
         // Show LESS category first if there are any LESS invoices
         if (lessInvoices.length > 0) {
             reportHTML += `
@@ -4790,6 +5076,16 @@ function generateSalesLedger() {
                             <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Subtotal (LESS):</strong></td>
                             <td><strong>₹${lessSubtotal.toFixed(2)}</strong></td>
                         </tr>
+                        ${standaloneReturns.length > 0 ? `
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Goods Returns (Standalone):</strong></td>
+                            <td><strong style="color: #d9534f;">-₹${standaloneReturnsTotal.toFixed(2)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>After Returns:</strong></td>
+                            <td><strong>₹${lessAfterReturns.toFixed(2)}</strong></td>
+                        </tr>
+                        ` : ''}
                         ${clientId && discountPercentage > 0 ? `
                         <tr>
                             <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Discount (${discountPercentage}%):</strong></td>
@@ -4800,6 +5096,42 @@ function generateSalesLedger() {
                             <td><strong>₹${lessTotal.toFixed(2)}</strong></td>
                         </tr>
                         ` : ''}
+                    </tfoot>
+                </table>
+            `;
+        }
+        
+        // Show standalone goods returns if there are any and no LESS invoices
+        if (standaloneReturns.length > 0 && lessInvoices.length === 0) {
+            reportHTML += `
+                <h4 style="margin-top: 20px; color: #d9534f;">Goods Returns (Standalone)</h4>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>GR No</th>
+                            ${!clientId ? '<th>Client</th>' : ''}
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${standaloneReturns.map(gr => {
+                            const client = AppState.clients.find(c => c.id === gr.clientId);
+                            return `
+                                <tr>
+                                    <td>${formatDate(gr.date)}</td>
+                                    <td>${gr.grNo}</td>
+                                    ${!clientId ? `<td>${client ? client.name : 'N/A'}</td>` : ''}
+                                    <td style="color: #d9534f;">-₹${gr.amount.toFixed(2)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="${clientId ? '2' : '3'}" class="text-right"><strong>Total Returns:</strong></td>
+                            <td><strong style="color: #d9534f;">-₹${standaloneReturnsTotal.toFixed(2)}</strong></td>
+                        </tr>
                     </tfoot>
                 </table>
             `;
@@ -4838,6 +5170,15 @@ function generateSalesLedger() {
                         </tr>
                     </tfoot>
                 </table>
+            `;
+        }
+        
+        // Show invoice-linked goods returns information if any exist
+        if (invoiceLinkedReturns.length > 0) {
+            reportHTML += `
+                <div style="margin-top: 20px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107;">
+                    <strong>Note:</strong> ${invoiceLinkedReturns.length} goods return(s) are linked to specific invoices and have already been deducted from those invoice amounts.
+                </div>
             `;
         }
         
@@ -5236,6 +5577,12 @@ function calculateOpeningBalanceForPeriod(accountType, accountId, beforeDate) {
         );
         balance -= payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
         
+        // Subtract standalone goods returns before the period (not linked to invoices)
+        const standaloneReturns = AppState.goodsReturns.filter(gr => 
+            gr.clientId === accountId && !gr.invoiceId && gr.date < beforeDate
+        );
+        balance -= standaloneReturns.reduce((sum, gr) => sum + (gr.amount || 0), 0);
+        
     } else if (accountType === 'vendor') {
         const vendor = AppState.vendors.find(v => v.id === accountId);
         if (!vendor) return 0;
@@ -5293,15 +5640,18 @@ function generateAccountLedger() {
         
         let invoices = AppState.invoices.filter(inv => inv.clientId === id);
         let payments = AppState.payments.filter(pay => pay.clientId === id);
+        let goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === id);
         
         if (fromDate) {
             invoices = invoices.filter(inv => inv.date >= fromDate);
             payments = payments.filter(pay => pay.date >= fromDate);
+            goodsReturns = goodsReturns.filter(gr => gr.date >= fromDate);
         }
         
         if (toDate) {
             invoices = invoices.filter(inv => inv.date <= toDate);
             payments = payments.filter(pay => pay.date <= toDate);
+            goodsReturns = goodsReturns.filter(gr => gr.date <= toDate);
         }
         
         invoices.forEach(inv => {
@@ -5323,6 +5673,18 @@ function generateAccountLedger() {
                 description: pay.description || 'Payment Received',
                 debit: 0,
                 credit: pay.amount
+            });
+        });
+        
+        // Add standalone goods returns as credit entries (reduce client's balance)
+        goodsReturns.filter(gr => !gr.invoiceId).forEach(gr => {
+            transactions.push({
+                date: gr.date,
+                type: 'Goods Return',
+                reference: gr.grNo,
+                description: gr.reason || 'Goods Return (Standalone)',
+                debit: 0,
+                credit: gr.amount
             });
         });
     } else if (accountType === 'vendor') {

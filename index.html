@@ -49,6 +49,9 @@
                 <a href="#" class="nav-item" onclick="showContentScreen('sales')">
                     <i class="fas fa-shopping-cart"></i> Sales Invoice
                 </a>
+                <a href="#" class="nav-item" onclick="showContentScreen('goodsReturn')">
+                    <i class="fas fa-undo-alt"></i> Goods Return
+                </a>
                 <a href="#" class="nav-item" onclick="showContentScreen('purchase')">
                     <i class="fas fa-truck"></i> Purchase
                 </a>
@@ -220,6 +223,33 @@
                             </tr>
                         </thead>
                         <tbody id="invoicesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="goodsReturnScreen" class="content-screen">
+                <div class="screen-header">
+                    <h1 class="page-title">Goods Return</h1>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="goodsReturnSearchInput" class="form-control" placeholder="Search goods returns..." style="width: 300px;" onkeyup="filterGoodsReturns()">
+                        <button class="btn btn-primary" onclick="showAddGoodsReturnModal()">
+                            <i class="fas fa-plus"></i> New Goods Return
+                        </button>
+                    </div>
+                </div>
+                <div class="data-table-container">
+                    <table class="data-table" id="goodsReturnTable">
+                        <thead>
+                            <tr>
+                                <th>GR No</th>
+                                <th>Date</th>
+                                <th>Client</th>
+                                <th>Invoice</th>
+                                <th>Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="goodsReturnTableBody"></tbody>
                     </table>
                 </div>
             </div>
