@@ -26,6 +26,9 @@ const UI_MESSAGES = {
         `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
 };
 
+// Modal focus selector constant
+const FOCUSABLE_ELEMENTS_SELECTOR = 'input:not([readonly]):not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])';
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
@@ -7405,7 +7408,7 @@ function createModal(title, content, size = '') {
 
 // Helper function to find the first focusable element in a container
 function getFirstFocusableElement(container) {
-    return container.querySelector('input:not([readonly]):not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+    return container.querySelector(FOCUSABLE_ELEMENTS_SELECTOR);
 }
 
 function showModal(modalHTML) {
@@ -7629,6 +7632,8 @@ function showInlineModal(modalHTML) {
 
 function closeInlineModal() {
     const inlineContainer = document.getElementById('inlineModalContainer');
+    const modalContainer = document.getElementById('modalContainer');
+    
     if (inlineContainer) {
         // Remove focus from any active element in the inline modal before closing
         const activeElement = document.activeElement;
@@ -7640,7 +7645,7 @@ function closeInlineModal() {
         
         // Restore focus to the parent modal if it exists
         requestAnimationFrame(() => {
-            const parentModal = document.getElementById('modalContainer').querySelector('.modal');
+            const parentModal = modalContainer.querySelector('.modal');
             if (parentModal) {
                 const firstInput = getFirstFocusableElement(parentModal);
                 if (firstInput) {
@@ -7650,15 +7655,13 @@ function closeInlineModal() {
         });
     } else {
         // Fallback to regular close if no inline container
-        const container = document.getElementById('modalContainer');
-        
         // Remove focus from any active element in the modal before closing
         const activeElement = document.activeElement;
-        if (activeElement && container.contains(activeElement)) {
+        if (activeElement && modalContainer.contains(activeElement)) {
             activeElement.blur();
         }
         
-        container.innerHTML = '';
+        modalContainer.innerHTML = '';
     }
 }
 
