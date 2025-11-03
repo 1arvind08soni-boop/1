@@ -26,6 +26,12 @@ const UI_MESSAGES = {
         `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
 };
 
+// UI Constants
+const UI_CONSTANTS = {
+    FOCUS_RESTORE_DELAY_MS: 100,
+    SEARCH_INPUT_SELECTOR: 'input[type="text"][placeholder*="Search"]'
+};
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
@@ -874,12 +880,7 @@ function deleteProduct(productId) {
     loadProducts();
     
     // Restore focus to search input after deletion
-    setTimeout(() => {
-        const searchInput = document.getElementById('productSearchInput');
-        if (searchInput) {
-            searchInput.focus();
-        }
-    }, 100);
+    restoreSearchInputFocus('productSearchInput');
 }
 
 // Filter Products based on search
@@ -2596,12 +2597,7 @@ function deleteInvoice(invoiceId) {
     updateDashboard();
     
     // Restore focus to search input after deletion
-    setTimeout(() => {
-        const searchInput = document.getElementById('invoiceSearchInput');
-        if (searchInput) {
-            searchInput.focus();
-        }
-    }, 100);
+    restoreSearchInputFocus('invoiceSearchInput');
 }
 
 function showRestoreInvoiceModal() {
@@ -5132,12 +5128,7 @@ function deleteGoodsReturn(returnId) {
     updateDashboard();
     
     // Restore focus to search input after deletion
-    setTimeout(() => {
-        const searchInput = document.getElementById('goodsReturnSearchInput');
-        if (searchInput) {
-            searchInput.focus();
-        }
-    }, 100);
+    restoreSearchInputFocus('goodsReturnSearchInput');
 }
 
 function filterGoodsReturns() {
@@ -7485,7 +7476,7 @@ function restoreFocus() {
         // If no previous element, try to focus on the search input of the current screen
         const activeScreen = document.querySelector('.content-screen.active');
         if (activeScreen) {
-            const searchInput = activeScreen.querySelector('input[type="text"][placeholder*="Search"]');
+            const searchInput = activeScreen.querySelector(UI_CONSTANTS.SEARCH_INPUT_SELECTOR);
             if (searchInput) {
                 searchInput.focus();
                 return;
@@ -7497,7 +7488,17 @@ function restoreFocus() {
                 firstInput.focus();
             }
         }
-    }, 100);
+    }, UI_CONSTANTS.FOCUS_RESTORE_DELAY_MS);
+}
+
+// Helper function to restore focus to a specific search input after CRUD operations
+function restoreSearchInputFocus(searchInputId) {
+    setTimeout(() => {
+        const searchInput = document.getElementById(searchInputId);
+        if (searchInput) {
+            searchInput.focus();
+        }
+    }, UI_CONSTANTS.FOCUS_RESTORE_DELAY_MS);
 }
 
 // Helper function to get or create notification container
@@ -7701,7 +7702,7 @@ function closeInlineModal() {
                 // If no parent modal, restore focus to main content
                 restoreFocus();
             }
-        }, 100);
+        }, UI_CONSTANTS.FOCUS_RESTORE_DELAY_MS);
     } else {
         // Fallback to regular close if no inline container
         const container = document.getElementById('modalContainer');
