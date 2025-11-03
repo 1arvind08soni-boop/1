@@ -4777,6 +4777,9 @@ function getNextGoodsReturnNumber() {
 }
 
 function showAddGoodsReturnModal() {
+    // Force clear any existing modal first to ensure clean state
+    closeModal();
+    
     const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     const nextReturnNo = getNextGoodsReturnNumber();
     
