@@ -271,6 +271,7 @@ function deleteCompany(companyId) {
     
     // Show confirmation dialog
     if (!confirm(UI_MESSAGES.DELETE_COMPANY_CONFIRM(company.name))) {
+        restoreFocusAfterConfirm();
         return;
     }
     
@@ -286,6 +287,7 @@ function deleteCompany(companyId) {
     
     // Refresh the company list display
     displayCompanyList();
+    restoreFocusAfterConfirm();
 }
 
 function selectCompany(companyId) {
@@ -840,14 +842,21 @@ function deleteProduct(productId) {
     
     if (usedInInvoices.length > 0) {
         const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it will cause invoice line items to show missing product information.\n\nAre you sure you want to delete this product?`;
-        if (!confirm(message)) return;
+        if (!confirm(message)) {
+            restoreFocusAfterConfirm();
+            return;
+        }
     } else {
-        if (!confirm('Are you sure you want to delete this product?')) return;
+        if (!confirm('Are you sure you want to delete this product?')) {
+            restoreFocusAfterConfirm();
+            return;
+        }
     }
     
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
     loadProducts();
+    restoreFocusAfterConfirm();
 }
 
 // Filter Products based on search
@@ -1476,20 +1485,27 @@ function deleteClient(clientId) {
         if (clientGoodsReturns.length > 0) message += `\n- ${clientGoodsReturns.length} goods return(s)`;
         message += '\n\nDeleting this client will also delete all these records. Are you sure you want to continue?';
         
-        if (!confirm(message)) return;
+        if (!confirm(message)) {
+            restoreFocusAfterConfirm();
+            return;
+        }
         
         // Delete all related records
         AppState.invoices = AppState.invoices.filter(inv => inv.clientId !== clientId);
         AppState.payments = AppState.payments.filter(pay => pay.clientId !== clientId);
         AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId !== clientId);
     } else {
-        if (!confirm('Are you sure you want to delete this client?')) return;
+        if (!confirm('Are you sure you want to delete this client?')) {
+            restoreFocusAfterConfirm();
+            return;
+        }
     }
     
     AppState.clients = AppState.clients.filter(c => c.id !== clientId);
     saveCompanyData();
     loadClients();
     updateDashboard();
+    restoreFocusAfterConfirm();
 }
 
 // Vendor Management
@@ -1793,19 +1809,26 @@ function deleteVendor(vendorId) {
         if (vendorPayments.length > 0) message += `\n- ${vendorPayments.length} payment(s)`;
         message += '\n\nDeleting this vendor will also delete all these records. Are you sure you want to continue?';
         
-        if (!confirm(message)) return;
+        if (!confirm(message)) {
+            restoreFocusAfterConfirm();
+            return;
+        }
         
         // Delete all related records
         AppState.purchases = AppState.purchases.filter(pur => pur.vendorId !== vendorId);
         AppState.payments = AppState.payments.filter(pay => pay.vendorId !== vendorId);
     } else {
-        if (!confirm('Are you sure you want to delete this vendor?')) return;
+        if (!confirm('Are you sure you want to delete this vendor?')) {
+            restoreFocusAfterConfirm();
+            return;
+        }
     }
     
     AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
     saveCompanyData();
     loadVendors();
     updateDashboard();
+    restoreFocusAfterConfirm();
 }
 
 // Continue in next part...
@@ -2591,12 +2614,18 @@ function deleteInvoice(invoiceId) {
     if (associatedGoodsReturns.length > 0) {
         const totalReturns = associatedGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
         const message = `This invoice has ${associatedGoodsReturns.length} goods return(s) totaling ₹${totalReturns.toFixed(2)}.\n\nDeleting this invoice will also delete all associated goods returns. Are you sure you want to continue?`;
-        if (!confirm(message)) return;
+        if (!confirm(message)) {
+            restoreFocusAfterConfirm();
+            return;
+        }
         
         // Delete associated goods returns
         AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId !== invoiceId);
     } else {
-        if (!confirm('Are you sure you want to delete this invoice?')) return;
+        if (!confirm('Are you sure you want to delete this invoice?')) {
+            restoreFocusAfterConfirm();
+            return;
+        }
     }
     
     // Find the invoice to delete
@@ -2616,6 +2645,7 @@ function deleteInvoice(invoiceId) {
     loadInvoices();
     loadGoodsReturns(); // Refresh goods returns table if it's open
     updateDashboard();
+    restoreFocusAfterConfirm();
 }
 
 function showRestoreInvoiceModal() {
@@ -4529,12 +4559,16 @@ function updatePurchase(event, purchaseId) {
 }
 
 function deletePurchase(purchaseId) {
-    if (!confirm('Are you sure you want to delete this purchase?')) return;
+    if (!confirm('Are you sure you want to delete this purchase?')) {
+        restoreFocusAfterConfirm();
+        return;
+    }
     
     AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
     saveCompanyData();
     loadPurchases();
     updateDashboard();
+    restoreFocusAfterConfirm();
 }
 
 // Continue in next part...
@@ -4822,12 +4856,16 @@ function updatePayment(event, paymentId) {
 }
 
 function deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment?')) return;
+    if (!confirm('Are you sure you want to delete this payment?')) {
+        restoreFocusAfterConfirm();
+        return;
+    }
     
     AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
     saveCompanyData();
     loadPayments();
     updateDashboard();
+    restoreFocusAfterConfirm();
 }
 
 // Goods Return Functions
@@ -5216,12 +5254,16 @@ function updateGoodsReturn(event, returnId) {
 }
 
 function deleteGoodsReturn(returnId) {
-    if (!confirm('Are you sure you want to delete this goods return?')) return;
+    if (!confirm('Are you sure you want to delete this goods return?')) {
+        restoreFocusAfterConfirm();
+        return;
+    }
     
     AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
     saveCompanyData();
     loadGoodsReturns();
     updateDashboard();
+    restoreFocusAfterConfirm();
 }
 
 function filterGoodsReturns() {
@@ -7017,6 +7059,7 @@ function deleteFinancialYear(fyId) {
     if (!fy) return;
     
     if (!confirm(`Are you sure you want to delete financial year "${fy.name}"? This will delete all transactions within this period.`)) {
+        restoreFocusAfterConfirm();
         return;
     }
     
@@ -7044,6 +7087,7 @@ function deleteFinancialYear(fyId) {
     
     saveCompanyData();
     showFinancialYearSettings();
+    restoreFocusAfterConfirm();
 }
 
 function showYearEndProcessModal() {
@@ -7723,6 +7767,26 @@ function closeInlineModal() {
 // Utility Functions
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Helper function to restore focus after confirm dialogs
+// This fixes the issue where inputs become unresponsive after deletion operations
+function restoreFocusAfterConfirm() {
+    // Use setTimeout to ensure this runs after the confirm dialog closes
+    setTimeout(() => {
+        // Blur any currently focused element
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
+        // Re-focus on the document body to reset focus state
+        document.body.focus();
+        // Clear the focus again to allow normal focus behavior
+        setTimeout(() => {
+            if (document.activeElement === document.body) {
+                document.body.blur();
+            }
+        }, 10);
+    }, 10);
 }
 
 function sortByCreatedAtDesc(array) {
