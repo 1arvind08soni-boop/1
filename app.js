@@ -7807,7 +7807,7 @@ function closeInlineModal() {
         setTimeout(() => {
             const parentModal = document.getElementById('modalContainer').querySelector('.modal');
             if (parentModal) {
-                const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                const firstInput = parentModal.querySelector(FOCUSABLE_INPUT_SELECTOR);
                 if (firstInput) {
                     firstInput.focus();
                     // Ensure it's enabled
@@ -7834,6 +7834,10 @@ function closeInlineModal() {
 
 // UI State Management Functions
 // These functions ensure proper UI refresh and focus management after delete operations
+
+// Reusable selector for focusable input elements
+const FOCUSABLE_INPUT_SELECTOR = 'input:not([readonly]):not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([readonly]):not([disabled])';
+
 function resetUIStateAfterDelete() {
     // Re-enable all input fields that might have been affected
     const allInputs = document.querySelectorAll('input:not([readonly]), select:not([disabled]), textarea:not([readonly])');
@@ -7879,10 +7883,10 @@ function refreshAllInputFields() {
     // Force refresh of all input fields to ensure they're responsive
     const allInputs = document.querySelectorAll('input, select, textarea');
     allInputs.forEach(input => {
-        // Trigger a focus event to ensure event listeners are active
+        // Trigger input event to ensure event listeners are active
         if (!input.disabled && !input.readOnly) {
-            const value = input.value;
-            input.value = value; // Reassign to trigger any watchers
+            // Dispatch input event to trigger any listeners
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     });
 }
@@ -7892,7 +7896,7 @@ function ensureModalInputsFocusable() {
     setTimeout(() => {
         const modal = document.querySelector('.modal');
         if (modal) {
-            const firstInput = modal.querySelector('input:not([readonly]):not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+            const firstInput = modal.querySelector(FOCUSABLE_INPUT_SELECTOR);
             if (firstInput) {
                 firstInput.focus();
                 // Ensure it's enabled
