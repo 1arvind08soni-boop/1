@@ -7439,11 +7439,22 @@ function createModal(title, content, size = '') {
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
+    // Auto-focus first input field in the modal after a short delay
+    setTimeout(() => {
+        const firstInput = container.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    }, 100);
 }
 
 function closeModal() {
     const container = document.getElementById('modalContainer');
     container.innerHTML = '';
+    // Clear any lingering focus to prevent focus-related issues
+    if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
+    }
 }
 
 // Helper function to get or create notification container
