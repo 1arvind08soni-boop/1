@@ -26,6 +26,14 @@ const UI_MESSAGES = {
         `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
 };
 
+// Helper Functions
+function getProductDisplay(item) {
+    // Helper to get product display string with backward compatibility
+    // Returns "Product Code - Category" format
+    const category = item.productCategory || item.productName || 'N/A';
+    return `${item.productCode} - ${category}`;
+}
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
@@ -423,14 +431,13 @@ function loadProducts() {
     if (!tbody) return;
     
     if (AppState.products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No products added yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products added yet</td></tr>';
         return;
     }
     
     tbody.innerHTML = AppState.products.map(product => `
         <tr>
             <td>${product.code}</td>
-            <td>${product.name}</td>
             <td>${product.category || 'N/A'}</td>
             <td>${product.unitPerBox}</td>
             <td>₹${product.pricePerUnit.toFixed(2)}</td>
@@ -460,25 +467,21 @@ function showAddProductModal() {
                     <input type="text" class="form-control" name="code" required>
                 </div>
                 <div class="form-group">
-                    <label>Product Name *</label>
-                    <input type="text" class="form-control" name="name" required>
+                    <label>Category *</label>
+                    <select class="form-control" name="category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="Bangles">Bangles</option>
+                        <option value="Sets">Sets</option>
+                        <option value="Kada">Kada</option>
+                        <option value="Bracelet">Bracelet</option>
+                        <option value="Tops">Tops</option>
+                        <option value="Rings">Rings</option>
+                        <option value="Necklace">Necklace</option>
+                        <option value="Earrings">Earrings</option>
+                        <option value="Anklets">Anklets</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Category *</label>
-                <select class="form-control" name="category" required>
-                    <option value="">-- Select Category --</option>
-                    <option value="Bangles">Bangles</option>
-                    <option value="Sets">Sets</option>
-                    <option value="Kada">Kada</option>
-                    <option value="Bracelet">Bracelet</option>
-                    <option value="Tops">Tops</option>
-                    <option value="Rings">Rings</option>
-                    <option value="Necklace">Necklace</option>
-                    <option value="Earrings">Earrings</option>
-                    <option value="Anklets">Anklets</option>
-                    <option value="Other">Other</option>
-                </select>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -541,18 +544,7 @@ function addProduct(event) {
     const formData = new FormData(form);
     
     const code = formData.get('code');
-    const name = formData.get('name');
     const category = formData.get('category');
-    
-    // Check for duplicate product name within the same category
-    const duplicateName = AppState.products.find(p => 
-        p.name.toLowerCase() === name.toLowerCase() && p.category === category
-    );
-    
-    if (duplicateName) {
-        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
-        return;
-    }
     
     // Check for duplicate code with same category
     const duplicateCodeCategory = AppState.products.find(p => 
@@ -576,7 +568,6 @@ function addProduct(event) {
     const product = {
         id: generateId(),
         code: code,
-        name: name,
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
@@ -602,25 +593,21 @@ function showInlineProductModal(buttonElement) {
                     <input type="text" class="form-control" name="code" required>
                 </div>
                 <div class="form-group">
-                    <label>Product Name *</label>
-                    <input type="text" class="form-control" name="name" required>
+                    <label>Category *</label>
+                    <select class="form-control" name="category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="Bangles">Bangles</option>
+                        <option value="Sets">Sets</option>
+                        <option value="Kada">Kada</option>
+                        <option value="Bracelet">Bracelet</option>
+                        <option value="Tops">Tops</option>
+                        <option value="Rings">Rings</option>
+                        <option value="Necklace">Necklace</option>
+                        <option value="Earrings">Earrings</option>
+                        <option value="Anklets">Anklets</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Category *</label>
-                <select class="form-control" name="category" required>
-                    <option value="">-- Select Category --</option>
-                    <option value="Bangles">Bangles</option>
-                    <option value="Sets">Sets</option>
-                    <option value="Kada">Kada</option>
-                    <option value="Bracelet">Bracelet</option>
-                    <option value="Tops">Tops</option>
-                    <option value="Rings">Rings</option>
-                    <option value="Necklace">Necklace</option>
-                    <option value="Earrings">Earrings</option>
-                    <option value="Anklets">Anklets</option>
-                    <option value="Other">Other</option>
-                </select>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -654,18 +641,7 @@ function addInlineProduct(event) {
     const formData = new FormData(form);
     
     const code = formData.get('code');
-    const name = formData.get('name');
     const category = formData.get('category');
-    
-    // Check for duplicate product name within the same category
-    const duplicateName = AppState.products.find(p => 
-        p.name.toLowerCase() === name.toLowerCase() && p.category === category
-    );
-    
-    if (duplicateName) {
-        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
-        return;
-    }
     
     // Check for duplicate code with same category
     const duplicateCodeCategory = AppState.products.find(p => 
@@ -680,7 +656,6 @@ function addInlineProduct(event) {
     const product = {
         id: generateId(),
         code: code,
-        name: name,
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
@@ -696,7 +671,7 @@ function addInlineProduct(event) {
     productSelects.forEach(select => {
         const option = document.createElement('option');
         option.value = product.id;
-        option.textContent = `${product.name} (${product.code})`;
+        option.textContent = `${product.code} - ${product.category}`;
         select.appendChild(option);
     });
     
@@ -715,7 +690,7 @@ function addInlineProduct(event) {
     }
     
     closeInlineModal();
-    showSuccess(`Product "${product.name}" created successfully!`);
+    showSuccess(`Product "${product.code} - ${product.category}" created successfully!`);
 }
 
 
@@ -731,25 +706,21 @@ function editProduct(productId) {
                     <input type="text" class="form-control" name="code" value="${product.code}" required>
                 </div>
                 <div class="form-group">
-                    <label>Product Name *</label>
-                    <input type="text" class="form-control" name="name" value="${product.name}" required>
+                    <label>Category *</label>
+                    <select class="form-control" name="category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="Bangles" ${product.category === 'Bangles' ? 'selected' : ''}>Bangles</option>
+                        <option value="Sets" ${product.category === 'Sets' ? 'selected' : ''}>Sets</option>
+                        <option value="Kada" ${product.category === 'Kada' ? 'selected' : ''}>Kada</option>
+                        <option value="Bracelet" ${product.category === 'Bracelet' ? 'selected' : ''}>Bracelet</option>
+                        <option value="Tops" ${product.category === 'Tops' ? 'selected' : ''}>Tops</option>
+                        <option value="Rings" ${product.category === 'Rings' ? 'selected' : ''}>Rings</option>
+                        <option value="Necklace" ${product.category === 'Necklace' ? 'selected' : ''}>Necklace</option>
+                        <option value="Earrings" ${product.category === 'Earrings' ? 'selected' : ''}>Earrings</option>
+                        <option value="Anklets" ${product.category === 'Anklets' ? 'selected' : ''}>Anklets</option>
+                        <option value="Other" ${product.category === 'Other' ? 'selected' : ''}>Other</option>
+                    </select>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Category *</label>
-                <select class="form-control" name="category" required>
-                    <option value="">-- Select Category --</option>
-                    <option value="Bangles" ${product.category === 'Bangles' ? 'selected' : ''}>Bangles</option>
-                    <option value="Sets" ${product.category === 'Sets' ? 'selected' : ''}>Sets</option>
-                    <option value="Kada" ${product.category === 'Kada' ? 'selected' : ''}>Kada</option>
-                    <option value="Bracelet" ${product.category === 'Bracelet' ? 'selected' : ''}>Bracelet</option>
-                    <option value="Tops" ${product.category === 'Tops' ? 'selected' : ''}>Tops</option>
-                    <option value="Rings" ${product.category === 'Rings' ? 'selected' : ''}>Rings</option>
-                    <option value="Necklace" ${product.category === 'Necklace' ? 'selected' : ''}>Necklace</option>
-                    <option value="Earrings" ${product.category === 'Earrings' ? 'selected' : ''}>Earrings</option>
-                    <option value="Anklets" ${product.category === 'Anklets' ? 'selected' : ''}>Anklets</option>
-                    <option value="Other" ${product.category === 'Other' ? 'selected' : ''}>Other</option>
-                </select>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -818,18 +789,7 @@ function updateProduct(event, productId) {
     if (index === -1) return;
     
     const code = formData.get('code');
-    const name = formData.get('name');
     const category = formData.get('category');
-    
-    // Check for duplicate product name within the same category (excluding current product)
-    const duplicateName = AppState.products.find(p => 
-        p.id !== productId && p.name.toLowerCase() === name.toLowerCase() && p.category === category
-    );
-    
-    if (duplicateName) {
-        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
-        return;
-    }
     
     // Check for duplicate code with same category (excluding current product)
     const duplicateCodeCategory = AppState.products.find(p => 
@@ -853,7 +813,6 @@ function updateProduct(event, productId) {
     AppState.products[index] = {
         ...AppState.products[index],
         code: code,
-        name: name,
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
@@ -906,19 +865,17 @@ function filterProducts() {
     
     const filteredProducts = AppState.products.filter(product => {
         return product.code.toLowerCase().includes(searchTerm) ||
-               product.name.toLowerCase().includes(searchTerm) ||
                (product.category && product.category.toLowerCase().includes(searchTerm));
     });
     
     if (filteredProducts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No products found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products found</td></tr>';
         return;
     }
     
     tbody.innerHTML = filteredProducts.map(product => `
         <tr>
             <td>${product.code}</td>
-            <td>${product.name}</td>
             <td>${product.category || 'N/A'}</td>
             <td>${product.unitPerBox}</td>
             <td>₹${product.pricePerUnit.toFixed(2)}</td>
@@ -1912,7 +1869,7 @@ function showAddInvoiceModal() {
     
     if (detailedInvoicing) {
         // Show detailed invoice form with products
-        const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+        const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
         
         const modal = createModal('New Sales Invoice', `
             <form id="addInvoiceForm" onsubmit="addInvoice(event)">
@@ -2163,7 +2120,7 @@ function calculateInvoiceTotal() {
 }
 
 function addInvoiceItem() {
-    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
     const tbody = document.getElementById('invoiceItemsBody');
     const serialNo = tbody.children.length + 1;
     
@@ -2244,8 +2201,8 @@ function addInvoice(event) {
             items.push({
                 serialNo: index + 1,
                 productId,
-                productName: product.name,
                 productCode: product.code,
+                productCategory: product.category,
                 boxes,
                 unitPerBox,
                 quantity,
@@ -2399,7 +2356,7 @@ function editInvoice(invoiceId) {
     // Show detailed edit form
     const itemsHTML = invoice.items.map((item, index) => {
         const productOptions = AppState.products.map(p => 
-            `<option value="${p.id}" ${p.id === item.productId ? 'selected' : ''}>${p.name} (${p.code})</option>`
+            `<option value="${p.id}" ${p.id === item.productId ? 'selected' : ''}>${p.code} - ${p.category}</option>`
         ).join('');
         
         return `
@@ -2541,8 +2498,8 @@ function updateInvoice(event, invoiceId) {
             items.push({
                 serialNo: index + 1,
                 productId,
-                productName: product.name,
                 productCode: product.code,
+                productCategory: product.category,
                 boxes,
                 unitPerBox,
                 quantity,
@@ -2864,7 +2821,7 @@ function generateModernInvoice(invoice, client, size) {
         return `
         <tr>
             <td class="text-center">${index + 1}</td>
-            <td>${item.productName} (${item.productCode})</td>
+            <td>${getProductDisplay(item)}</td>
             <td class="text-center">${item.boxes}</td>
             <td class="text-center">${item.unitPerBox}</td>
             <td class="text-center">${quantity}</td>
@@ -2974,7 +2931,7 @@ function generateClassicInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #000;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #000;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${quantity}</td>
@@ -3088,7 +3045,7 @@ function generateMinimalInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #ddd; font-size: 0.95em;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #ddd; font-size: 0.95em;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${quantity}</td>
@@ -3218,7 +3175,7 @@ function generateCompactInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #333; font-size: 0.9em;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #333; font-size: 0.9em;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${quantity}</td>
@@ -3330,7 +3287,7 @@ function generateDeliveryChallanInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${index + 1}</td>
-            <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; font-size: 1.05em;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; font-size: 1.05em;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${boxes}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${unitPerBox}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${quantity}</td>
@@ -3477,7 +3434,7 @@ function generateA5BorderedColorInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #444;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #444;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${quantity}</td>
@@ -3609,7 +3566,7 @@ function generateA5BorderedBWInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #000;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #000;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${quantity}</td>
@@ -3741,7 +3698,7 @@ function generateA5SimpleColorInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border-bottom: 1px solid #ddd;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border-bottom: 1px solid #ddd;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${quantity}</td>
@@ -3877,7 +3834,7 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border-bottom: 1px solid #999;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border-bottom: 1px solid #999;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${quantity}</td>
@@ -6229,7 +6186,7 @@ function viewVendorLedger(vendorId) {
 
 // Product Report Functions
 function showProductReport() {
-    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
     
     const modal = createModal('Product Sales Report', `
         <div class="form-row">
@@ -6300,8 +6257,8 @@ function generateProductReport() {
                 if (!productSales[item.productId]) {
                     productSales[item.productId] = {
                         productId: item.productId,
-                        productName: item.productName,
                         productCode: item.productCode,
+                        productCategory: item.productCategory || item.productName || 'N/A',
                         totalQuantity: 0,
                         totalBoxes: 0,
                         totalAmount: 0,
@@ -6339,7 +6296,7 @@ function generateProductReport() {
                     <thead>
                         <tr>
                             ${!productId ? '<th>Product Code</th>' : ''}
-                            ${!productId ? '<th>Product Name</th>' : ''}
+                            ${!productId ? '<th>Category</th>' : ''}
                             <th>Total Quantity Sold</th>
                             <th>Total Boxes</th>
                             <th>Total Amount</th>
@@ -6350,7 +6307,7 @@ function generateProductReport() {
                         ${salesArray.map(sale => `
                             <tr>
                                 ${!productId ? `<td>${sale.productCode}</td>` : ''}
-                                ${!productId ? `<td>${sale.productName}</td>` : ''}
+                                ${!productId ? `<td>${sale.productCategory}</td>` : ''}
                                 <td>${sale.totalQuantity.toFixed(2)}</td>
                                 <td>${sale.totalBoxes}</td>
                                 <td>₹${sale.totalAmount.toFixed(2)}</td>
@@ -6487,7 +6444,7 @@ function exportToExcel(type) {
         case 'products':
             data = AppState.products.map(p => ({
                 'Product Code': p.code,
-                'Product Name': p.name,
+                'Category': p.category,
                 'Unit Per Box': p.unitPerBox,
                 'Price Per Unit': p.pricePerUnit,
                 'Price Per Box': p.unitPerBox * p.pricePerUnit
