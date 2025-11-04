@@ -425,12 +425,7 @@ function loadProducts() {
         return;
     }
     
-    // Sort products by createdAt in descending order (latest first)
-    const sortedProducts = [...AppState.products].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-    });
+    const sortedProducts = sortByCreatedAtDesc(AppState.products);
     
     tbody.innerHTML = sortedProducts.map(product => `
         <tr>
@@ -1812,12 +1807,7 @@ function loadInvoices() {
         return;
     }
     
-    // Sort invoices by createdAt in descending order (latest first)
-    const sortedInvoices = [...AppState.invoices].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-    });
+    const sortedInvoices = sortByCreatedAtDesc(AppState.invoices);
     
     tbody.innerHTML = sortedInvoices.map(invoice => {
         const client = AppState.clients.find(c => c.id === invoice.clientId);
@@ -4310,12 +4300,7 @@ function loadPurchases() {
         return;
     }
     
-    // Sort purchases by createdAt in descending order (latest first)
-    const sortedPurchases = [...AppState.purchases].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-    });
+    const sortedPurchases = sortByCreatedAtDesc(AppState.purchases);
     
     tbody.innerHTML = sortedPurchases.map(purchase => {
         const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
@@ -4508,12 +4493,7 @@ function loadPayments() {
         return;
     }
     
-    // Sort payments by createdAt in descending order (latest first)
-    const sortedPayments = [...AppState.payments].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-    });
+    const sortedPayments = sortByCreatedAtDesc(AppState.payments);
     
     tbody.innerHTML = sortedPayments.map(payment => {
         const client = AppState.clients.find(c => c.id === payment.clientId);
@@ -4763,12 +4743,7 @@ function loadGoodsReturns() {
         return;
     }
     
-    // Sort goods returns by createdAt in descending order (latest first)
-    const sortedGoodsReturns = [...AppState.goodsReturns].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-    });
+    const sortedGoodsReturns = sortByCreatedAtDesc(AppState.goodsReturns);
     
     tbody.innerHTML = sortedGoodsReturns.map(gr => {
         const client = AppState.clients.find(c => c.id === gr.clientId);
@@ -7650,6 +7625,16 @@ function closeInlineModal() {
 // Utility Functions
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function sortByCreatedAtDesc(array) {
+    // Sort array by createdAt in descending order (latest first)
+    // Using string comparison for ISO format timestamps is more efficient
+    return [...array].sort((a, b) => {
+        const dateA = a.createdAt || '';
+        const dateB = b.createdAt || '';
+        return dateB.localeCompare(dateA);
+    });
 }
 
 function formatDate(dateString) {
