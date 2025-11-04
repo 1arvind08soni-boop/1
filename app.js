@@ -26,6 +26,14 @@ const UI_MESSAGES = {
         `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
 };
 
+// Helper Functions
+function getProductDisplay(item) {
+    // Helper to get product display string with backward compatibility
+    // Returns "Product Code - Category" format
+    const category = item.productCategory || item.productName || 'N/A';
+    return `${item.productCode} - ${category}`;
+}
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
@@ -2744,7 +2752,7 @@ function generateModernInvoice(invoice, client, size) {
         return `
         <tr>
             <td class="text-center">${index + 1}</td>
-            <td>${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td>${getProductDisplay(item)}</td>
             <td class="text-center">${item.boxes}</td>
             <td class="text-center">${item.unitPerBox}</td>
             <td class="text-center">${quantity}</td>
@@ -2854,7 +2862,7 @@ function generateClassicInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #000;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border: 1px solid #000;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${quantity}</td>
@@ -2968,7 +2976,7 @@ function generateMinimalInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #ddd; font-size: 0.95em;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border: 1px solid #ddd; font-size: 0.95em;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${quantity}</td>
@@ -3098,7 +3106,7 @@ function generateCompactInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #333; font-size: 0.9em;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border: 1px solid #333; font-size: 0.9em;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${quantity}</td>
@@ -3210,7 +3218,7 @@ function generateDeliveryChallanInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${index + 1}</td>
-            <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; font-size: 1.05em;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; font-size: 1.05em;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${boxes}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${unitPerBox}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${quantity}</td>
@@ -3357,7 +3365,7 @@ function generateA5BorderedColorInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #444;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border: 1px solid #444;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${quantity}</td>
@@ -3489,7 +3497,7 @@ function generateA5BorderedBWInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #000;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border: 1px solid #000;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${quantity}</td>
@@ -3621,7 +3629,7 @@ function generateA5SimpleColorInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border-bottom: 1px solid #ddd;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border-bottom: 1px solid #ddd;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${quantity}</td>
@@ -3757,7 +3765,7 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border-bottom: 1px solid #999;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
+            <td style="padding: ${padding}; border-bottom: 1px solid #999;">${getProductDisplay(item)}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${quantity}</td>
