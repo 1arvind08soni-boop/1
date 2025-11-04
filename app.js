@@ -421,14 +421,13 @@ function loadProducts() {
     if (!tbody) return;
     
     if (AppState.products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No products added yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products added yet</td></tr>';
         return;
     }
     
     tbody.innerHTML = AppState.products.map(product => `
         <tr>
             <td>${product.code}</td>
-            <td>${product.name}</td>
             <td>${product.category || 'N/A'}</td>
             <td>${product.unitPerBox}</td>
             <td>₹${product.pricePerUnit.toFixed(2)}</td>
@@ -458,25 +457,21 @@ function showAddProductModal() {
                     <input type="text" class="form-control" name="code" required>
                 </div>
                 <div class="form-group">
-                    <label>Product Name *</label>
-                    <input type="text" class="form-control" name="name" required>
+                    <label>Category *</label>
+                    <select class="form-control" name="category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="Bangles">Bangles</option>
+                        <option value="Sets">Sets</option>
+                        <option value="Kada">Kada</option>
+                        <option value="Bracelet">Bracelet</option>
+                        <option value="Tops">Tops</option>
+                        <option value="Rings">Rings</option>
+                        <option value="Necklace">Necklace</option>
+                        <option value="Earrings">Earrings</option>
+                        <option value="Anklets">Anklets</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Category *</label>
-                <select class="form-control" name="category" required>
-                    <option value="">-- Select Category --</option>
-                    <option value="Bangles">Bangles</option>
-                    <option value="Sets">Sets</option>
-                    <option value="Kada">Kada</option>
-                    <option value="Bracelet">Bracelet</option>
-                    <option value="Tops">Tops</option>
-                    <option value="Rings">Rings</option>
-                    <option value="Necklace">Necklace</option>
-                    <option value="Earrings">Earrings</option>
-                    <option value="Anklets">Anklets</option>
-                    <option value="Other">Other</option>
-                </select>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -539,18 +534,7 @@ function addProduct(event) {
     const formData = new FormData(form);
     
     const code = formData.get('code');
-    const name = formData.get('name');
     const category = formData.get('category');
-    
-    // Check for duplicate product name within the same category
-    const duplicateName = AppState.products.find(p => 
-        p.name.toLowerCase() === name.toLowerCase() && p.category === category
-    );
-    
-    if (duplicateName) {
-        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
-        return;
-    }
     
     // Check for duplicate code with same category
     const duplicateCodeCategory = AppState.products.find(p => 
@@ -574,7 +558,6 @@ function addProduct(event) {
     const product = {
         id: generateId(),
         code: code,
-        name: name,
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
@@ -600,25 +583,21 @@ function showInlineProductModal(buttonElement) {
                     <input type="text" class="form-control" name="code" required>
                 </div>
                 <div class="form-group">
-                    <label>Product Name *</label>
-                    <input type="text" class="form-control" name="name" required>
+                    <label>Category *</label>
+                    <select class="form-control" name="category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="Bangles">Bangles</option>
+                        <option value="Sets">Sets</option>
+                        <option value="Kada">Kada</option>
+                        <option value="Bracelet">Bracelet</option>
+                        <option value="Tops">Tops</option>
+                        <option value="Rings">Rings</option>
+                        <option value="Necklace">Necklace</option>
+                        <option value="Earrings">Earrings</option>
+                        <option value="Anklets">Anklets</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Category *</label>
-                <select class="form-control" name="category" required>
-                    <option value="">-- Select Category --</option>
-                    <option value="Bangles">Bangles</option>
-                    <option value="Sets">Sets</option>
-                    <option value="Kada">Kada</option>
-                    <option value="Bracelet">Bracelet</option>
-                    <option value="Tops">Tops</option>
-                    <option value="Rings">Rings</option>
-                    <option value="Necklace">Necklace</option>
-                    <option value="Earrings">Earrings</option>
-                    <option value="Anklets">Anklets</option>
-                    <option value="Other">Other</option>
-                </select>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -652,18 +631,7 @@ function addInlineProduct(event) {
     const formData = new FormData(form);
     
     const code = formData.get('code');
-    const name = formData.get('name');
     const category = formData.get('category');
-    
-    // Check for duplicate product name within the same category
-    const duplicateName = AppState.products.find(p => 
-        p.name.toLowerCase() === name.toLowerCase() && p.category === category
-    );
-    
-    if (duplicateName) {
-        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
-        return;
-    }
     
     // Check for duplicate code with same category
     const duplicateCodeCategory = AppState.products.find(p => 
@@ -678,7 +646,6 @@ function addInlineProduct(event) {
     const product = {
         id: generateId(),
         code: code,
-        name: name,
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
@@ -694,7 +661,7 @@ function addInlineProduct(event) {
     productSelects.forEach(select => {
         const option = document.createElement('option');
         option.value = product.id;
-        option.textContent = `${product.name} (${product.code})`;
+        option.textContent = `${product.code} - ${product.category}`;
         select.appendChild(option);
     });
     
@@ -713,7 +680,7 @@ function addInlineProduct(event) {
     }
     
     closeInlineModal();
-    showSuccess(`Product "${product.name}" created successfully!`);
+    showSuccess(`Product "${product.code} - ${product.category}" created successfully!`);
 }
 
 
@@ -729,25 +696,21 @@ function editProduct(productId) {
                     <input type="text" class="form-control" name="code" value="${product.code}" required>
                 </div>
                 <div class="form-group">
-                    <label>Product Name *</label>
-                    <input type="text" class="form-control" name="name" value="${product.name}" required>
+                    <label>Category *</label>
+                    <select class="form-control" name="category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="Bangles" ${product.category === 'Bangles' ? 'selected' : ''}>Bangles</option>
+                        <option value="Sets" ${product.category === 'Sets' ? 'selected' : ''}>Sets</option>
+                        <option value="Kada" ${product.category === 'Kada' ? 'selected' : ''}>Kada</option>
+                        <option value="Bracelet" ${product.category === 'Bracelet' ? 'selected' : ''}>Bracelet</option>
+                        <option value="Tops" ${product.category === 'Tops' ? 'selected' : ''}>Tops</option>
+                        <option value="Rings" ${product.category === 'Rings' ? 'selected' : ''}>Rings</option>
+                        <option value="Necklace" ${product.category === 'Necklace' ? 'selected' : ''}>Necklace</option>
+                        <option value="Earrings" ${product.category === 'Earrings' ? 'selected' : ''}>Earrings</option>
+                        <option value="Anklets" ${product.category === 'Anklets' ? 'selected' : ''}>Anklets</option>
+                        <option value="Other" ${product.category === 'Other' ? 'selected' : ''}>Other</option>
+                    </select>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Category *</label>
-                <select class="form-control" name="category" required>
-                    <option value="">-- Select Category --</option>
-                    <option value="Bangles" ${product.category === 'Bangles' ? 'selected' : ''}>Bangles</option>
-                    <option value="Sets" ${product.category === 'Sets' ? 'selected' : ''}>Sets</option>
-                    <option value="Kada" ${product.category === 'Kada' ? 'selected' : ''}>Kada</option>
-                    <option value="Bracelet" ${product.category === 'Bracelet' ? 'selected' : ''}>Bracelet</option>
-                    <option value="Tops" ${product.category === 'Tops' ? 'selected' : ''}>Tops</option>
-                    <option value="Rings" ${product.category === 'Rings' ? 'selected' : ''}>Rings</option>
-                    <option value="Necklace" ${product.category === 'Necklace' ? 'selected' : ''}>Necklace</option>
-                    <option value="Earrings" ${product.category === 'Earrings' ? 'selected' : ''}>Earrings</option>
-                    <option value="Anklets" ${product.category === 'Anklets' ? 'selected' : ''}>Anklets</option>
-                    <option value="Other" ${product.category === 'Other' ? 'selected' : ''}>Other</option>
-                </select>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -816,18 +779,7 @@ function updateProduct(event, productId) {
     if (index === -1) return;
     
     const code = formData.get('code');
-    const name = formData.get('name');
     const category = formData.get('category');
-    
-    // Check for duplicate product name within the same category (excluding current product)
-    const duplicateName = AppState.products.find(p => 
-        p.id !== productId && p.name.toLowerCase() === name.toLowerCase() && p.category === category
-    );
-    
-    if (duplicateName) {
-        showError('A product with this name already exists in the same category. Please use a different name or select a different category.');
-        return;
-    }
     
     // Check for duplicate code with same category (excluding current product)
     const duplicateCodeCategory = AppState.products.find(p => 
@@ -851,7 +803,6 @@ function updateProduct(event, productId) {
     AppState.products[index] = {
         ...AppState.products[index],
         code: code,
-        name: name,
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
@@ -891,19 +842,17 @@ function filterProducts() {
     
     const filteredProducts = AppState.products.filter(product => {
         return product.code.toLowerCase().includes(searchTerm) ||
-               product.name.toLowerCase().includes(searchTerm) ||
                (product.category && product.category.toLowerCase().includes(searchTerm));
     });
     
     if (filteredProducts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No products found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products found</td></tr>';
         return;
     }
     
     tbody.innerHTML = filteredProducts.map(product => `
         <tr>
             <td>${product.code}</td>
-            <td>${product.name}</td>
             <td>${product.category || 'N/A'}</td>
             <td>${product.unitPerBox}</td>
             <td>₹${product.pricePerUnit.toFixed(2)}</td>
@@ -1856,7 +1805,7 @@ function showAddInvoiceModal() {
     
     if (detailedInvoicing) {
         // Show detailed invoice form with products
-        const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+        const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
         
         const modal = createModal('New Sales Invoice', `
             <form id="addInvoiceForm" onsubmit="addInvoice(event)">
@@ -2188,8 +2137,8 @@ function addInvoice(event) {
             items.push({
                 serialNo: index + 1,
                 productId,
-                productName: product.name,
                 productCode: product.code,
+                productCategory: product.category,
                 boxes,
                 unitPerBox,
                 quantity,
@@ -2343,7 +2292,7 @@ function editInvoice(invoiceId) {
     // Show detailed edit form
     const itemsHTML = invoice.items.map((item, index) => {
         const productOptions = AppState.products.map(p => 
-            `<option value="${p.id}" ${p.id === item.productId ? 'selected' : ''}>${p.name} (${p.code})</option>`
+            `<option value="${p.id}" ${p.id === item.productId ? 'selected' : ''}>${p.code} - ${p.category}</option>`
         ).join('');
         
         return `
@@ -2485,8 +2434,8 @@ function updateInvoice(event, invoiceId) {
             items.push({
                 serialNo: index + 1,
                 productId,
-                productName: product.name,
                 productCode: product.code,
+                productCategory: product.category,
                 boxes,
                 unitPerBox,
                 quantity,
@@ -2795,7 +2744,7 @@ function generateModernInvoice(invoice, client, size) {
         return `
         <tr>
             <td class="text-center">${index + 1}</td>
-            <td>${item.productName} (${item.productCode})</td>
+            <td>${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td class="text-center">${item.boxes}</td>
             <td class="text-center">${item.unitPerBox}</td>
             <td class="text-center">${quantity}</td>
