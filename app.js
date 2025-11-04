@@ -376,7 +376,9 @@ function showContentScreen(screenName) {
 
 // Dashboard Functions
 function updateDashboard() {
-    const totalSales = AppState.invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+    const totalInvoices = AppState.invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+    const totalGoodsReturns = AppState.goodsReturns.reduce((sum, gr) => sum + (gr.amount || 0), 0);
+    const totalSales = totalInvoices - totalGoodsReturns;
     const totalPurchase = AppState.purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
     
     document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
@@ -867,7 +869,20 @@ function updateProduct(event, productId) {
 }
 
 function deleteProduct(productId) {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    // Check if product is used in any invoices
+    const usedInInvoices = AppState.invoices.filter(inv => {
+        if (inv.items && Array.isArray(inv.items)) {
+            return inv.items.some(item => item.productId === productId);
+        }
+        return false;
+    });
+    
+    if (usedInInvoices.length > 0) {
+        const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it may cause issues with those invoices.\n\nAre you sure you want to delete this product?`;
+        if (!confirm(message)) return;
+    } else {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+    }
     
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
@@ -1219,11 +1234,13 @@ function calculateClientBalance(clientId) {
     
     const invoices = AppState.invoices.filter(inv => inv.clientId === clientId);
     const payments = AppState.payments.filter(pay => pay.clientId === clientId && pay.type === 'receipt');
+    const goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === clientId);
     
     const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
     const totalPayments = payments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const totalGoodsReturns = goodsReturns.reduce((sum, gr) => sum + (gr.amount || 0), 0);
     
-    return openingBalance + totalInvoices - totalPayments;
+    return openingBalance + totalInvoices - totalPayments - totalGoodsReturns;
 }
 
 function showAddClientModal() {
@@ -1488,11 +1505,32 @@ function updateClient(event, clientId) {
 }
 
 function deleteClient(clientId) {
-    if (!confirm('Are you sure you want to delete this client?')) return;
+    // Check if client has any related records
+    const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+    const clientPayments = AppState.payments.filter(pay => pay.clientId === clientId);
+    const clientGoodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === clientId);
+    
+    if (clientInvoices.length > 0 || clientPayments.length > 0 || clientGoodsReturns.length > 0) {
+        let message = 'This client has the following related records:\n';
+        if (clientInvoices.length > 0) message += `\n- ${clientInvoices.length} invoice(s)`;
+        if (clientPayments.length > 0) message += `\n- ${clientPayments.length} payment(s)`;
+        if (clientGoodsReturns.length > 0) message += `\n- ${clientGoodsReturns.length} goods return(s)`;
+        message += '\n\nDeleting this client will also delete all these records. Are you sure you want to continue?';
+        
+        if (!confirm(message)) return;
+        
+        // Delete all related records
+        AppState.invoices = AppState.invoices.filter(inv => inv.clientId !== clientId);
+        AppState.payments = AppState.payments.filter(pay => pay.clientId !== clientId);
+        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId !== clientId);
+    } else {
+        if (!confirm('Are you sure you want to delete this client?')) return;
+    }
     
     AppState.clients = AppState.clients.filter(c => c.id !== clientId);
     saveCompanyData();
     loadClients();
+    updateDashboard();
 }
 
 // Vendor Management
@@ -1786,11 +1824,29 @@ function updateVendor(event, vendorId) {
 }
 
 function deleteVendor(vendorId) {
-    if (!confirm('Are you sure you want to delete this vendor?')) return;
+    // Check if vendor has any related records
+    const vendorPurchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
+    const vendorPayments = AppState.payments.filter(pay => pay.vendorId === vendorId);
+    
+    if (vendorPurchases.length > 0 || vendorPayments.length > 0) {
+        let message = 'This vendor has the following related records:\n';
+        if (vendorPurchases.length > 0) message += `\n- ${vendorPurchases.length} purchase(s)`;
+        if (vendorPayments.length > 0) message += `\n- ${vendorPayments.length} payment(s)`;
+        message += '\n\nDeleting this vendor will also delete all these records. Are you sure you want to continue?';
+        
+        if (!confirm(message)) return;
+        
+        // Delete all related records
+        AppState.purchases = AppState.purchases.filter(pur => pur.vendorId !== vendorId);
+        AppState.payments = AppState.payments.filter(pay => pay.vendorId !== vendorId);
+    } else {
+        if (!confirm('Are you sure you want to delete this vendor?')) return;
+    }
     
     AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
     saveCompanyData();
     loadVendors();
+    updateDashboard();
 }
 
 // Continue in next part...
@@ -2568,7 +2624,19 @@ function updateSimplifiedInvoice(event, invoiceId) {
 }
 
 function deleteInvoice(invoiceId) {
-    if (!confirm('Are you sure you want to delete this invoice?')) return;
+    // Check if there are any goods returns associated with this invoice
+    const associatedGoodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
+    
+    if (associatedGoodsReturns.length > 0) {
+        const totalReturns = associatedGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
+        const message = `This invoice has ${associatedGoodsReturns.length} goods return(s) totaling ₹${totalReturns.toFixed(2)}.\n\nDeleting this invoice will also delete all associated goods returns. Are you sure you want to continue?`;
+        if (!confirm(message)) return;
+        
+        // Delete associated goods returns
+        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId !== invoiceId);
+    } else {
+        if (!confirm('Are you sure you want to delete this invoice?')) return;
+    }
     
     // Find the invoice to delete
     const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
@@ -2585,6 +2653,7 @@ function deleteInvoice(invoiceId) {
     AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
     saveCompanyData();
     loadInvoices();
+    loadGoodsReturns(); // Refresh goods returns table if it's open
     updateDashboard();
 }
 
