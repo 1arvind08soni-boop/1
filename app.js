@@ -799,7 +799,7 @@ function editProduct(productId) {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="if(deleteProduct('${productId}')) closeModal();" style="margin-right: auto;">Delete Product</button>
+                <button type="button" class="btn btn-danger" onclick="deleteProductFromModal('${productId}')" style="margin-right: auto;">Delete Product</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Product</button>
             </div>
@@ -874,6 +874,12 @@ function deleteProduct(productId) {
     saveCompanyData();
     loadProducts();
     return true;
+}
+
+function deleteProductFromModal(productId) {
+    if (deleteProduct(productId)) {
+        closeModal();
+    }
 }
 
 // Filter Products based on search
@@ -2333,7 +2339,7 @@ function editInvoice(invoiceId) {
                 </div>
                 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" onclick="if(deleteInvoice('${invoiceId}')) closeModal();" style="margin-right: auto;">Delete Invoice</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteInvoiceFromModal('${invoiceId}')" style="margin-right: auto;">Delete Invoice</button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Invoice</button>
                 </div>
@@ -2457,7 +2463,7 @@ function editInvoice(invoiceId) {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="if(deleteInvoice('${invoiceId}')) closeModal();" style="margin-right: auto;">Delete Invoice</button>
+                <button type="button" class="btn btn-danger" onclick="deleteInvoiceFromModal('${invoiceId}')" style="margin-right: auto;">Delete Invoice</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Invoice</button>
             </div>
@@ -2591,6 +2597,12 @@ function deleteInvoice(invoiceId) {
     loadInvoices();
     updateDashboard();
     return true;
+}
+
+function deleteInvoiceFromModal(invoiceId) {
+    if (deleteInvoice(invoiceId)) {
+        closeModal();
+    }
 }
 
 function showRestoreInvoiceModal() {
@@ -4438,7 +4450,7 @@ function editPurchase(purchaseId) {
                 <textarea class="form-control" name="description" rows="3">${purchase.description || ''}</textarea>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="if(deletePurchase('${purchaseId}')) closeModal();" style="margin-right: auto;">Delete Purchase</button>
+                <button type="button" class="btn btn-danger" onclick="deletePurchaseFromModal('${purchaseId}')" style="margin-right: auto;">Delete Purchase</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Purchase</button>
             </div>
@@ -4480,6 +4492,12 @@ function deletePurchase(purchaseId) {
     loadPurchases();
     updateDashboard();
     return true;
+}
+
+function deletePurchaseFromModal(purchaseId) {
+    if (deletePurchase(purchaseId)) {
+        closeModal();
+    }
 }
 
 // Continue in next part...
@@ -5044,7 +5062,7 @@ function editGoodsReturn(returnId) {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="if(deleteGoodsReturn('${returnId}')) closeModal();" style="margin-right: auto;">Delete Goods Return</button>
+                <button type="button" class="btn btn-danger" onclick="deleteGoodsReturnFromModal('${returnId}')" style="margin-right: auto;">Delete Goods Return</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Goods Return</button>
             </div>
@@ -5123,6 +5141,12 @@ function deleteGoodsReturn(returnId) {
     loadGoodsReturns();
     updateDashboard();
     return true;
+}
+
+function deleteGoodsReturnFromModal(returnId) {
+    if (deleteGoodsReturn(returnId)) {
+        closeModal();
+    }
 }
 
 function filterGoodsReturns() {
