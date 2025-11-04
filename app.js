@@ -7468,10 +7468,8 @@ function initializeModalFormFields() {
         } else {
             // For all other fields, ensure they are enabled and editable
             field.disabled = false;
-            // Only remove readonly if it wasn't set in the HTML
-            if (!field.getAttribute('readonly')) {
-                field.removeAttribute('readonly');
-            }
+            // Remove any readonly attribute to ensure fields are editable
+            field.removeAttribute('readonly');
         }
     });
     
