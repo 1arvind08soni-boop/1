@@ -2056,7 +2056,7 @@ function calculateInvoiceTotal() {
 }
 
 function addInvoiceItem() {
-    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
     const tbody = document.getElementById('invoiceItemsBody');
     const serialNo = tbody.children.length + 1;
     
@@ -2854,7 +2854,7 @@ function generateClassicInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #000;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #000;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${quantity}</td>
@@ -2968,7 +2968,7 @@ function generateMinimalInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #ddd; font-size: 0.95em;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #ddd; font-size: 0.95em;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: center; font-size: 0.95em;">${quantity}</td>
@@ -3098,7 +3098,7 @@ function generateCompactInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #333; font-size: 0.9em;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #333; font-size: 0.9em;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #333; text-align: center; font-size: 0.9em;">${quantity}</td>
@@ -3210,7 +3210,7 @@ function generateDeliveryChallanInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${index + 1}</td>
-            <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; font-size: 1.05em;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; font-size: 1.05em;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${boxes}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${unitPerBox}</td>
             <td style="padding: ${padding}; border-right: 1px solid #000; border-bottom: 1px solid #000; text-align: center; font-size: 1.05em;">${quantity}</td>
@@ -3357,7 +3357,7 @@ function generateA5BorderedColorInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #444;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #444;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #444; text-align: center;">${quantity}</td>
@@ -3489,7 +3489,7 @@ function generateA5BorderedBWInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border: 1px solid #000;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border: 1px solid #000;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border: 1px solid #000; text-align: center;">${quantity}</td>
@@ -3621,7 +3621,7 @@ function generateA5SimpleColorInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border-bottom: 1px solid #ddd;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border-bottom: 1px solid #ddd;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #ddd; text-align: center;">${quantity}</td>
@@ -3757,7 +3757,7 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
         return `
         <tr>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${index + 1}</td>
-            <td style="padding: ${padding}; border-bottom: 1px solid #999;">${item.productName} (${item.productCode})</td>
+            <td style="padding: ${padding}; border-bottom: 1px solid #999;">${item.productCode} - ${item.productCategory || item.productName || 'N/A'}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${item.boxes}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${item.unitPerBox}</td>
             <td style="padding: ${padding}; border-bottom: 1px solid #999; text-align: center;">${quantity}</td>
@@ -6037,7 +6037,7 @@ function viewVendorLedger(vendorId) {
 
 // Product Report Functions
 function showProductReport() {
-    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+    const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
     
     const modal = createModal('Product Sales Report', `
         <div class="form-row">
@@ -6108,8 +6108,8 @@ function generateProductReport() {
                 if (!productSales[item.productId]) {
                     productSales[item.productId] = {
                         productId: item.productId,
-                        productName: item.productName,
                         productCode: item.productCode,
+                        productCategory: item.productCategory || item.productName || 'N/A',
                         totalQuantity: 0,
                         totalBoxes: 0,
                         totalAmount: 0,
@@ -6147,7 +6147,7 @@ function generateProductReport() {
                     <thead>
                         <tr>
                             ${!productId ? '<th>Product Code</th>' : ''}
-                            ${!productId ? '<th>Product Name</th>' : ''}
+                            ${!productId ? '<th>Category</th>' : ''}
                             <th>Total Quantity Sold</th>
                             <th>Total Boxes</th>
                             <th>Total Amount</th>
@@ -6158,7 +6158,7 @@ function generateProductReport() {
                         ${salesArray.map(sale => `
                             <tr>
                                 ${!productId ? `<td>${sale.productCode}</td>` : ''}
-                                ${!productId ? `<td>${sale.productName}</td>` : ''}
+                                ${!productId ? `<td>${sale.productCategory}</td>` : ''}
                                 <td>${sale.totalQuantity.toFixed(2)}</td>
                                 <td>${sale.totalBoxes}</td>
                                 <td>₹${sale.totalAmount.toFixed(2)}</td>
@@ -6295,7 +6295,7 @@ function exportToExcel(type) {
         case 'products':
             data = AppState.products.map(p => ({
                 'Product Code': p.code,
-                'Product Name': p.name,
+                'Category': p.category,
                 'Unit Per Box': p.unitPerBox,
                 'Price Per Unit': p.pricePerUnit,
                 'Price Per Box': p.unitPerBox * p.pricePerUnit
