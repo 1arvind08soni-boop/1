@@ -425,7 +425,14 @@ function loadProducts() {
         return;
     }
     
-    tbody.innerHTML = AppState.products.map(product => `
+    // Sort products by createdAt in descending order (latest first)
+    const sortedProducts = [...AppState.products].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+    });
+    
+    tbody.innerHTML = sortedProducts.map(product => `
         <tr>
             <td>${product.code}</td>
             <td>${product.name}</td>
@@ -1805,7 +1812,14 @@ function loadInvoices() {
         return;
     }
     
-    tbody.innerHTML = AppState.invoices.map(invoice => {
+    // Sort invoices by createdAt in descending order (latest first)
+    const sortedInvoices = [...AppState.invoices].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+    });
+    
+    tbody.innerHTML = sortedInvoices.map(invoice => {
         const client = AppState.clients.find(c => c.id === invoice.clientId);
         return `
             <tr>
@@ -4296,7 +4310,14 @@ function loadPurchases() {
         return;
     }
     
-    tbody.innerHTML = AppState.purchases.map(purchase => {
+    // Sort purchases by createdAt in descending order (latest first)
+    const sortedPurchases = [...AppState.purchases].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+    });
+    
+    tbody.innerHTML = sortedPurchases.map(purchase => {
         const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
         const vendorName = vendor ? vendor.name : (purchase.vendorName || 'N/A');
         return `
@@ -4487,7 +4508,14 @@ function loadPayments() {
         return;
     }
     
-    tbody.innerHTML = AppState.payments.map(payment => {
+    // Sort payments by createdAt in descending order (latest first)
+    const sortedPayments = [...AppState.payments].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+    });
+    
+    tbody.innerHTML = sortedPayments.map(payment => {
         const client = AppState.clients.find(c => c.id === payment.clientId);
         const vendor = AppState.vendors.find(v => v.id === payment.vendorId);
         const partyName = client ? client.name : (vendor ? vendor.name : (payment.vendorName || 'N/A'));
@@ -4735,7 +4763,14 @@ function loadGoodsReturns() {
         return;
     }
     
-    tbody.innerHTML = AppState.goodsReturns.map(gr => {
+    // Sort goods returns by createdAt in descending order (latest first)
+    const sortedGoodsReturns = [...AppState.goodsReturns].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+    });
+    
+    tbody.innerHTML = sortedGoodsReturns.map(gr => {
         const client = AppState.clients.find(c => c.id === gr.clientId);
         const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
         
