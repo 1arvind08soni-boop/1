@@ -7419,13 +7419,16 @@ function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
     
-    // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
+    // Use double requestAnimationFrame to ensure DOM is fully rendered before focusing
+    // This ensures the browser has completed all pending paint operations
     requestAnimationFrame(() => {
-        // Find the first focusable input field in the modal and focus it
-        const firstInput = getFirstFocusableElement(container);
-        if (firstInput) {
-            firstInput.focus();
-        }
+        requestAnimationFrame(() => {
+            // Find the first focusable input field in the modal and focus it
+            const firstInput = getFirstFocusableElement(container);
+            if (firstInput) {
+                firstInput.focus();
+            }
+        });
     });
 }
 
@@ -7612,24 +7615,28 @@ function showInlineModal(modalHTML) {
         }
         inlineContainer.innerHTML = modalHTML;
         
-        // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
+        // Use double requestAnimationFrame to ensure DOM is fully rendered before focusing
         requestAnimationFrame(() => {
-            const firstInput = getFirstFocusableElement(inlineContainer);
-            if (firstInput) {
-                firstInput.focus();
-            }
+            requestAnimationFrame(() => {
+                const firstInput = getFirstFocusableElement(inlineContainer);
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            });
         });
     } else {
         // No existing modal, use the regular container
         const container = document.getElementById('modalContainer');
         container.innerHTML = modalHTML;
         
-        // Use requestAnimationFrame to ensure DOM is fully rendered before focusing
+        // Use double requestAnimationFrame to ensure DOM is fully rendered before focusing
         requestAnimationFrame(() => {
-            const firstInput = getFirstFocusableElement(container);
-            if (firstInput) {
-                firstInput.focus();
-            }
+            requestAnimationFrame(() => {
+                const firstInput = getFirstFocusableElement(container);
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            });
         });
     }
 }
