@@ -435,7 +435,9 @@ function loadProducts() {
         return;
     }
     
-    tbody.innerHTML = AppState.products.map(product => `
+    const sortedProducts = sortByCreatedAtDesc(AppState.products);
+    
+    tbody.innerHTML = sortedProducts.map(product => `
         <tr>
             <td>${product.code}</td>
             <td>${product.category || 'N/A'}</td>
@@ -1818,7 +1820,9 @@ function loadInvoices() {
         return;
     }
     
-    tbody.innerHTML = AppState.invoices.map(invoice => {
+    const sortedInvoices = sortByCreatedAtDesc(AppState.invoices);
+    
+    tbody.innerHTML = sortedInvoices.map(invoice => {
         const client = AppState.clients.find(c => c.id === invoice.clientId);
         return `
             <tr>
@@ -4322,7 +4326,9 @@ function loadPurchases() {
         return;
     }
     
-    tbody.innerHTML = AppState.purchases.map(purchase => {
+    const sortedPurchases = sortByCreatedAtDesc(AppState.purchases);
+    
+    tbody.innerHTML = sortedPurchases.map(purchase => {
         const vendor = AppState.vendors.find(v => v.id === purchase.vendorId);
         const vendorName = vendor ? vendor.name : (purchase.vendorName || 'N/A');
         return `
@@ -4543,7 +4549,9 @@ function loadPayments() {
         return;
     }
     
-    tbody.innerHTML = AppState.payments.map(payment => {
+    const sortedPayments = sortByCreatedAtDesc(AppState.payments);
+    
+    tbody.innerHTML = sortedPayments.map(payment => {
         const client = AppState.clients.find(c => c.id === payment.clientId);
         const vendor = AppState.vendors.find(v => v.id === payment.vendorId);
         const partyName = client ? client.name : (vendor ? vendor.name : (payment.vendorName || 'N/A'));
@@ -4833,7 +4841,9 @@ function loadGoodsReturns() {
         return;
     }
     
-    tbody.innerHTML = AppState.goodsReturns.map(gr => {
+    const sortedGoodsReturns = sortByCreatedAtDesc(AppState.goodsReturns);
+    
+    tbody.innerHTML = sortedGoodsReturns.map(gr => {
         const client = AppState.clients.find(c => c.id === gr.clientId);
         const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
         
@@ -7713,6 +7723,16 @@ function closeInlineModal() {
 // Utility Functions
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function sortByCreatedAtDesc(array) {
+    // Sort array by createdAt in descending order (latest first)
+    // Using string comparison for ISO format timestamps is more efficient
+    return [...array].sort((a, b) => {
+        const dateA = a.createdAt || '';
+        const dateB = b.createdAt || '';
+        return dateB.localeCompare(dateA);
+    });
 }
 
 function formatDate(dateString) {
