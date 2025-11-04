@@ -799,7 +799,7 @@ function editProduct(productId) {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="deleteProduct('${productId}'); closeModal();" style="margin-right: auto;">Delete Product</button>
+                <button type="button" class="btn btn-danger" onclick="if(deleteProduct('${productId}')) closeModal();" style="margin-right: auto;">Delete Product</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Product</button>
             </div>
@@ -868,11 +868,12 @@ function updateProduct(event, productId) {
 }
 
 function deleteProduct(productId) {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!confirm('Are you sure you want to delete this product?')) return false;
     
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
     loadProducts();
+    return true;
 }
 
 // Filter Products based on search
@@ -2332,7 +2333,7 @@ function editInvoice(invoiceId) {
                 </div>
                 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" onclick="deleteInvoice('${invoiceId}'); closeModal();" style="margin-right: auto;">Delete Invoice</button>
+                    <button type="button" class="btn btn-danger" onclick="if(deleteInvoice('${invoiceId}')) closeModal();" style="margin-right: auto;">Delete Invoice</button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Invoice</button>
                 </div>
@@ -2456,7 +2457,7 @@ function editInvoice(invoiceId) {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="deleteInvoice('${invoiceId}'); closeModal();" style="margin-right: auto;">Delete Invoice</button>
+                <button type="button" class="btn btn-danger" onclick="if(deleteInvoice('${invoiceId}')) closeModal();" style="margin-right: auto;">Delete Invoice</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Invoice</button>
             </div>
@@ -2571,7 +2572,7 @@ function updateSimplifiedInvoice(event, invoiceId) {
 }
 
 function deleteInvoice(invoiceId) {
-    if (!confirm('Are you sure you want to delete this invoice?')) return;
+    if (!confirm('Are you sure you want to delete this invoice?')) return false;
     
     // Find the invoice to delete
     const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
@@ -2589,6 +2590,7 @@ function deleteInvoice(invoiceId) {
     saveCompanyData();
     loadInvoices();
     updateDashboard();
+    return true;
 }
 
 function showRestoreInvoiceModal() {
@@ -4436,7 +4438,7 @@ function editPurchase(purchaseId) {
                 <textarea class="form-control" name="description" rows="3">${purchase.description || ''}</textarea>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="deletePurchase('${purchaseId}'); closeModal();" style="margin-right: auto;">Delete Purchase</button>
+                <button type="button" class="btn btn-danger" onclick="if(deletePurchase('${purchaseId}')) closeModal();" style="margin-right: auto;">Delete Purchase</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Purchase</button>
             </div>
@@ -4471,12 +4473,13 @@ function updatePurchase(event, purchaseId) {
 }
 
 function deletePurchase(purchaseId) {
-    if (!confirm('Are you sure you want to delete this purchase?')) return;
+    if (!confirm('Are you sure you want to delete this purchase?')) return false;
     
     AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
     saveCompanyData();
     loadPurchases();
     updateDashboard();
+    return true;
 }
 
 // Continue in next part...
@@ -5041,7 +5044,7 @@ function editGoodsReturn(returnId) {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="deleteGoodsReturn('${returnId}'); closeModal();" style="margin-right: auto;">Delete Goods Return</button>
+                <button type="button" class="btn btn-danger" onclick="if(deleteGoodsReturn('${returnId}')) closeModal();" style="margin-right: auto;">Delete Goods Return</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Goods Return</button>
             </div>
@@ -5113,12 +5116,13 @@ function updateGoodsReturn(event, returnId) {
 }
 
 function deleteGoodsReturn(returnId) {
-    if (!confirm('Are you sure you want to delete this goods return?')) return;
+    if (!confirm('Are you sure you want to delete this goods return?')) return false;
     
     AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
     saveCompanyData();
     loadGoodsReturns();
     updateDashboard();
+    return true;
 }
 
 function filterGoodsReturns() {
