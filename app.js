@@ -4697,6 +4697,7 @@ function addPayment(event) {
     const type = formData.get('type');
     const clientId = formData.get('clientId');
     const vendorId = formData.get('vendorId');
+    const amount = parseFloat(formData.get('amount'));
     
     // Validate that appropriate party is selected based on payment type
     if (type === 'receipt' && !clientId) {
@@ -4708,6 +4709,12 @@ function addPayment(event) {
         return;
     }
     
+    // Validate amount
+    if (!amount || amount <= 0) {
+        showError('Please enter a valid amount');
+        return;
+    }
+    
     const payment = {
         id: generateId(),
         paymentNo: formData.get('paymentNo'),
@@ -4715,7 +4722,7 @@ function addPayment(event) {
         type: type,
         clientId: clientId || null,
         vendorId: vendorId || null,
-        amount: parseFloat(formData.get('amount')),
+        amount: amount,
         method: formData.get('method'),
         notes: formData.get('notes'),
         createdAt: new Date().toISOString()
@@ -4812,6 +4819,7 @@ function updatePayment(event, paymentId) {
     const type = formData.get('type');
     const clientId = formData.get('clientId');
     const vendorId = formData.get('vendorId');
+    const amount = parseFloat(formData.get('amount'));
     
     // Validate that appropriate party is selected based on payment type
     if (type === 'receipt' && !clientId) {
@@ -4823,6 +4831,12 @@ function updatePayment(event, paymentId) {
         return;
     }
     
+    // Validate amount
+    if (!amount || amount <= 0) {
+        showError('Please enter a valid amount');
+        return;
+    }
+    
     AppState.payments[index] = {
         ...AppState.payments[index],
         paymentNo: formData.get('paymentNo'),
@@ -4830,7 +4844,7 @@ function updatePayment(event, paymentId) {
         type: type,
         clientId: clientId || null,
         vendorId: vendorId || null,
-        amount: parseFloat(formData.get('amount')),
+        amount: amount,
         method: formData.get('method'),
         notes: formData.get('notes'),
         updatedAt: new Date().toISOString()
