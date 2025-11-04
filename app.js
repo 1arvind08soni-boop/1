@@ -4812,7 +4812,7 @@ function showAddGoodsReturnModal() {
             
             <div class="form-group">
                 <label>Return Type *</label>
-                <select class="form-control" name="type" id="goodsReturnType" onchange="toggleGoodsReturnInvoice()" required>
+                <select class="form-control" name="type" id="goodsReturnType" onchange="toggleGoodsReturnInvoice()" required disabled>
                     <option value="">-- Select Type --</option>
                     <option value="with_invoice">With Invoice (Deduct from Invoice)</option>
                     <option value="without_invoice">Without Invoice (Standalone Return)</option>
@@ -4846,16 +4846,6 @@ function showAddGoodsReturnModal() {
     `);
     
     showModal(modal);
-    
-    // Ensure the type select starts properly enabled after modal is shown
-    // The initializeModalFormFields will handle most fields, but we need to ensure
-    // the type select is initially disabled as it depends on client selection
-    setTimeout(() => {
-        const typeSelect = document.getElementById('goodsReturnType');
-        if (typeSelect) {
-            typeSelect.disabled = true; // Start disabled until client is selected
-        }
-    }, 10);
 }
 
 function toggleGoodsReturnType() {
@@ -7431,11 +7421,12 @@ function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
     
-    // Initialize form fields after modal is shown
+    // Initialize form fields after modal DOM is ready
     // This ensures all fields are properly enabled and focused after any operation (including delete)
-    setTimeout(() => {
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
         initializeModalFormFields();
-    }, 0);
+    });
 }
 
 function closeModal() {
@@ -7456,25 +7447,32 @@ function initializeModalFormFields() {
     const form = modal.querySelector('form');
     if (!form) return;
     
-    // Re-enable all input fields that should be editable
-    // This removes any residual readonly/disabled states from previous operations
-    const editableInputs = form.querySelectorAll('input:not([readonly]), select:not([disabled]), textarea:not([readonly])');
-    editableInputs.forEach(input => {
-        // Ensure the field is not disabled
-        input.disabled = false;
-        
-        // For input fields, ensure they're not readonly (unless explicitly marked in HTML)
-        // Check if the input was intentionally marked as readonly in the HTML
-        if (input.tagName === 'INPUT' && !input.hasAttribute('readonly')) {
-            input.removeAttribute('readonly');
-        }
-    });
+    // Select all input, select, and textarea elements that should be editable
+    // Exclude fields that are explicitly marked as readonly or disabled in the HTML
+    const allFormFields = form.querySelectorAll('input, select, textarea');
     
-    // For invoice forms, ensure specific fields remain readonly as intended
-    // These are calculated fields that should never be editable by user
-    const readonlyFields = form.querySelectorAll('.unit-per-box-input, .quantity-input, .rate-input, .amount-input, #invoiceSubtotal, #invoiceTotal, #invoiceTotalBoxes');
-    readonlyFields.forEach(field => {
-        field.setAttribute('readonly', 'readonly');
+    allFormFields.forEach(field => {
+        // Skip fields that are intentionally readonly or disabled in the HTML
+        // Check for both attribute presence and specific classes that indicate calculated fields
+        const isCalculatedField = field.classList.contains('unit-per-box-input') ||
+                                   field.classList.contains('quantity-input') ||
+                                   field.classList.contains('rate-input') ||
+                                   field.classList.contains('amount-input') ||
+                                   field.id === 'invoiceSubtotal' ||
+                                   field.id === 'invoiceTotal' ||
+                                   field.id === 'invoiceTotalBoxes';
+        
+        // If it's a calculated field, ensure it's readonly
+        if (isCalculatedField) {
+            field.setAttribute('readonly', 'readonly');
+        } else {
+            // For all other fields, ensure they are enabled and editable
+            field.disabled = false;
+            // Only remove readonly if it wasn't set in the HTML
+            if (!field.getAttribute('readonly')) {
+                field.removeAttribute('readonly');
+            }
+        }
     });
     
     // Set focus to the first editable field for better UX
