@@ -2715,6 +2715,7 @@ function restoreInvoice(invoiceId) {
     const existingInvoice = AppState.invoices.find(inv => inv.invoiceNo === restoredInvoice.invoiceNo);
     if (existingInvoice) {
         if (!confirm(`An invoice with number ${restoredInvoice.invoiceNo} already exists. Do you want to restore this invoice with a new invoice number?`)) {
+            restoreFocusAfterConfirm();
             return;
         }
         // Assign new invoice number based on current highest number
@@ -2733,6 +2734,7 @@ function restoreInvoice(invoiceId) {
     closeModal();
     
     showSuccess('Invoice restored successfully!');
+    restoreFocusAfterConfirm();
 }
 
 // Continue in next part...
@@ -7524,6 +7526,8 @@ function restoreData() {
                     saveCompanyData();
                     alert('Data restored successfully');
                     location.reload();
+                } else {
+                    restoreFocusAfterConfirm();
                 }
             } catch (error) {
                 alert('Error restoring data: Invalid backup file');
