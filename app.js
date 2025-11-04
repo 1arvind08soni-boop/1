@@ -799,6 +799,7 @@ function editProduct(productId) {
             </div>
             
             <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteProduct('${productId}'); closeModal();" style="margin-right: auto;">Delete Product</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Product</button>
             </div>
@@ -2331,6 +2332,7 @@ function editInvoice(invoiceId) {
                 </div>
                 
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" onclick="deleteInvoice('${invoiceId}'); closeModal();" style="margin-right: auto;">Delete Invoice</button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Invoice</button>
                 </div>
@@ -2454,6 +2456,7 @@ function editInvoice(invoiceId) {
             </div>
             
             <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteInvoice('${invoiceId}'); closeModal();" style="margin-right: auto;">Delete Invoice</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Invoice</button>
             </div>
@@ -4433,6 +4436,7 @@ function editPurchase(purchaseId) {
                 <textarea class="form-control" name="description" rows="3">${purchase.description || ''}</textarea>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deletePurchase('${purchaseId}'); closeModal();" style="margin-right: auto;">Delete Purchase</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Purchase</button>
             </div>
@@ -5037,6 +5041,7 @@ function editGoodsReturn(returnId) {
             </div>
             
             <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteGoodsReturn('${returnId}'); closeModal();" style="margin-right: auto;">Delete Goods Return</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Update Goods Return</button>
             </div>
