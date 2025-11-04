@@ -2134,6 +2134,20 @@ function addInvoiceItem() {
         <td><button type="button" class="action-btn delete" onclick="removeInvoiceItem(this)"><i class="fas fa-trash"></i></button></td>
     `;
     tbody.appendChild(row);
+    
+    // Ensure the newly added row's editable fields (boxes-input, product-select) are fully enabled
+    // This prevents issues where fields might inherit disabled/readonly states
+    const boxesInput = row.querySelector('.boxes-input');
+    const productSelect = row.querySelector('.product-select');
+    
+    if (boxesInput) {
+        boxesInput.disabled = false;
+        boxesInput.removeAttribute('readonly');
+    }
+    
+    if (productSelect) {
+        productSelect.disabled = false;
+    }
 }
 
 function removeInvoiceItem(button) {
@@ -4832,6 +4846,16 @@ function showAddGoodsReturnModal() {
     `);
     
     showModal(modal);
+    
+    // Ensure the type select starts properly enabled after modal is shown
+    // The initializeModalFormFields will handle most fields, but we need to ensure
+    // the type select is initially disabled as it depends on client selection
+    setTimeout(() => {
+        const typeSelect = document.getElementById('goodsReturnType');
+        if (typeSelect) {
+            typeSelect.disabled = true; // Start disabled until client is selected
+        }
+    }, 10);
 }
 
 function toggleGoodsReturnType() {
@@ -7406,11 +7430,59 @@ function createModal(title, content, size = '') {
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
+    
+    // Initialize form fields after modal is shown
+    // This ensures all fields are properly enabled and focused after any operation (including delete)
+    setTimeout(() => {
+        initializeModalFormFields();
+    }, 0);
 }
 
 function closeModal() {
     const container = document.getElementById('modalContainer');
     container.innerHTML = '';
+}
+
+/**
+ * Helper function to initialize form fields in modals
+ * Ensures fields are editable and properly focused after add/delete operations
+ * This addresses the issue where fields become non-editable after delete operations
+ */
+function initializeModalFormFields() {
+    const modal = document.querySelector('.modal');
+    if (!modal) return;
+    
+    // Find the form within the modal
+    const form = modal.querySelector('form');
+    if (!form) return;
+    
+    // Re-enable all input fields that should be editable
+    // This removes any residual readonly/disabled states from previous operations
+    const editableInputs = form.querySelectorAll('input:not([readonly]), select:not([disabled]), textarea:not([readonly])');
+    editableInputs.forEach(input => {
+        // Ensure the field is not disabled
+        input.disabled = false;
+        
+        // For input fields, ensure they're not readonly (unless explicitly marked in HTML)
+        // Check if the input was intentionally marked as readonly in the HTML
+        if (input.tagName === 'INPUT' && !input.hasAttribute('readonly')) {
+            input.removeAttribute('readonly');
+        }
+    });
+    
+    // For invoice forms, ensure specific fields remain readonly as intended
+    // These are calculated fields that should never be editable by user
+    const readonlyFields = form.querySelectorAll('.unit-per-box-input, .quantity-input, .rate-input, .amount-input, #invoiceSubtotal, #invoiceTotal, #invoiceTotalBoxes');
+    readonlyFields.forEach(field => {
+        field.setAttribute('readonly', 'readonly');
+    });
+    
+    // Set focus to the first editable field for better UX
+    // This ensures users can immediately start typing after opening the form
+    const firstEditableField = form.querySelector('input:not([readonly]):not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([readonly])');
+    if (firstEditableField) {
+        firstEditableField.focus();
+    }
 }
 
 // Helper function to get or create notification container
