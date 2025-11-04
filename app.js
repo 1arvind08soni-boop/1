@@ -7776,21 +7776,25 @@ function generateId() {
 // Helper function to restore focus after confirm dialogs
 // This fixes the issue where inputs become unresponsive after deletion operations
 function restoreFocusAfterConfirm() {
-    // Use setTimeout to ensure this runs after the confirm dialog closes
+    // Small delay to ensure this runs after the confirm dialog fully closes
+    // The 10ms timeout allows the browser to complete its dialog cleanup
+    const FOCUS_RESET_DELAY = 10;
+    
     setTimeout(() => {
-        // Blur any currently focused element
-        if (document.activeElement) {
-            document.activeElement.blur();
-        }
-        // Re-focus on the document body to reset focus state
+        // Blur any currently focused element to clear the focus state
+        document.activeElement.blur();
+        
+        // Temporarily focus on the document body to reset focus state
         document.body.focus();
+        
         // Clear the focus again to allow normal focus behavior
+        // This allows subsequent clicks/tabs to focus properly on input elements
         setTimeout(() => {
             if (document.activeElement === document.body) {
                 document.body.blur();
             }
-        }, 10);
-    }, 10);
+        }, FOCUS_RESET_DELAY);
+    }, FOCUS_RESET_DELAY);
 }
 
 function sortByCreatedAtDesc(array) {
