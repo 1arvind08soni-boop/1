@@ -848,6 +848,11 @@ function deleteProduct(productId) {
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
     loadProducts();
+    
+    // Reset UI state and restore focus to search input
+    resetUIStateAfterDelete();
+    restoreFocusToSearchInput('products');
+    refreshAllInputFields();
 }
 
 // Filter Products based on search
@@ -1490,6 +1495,11 @@ function deleteClient(clientId) {
     saveCompanyData();
     loadClients();
     updateDashboard();
+    
+    // Reset UI state and restore focus to search input
+    resetUIStateAfterDelete();
+    restoreFocusToSearchInput('clients');
+    refreshAllInputFields();
 }
 
 // Vendor Management
@@ -1806,6 +1816,11 @@ function deleteVendor(vendorId) {
     saveCompanyData();
     loadVendors();
     updateDashboard();
+    
+    // Reset UI state and restore focus to search input
+    resetUIStateAfterDelete();
+    restoreFocusToSearchInput('vendors');
+    refreshAllInputFields();
 }
 
 // Continue in next part...
@@ -2616,6 +2631,11 @@ function deleteInvoice(invoiceId) {
     loadInvoices();
     loadGoodsReturns(); // Refresh goods returns table if it's open
     updateDashboard();
+    
+    // Reset UI state and restore focus to search input
+    resetUIStateAfterDelete();
+    restoreFocusToSearchInput('sales');
+    refreshAllInputFields();
 }
 
 function showRestoreInvoiceModal() {
@@ -4535,6 +4555,11 @@ function deletePurchase(purchaseId) {
     saveCompanyData();
     loadPurchases();
     updateDashboard();
+    
+    // Reset UI state and restore focus to search input
+    resetUIStateAfterDelete();
+    restoreFocusToSearchInput('purchase');
+    refreshAllInputFields();
 }
 
 // Continue in next part...
@@ -4828,6 +4853,11 @@ function deletePayment(paymentId) {
     saveCompanyData();
     loadPayments();
     updateDashboard();
+    
+    // Reset UI state and restore focus to search input
+    resetUIStateAfterDelete();
+    restoreFocusToSearchInput('payments');
+    refreshAllInputFields();
 }
 
 // Goods Return Functions
@@ -5222,6 +5252,11 @@ function deleteGoodsReturn(returnId) {
     saveCompanyData();
     loadGoodsReturns();
     updateDashboard();
+    
+    // Reset UI state and restore focus to search input
+    resetUIStateAfterDelete();
+    restoreFocusToSearchInput('goodsReturn');
+    refreshAllInputFields();
 }
 
 function filterGoodsReturns() {
@@ -7514,11 +7549,18 @@ function createModal(title, content, size = '') {
 function showModal(modalHTML) {
     const container = document.getElementById('modalContainer');
     container.innerHTML = modalHTML;
+    
+    // Ensure modal inputs are focusable
+    ensureModalInputsFocusable();
 }
 
 function closeModal() {
     const container = document.getElementById('modalContainer');
     container.innerHTML = '';
+    
+    // Reset UI state after closing modal
+    resetUIStateAfterDelete();
+    refreshAllInputFields();
 }
 
 // Helper function to get or create notification container
@@ -7696,6 +7738,9 @@ function showInlineModal(modalHTML) {
         const container = document.getElementById('modalContainer');
         container.innerHTML = modalHTML;
     }
+    
+    // Ensure modal inputs are focusable
+    ensureModalInputsFocusable();
 }
 
 function closeInlineModal() {
@@ -7706,19 +7751,103 @@ function closeInlineModal() {
         setTimeout(() => {
             const parentModal = document.getElementById('modalContainer').querySelector('.modal');
             if (parentModal) {
-                const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+                const firstInput = parentModal.querySelector('input:not([readonly]):not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
                 if (firstInput) {
                     firstInput.focus();
+                    // Ensure it's enabled
+                    firstInput.disabled = false;
+                    if (firstInput.tagName !== 'SELECT') {
+                        firstInput.readOnly = false;
+                    }
                 }
             }
+            // Reset UI state
+            resetUIStateAfterDelete();
+            refreshAllInputFields();
         }, 100);
     } else {
         // Fallback to regular close if no inline container
         const container = document.getElementById('modalContainer');
         container.innerHTML = '';
+        // Reset UI state
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
     }
 }
 
+
+// UI State Management Functions
+// These functions ensure proper UI refresh and focus management after delete operations
+function resetUIStateAfterDelete() {
+    // Re-enable all input fields that might have been affected
+    const allInputs = document.querySelectorAll('input:not([readonly]), select:not([disabled]), textarea:not([readonly])');
+    allInputs.forEach(input => {
+        if (input.disabled) {
+            input.disabled = false;
+        }
+    });
+    
+    // Clear any stale validation states
+    document.querySelectorAll('.form-control.is-invalid').forEach(el => {
+        el.classList.remove('is-invalid');
+    });
+}
+
+function restoreFocusToSearchInput(screenName) {
+    // Restore focus to the search input of the current screen after deletion
+    setTimeout(() => {
+        const searchInputs = {
+            'products': 'productSearchInput',
+            'clients': 'clientSearchInput',
+            'vendors': 'vendorSearchInput',
+            'sales': 'invoiceSearchInput',
+            'goodsReturn': 'goodsReturnSearchInput',
+            'purchase': 'purchaseSearchInput',
+            'payments': 'paymentSearchInput'
+        };
+        
+        const inputId = searchInputs[screenName];
+        if (inputId) {
+            const searchInput = document.getElementById(inputId);
+            if (searchInput) {
+                searchInput.focus();
+                // Ensure input is enabled and editable
+                searchInput.disabled = false;
+                searchInput.readOnly = false;
+            }
+        }
+    }, 100);
+}
+
+function refreshAllInputFields() {
+    // Force refresh of all input fields to ensure they're responsive
+    const allInputs = document.querySelectorAll('input, select, textarea');
+    allInputs.forEach(input => {
+        // Trigger a focus event to ensure event listeners are active
+        if (!input.disabled && !input.readOnly) {
+            const value = input.value;
+            input.value = value; // Reassign to trigger any watchers
+        }
+    });
+}
+
+function ensureModalInputsFocusable() {
+    // Ensure modal inputs are focusable and have event listeners
+    setTimeout(() => {
+        const modal = document.querySelector('.modal');
+        if (modal) {
+            const firstInput = modal.querySelector('input:not([readonly]):not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([readonly]):not([disabled])');
+            if (firstInput) {
+                firstInput.focus();
+                // Ensure it's enabled
+                firstInput.disabled = false;
+                if (firstInput.tagName !== 'SELECT') {
+                    firstInput.readOnly = false;
+                }
+            }
+        }
+    }, 150);
+}
 
 // Utility Functions
 function generateId() {
