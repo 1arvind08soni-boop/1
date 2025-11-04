@@ -830,29 +830,37 @@ function updateProduct(event, productId) {
 }
 
 function deleteProduct(productId) {
-    // Check if product is used in any invoices
-    const usedInInvoices = AppState.invoices.filter(inv => {
-        if (inv.items && Array.isArray(inv.items)) {
-            return inv.items.some(item => item.productId === productId);
+    try {
+        // Check if product is used in any invoices
+        const usedInInvoices = AppState.invoices.filter(inv => {
+            if (inv.items && Array.isArray(inv.items)) {
+                return inv.items.some(item => item.productId === productId);
+            }
+            return false;
+        });
+        
+        if (usedInInvoices.length > 0) {
+            const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it will cause invoice line items to show missing product information.\n\nAre you sure you want to delete this product?`;
+            if (!confirm(message)) return;
+        } else {
+            if (!confirm('Are you sure you want to delete this product?')) return;
         }
-        return false;
-    });
-    
-    if (usedInInvoices.length > 0) {
-        const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it will cause invoice line items to show missing product information.\n\nAre you sure you want to delete this product?`;
-        if (!confirm(message)) return;
-    } else {
-        if (!confirm('Are you sure you want to delete this product?')) return;
+        
+        AppState.products = AppState.products.filter(p => p.id !== productId);
+        saveCompanyData();
+        loadProducts();
+        
+        // Reset UI state and restore focus to search input
+        resetUIStateAfterDelete();
+        restoreFocusToSearchInput('products');
+        refreshAllInputFields();
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        showError('Failed to delete product. Please try again.');
+        // Ensure UI is still responsive even if delete fails
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
     }
-    
-    AppState.products = AppState.products.filter(p => p.id !== productId);
-    saveCompanyData();
-    loadProducts();
-    
-    // Reset UI state and restore focus to search input
-    resetUIStateAfterDelete();
-    restoreFocusToSearchInput('products');
-    refreshAllInputFields();
 }
 
 // Filter Products based on search
@@ -1469,37 +1477,45 @@ function updateClient(event, clientId) {
 }
 
 function deleteClient(clientId) {
-    // Check if client has any related records
-    const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
-    const clientPayments = AppState.payments.filter(pay => pay.clientId === clientId);
-    const clientGoodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === clientId);
-    
-    if (clientInvoices.length > 0 || clientPayments.length > 0 || clientGoodsReturns.length > 0) {
-        let message = 'This client has the following related records:\n';
-        if (clientInvoices.length > 0) message += `\n- ${clientInvoices.length} invoice(s)`;
-        if (clientPayments.length > 0) message += `\n- ${clientPayments.length} payment(s)`;
-        if (clientGoodsReturns.length > 0) message += `\n- ${clientGoodsReturns.length} goods return(s)`;
-        message += '\n\nDeleting this client will also delete all these records. Are you sure you want to continue?';
+    try {
+        // Check if client has any related records
+        const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+        const clientPayments = AppState.payments.filter(pay => pay.clientId === clientId);
+        const clientGoodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === clientId);
         
-        if (!confirm(message)) return;
+        if (clientInvoices.length > 0 || clientPayments.length > 0 || clientGoodsReturns.length > 0) {
+            let message = 'This client has the following related records:\n';
+            if (clientInvoices.length > 0) message += `\n- ${clientInvoices.length} invoice(s)`;
+            if (clientPayments.length > 0) message += `\n- ${clientPayments.length} payment(s)`;
+            if (clientGoodsReturns.length > 0) message += `\n- ${clientGoodsReturns.length} goods return(s)`;
+            message += '\n\nDeleting this client will also delete all these records. Are you sure you want to continue?';
+            
+            if (!confirm(message)) return;
+            
+            // Delete all related records
+            AppState.invoices = AppState.invoices.filter(inv => inv.clientId !== clientId);
+            AppState.payments = AppState.payments.filter(pay => pay.clientId !== clientId);
+            AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId !== clientId);
+        } else {
+            if (!confirm('Are you sure you want to delete this client?')) return;
+        }
         
-        // Delete all related records
-        AppState.invoices = AppState.invoices.filter(inv => inv.clientId !== clientId);
-        AppState.payments = AppState.payments.filter(pay => pay.clientId !== clientId);
-        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId !== clientId);
-    } else {
-        if (!confirm('Are you sure you want to delete this client?')) return;
+        AppState.clients = AppState.clients.filter(c => c.id !== clientId);
+        saveCompanyData();
+        loadClients();
+        updateDashboard();
+        
+        // Reset UI state and restore focus to search input
+        resetUIStateAfterDelete();
+        restoreFocusToSearchInput('clients');
+        refreshAllInputFields();
+    } catch (error) {
+        console.error('Error deleting client:', error);
+        showError('Failed to delete client. Please try again.');
+        // Ensure UI is still responsive even if delete fails
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
     }
-    
-    AppState.clients = AppState.clients.filter(c => c.id !== clientId);
-    saveCompanyData();
-    loadClients();
-    updateDashboard();
-    
-    // Reset UI state and restore focus to search input
-    resetUIStateAfterDelete();
-    restoreFocusToSearchInput('clients');
-    refreshAllInputFields();
 }
 
 // Vendor Management
@@ -1793,34 +1809,42 @@ function updateVendor(event, vendorId) {
 }
 
 function deleteVendor(vendorId) {
-    // Check if vendor has any related records
-    const vendorPurchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
-    const vendorPayments = AppState.payments.filter(pay => pay.vendorId === vendorId);
-    
-    if (vendorPurchases.length > 0 || vendorPayments.length > 0) {
-        let message = 'This vendor has the following related records:\n';
-        if (vendorPurchases.length > 0) message += `\n- ${vendorPurchases.length} purchase(s)`;
-        if (vendorPayments.length > 0) message += `\n- ${vendorPayments.length} payment(s)`;
-        message += '\n\nDeleting this vendor will also delete all these records. Are you sure you want to continue?';
+    try {
+        // Check if vendor has any related records
+        const vendorPurchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
+        const vendorPayments = AppState.payments.filter(pay => pay.vendorId === vendorId);
         
-        if (!confirm(message)) return;
+        if (vendorPurchases.length > 0 || vendorPayments.length > 0) {
+            let message = 'This vendor has the following related records:\n';
+            if (vendorPurchases.length > 0) message += `\n- ${vendorPurchases.length} purchase(s)`;
+            if (vendorPayments.length > 0) message += `\n- ${vendorPayments.length} payment(s)`;
+            message += '\n\nDeleting this vendor will also delete all these records. Are you sure you want to continue?';
+            
+            if (!confirm(message)) return;
+            
+            // Delete all related records
+            AppState.purchases = AppState.purchases.filter(pur => pur.vendorId !== vendorId);
+            AppState.payments = AppState.payments.filter(pay => pay.vendorId !== vendorId);
+        } else {
+            if (!confirm('Are you sure you want to delete this vendor?')) return;
+        }
         
-        // Delete all related records
-        AppState.purchases = AppState.purchases.filter(pur => pur.vendorId !== vendorId);
-        AppState.payments = AppState.payments.filter(pay => pay.vendorId !== vendorId);
-    } else {
-        if (!confirm('Are you sure you want to delete this vendor?')) return;
+        AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
+        saveCompanyData();
+        loadVendors();
+        updateDashboard();
+        
+        // Reset UI state and restore focus to search input
+        resetUIStateAfterDelete();
+        restoreFocusToSearchInput('vendors');
+        refreshAllInputFields();
+    } catch (error) {
+        console.error('Error deleting vendor:', error);
+        showError('Failed to delete vendor. Please try again.');
+        // Ensure UI is still responsive even if delete fails
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
     }
-    
-    AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
-    saveCompanyData();
-    loadVendors();
-    updateDashboard();
-    
-    // Reset UI state and restore focus to search input
-    resetUIStateAfterDelete();
-    restoreFocusToSearchInput('vendors');
-    refreshAllInputFields();
 }
 
 // Continue in next part...
@@ -2600,42 +2624,50 @@ function updateSimplifiedInvoice(event, invoiceId) {
 }
 
 function deleteInvoice(invoiceId) {
-    // Check if there are any goods returns associated with this invoice
-    const associatedGoodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
-    
-    if (associatedGoodsReturns.length > 0) {
-        const totalReturns = associatedGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
-        const message = `This invoice has ${associatedGoodsReturns.length} goods return(s) totaling ₹${totalReturns.toFixed(2)}.\n\nDeleting this invoice will also delete all associated goods returns. Are you sure you want to continue?`;
-        if (!confirm(message)) return;
+    try {
+        // Check if there are any goods returns associated with this invoice
+        const associatedGoodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
         
-        // Delete associated goods returns
-        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId !== invoiceId);
-    } else {
-        if (!confirm('Are you sure you want to delete this invoice?')) return;
-    }
-    
-    // Find the invoice to delete
-    const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
-    if (invoice) {
-        // Create a copy with deleted timestamp to avoid modifying the original
-        const deletedInvoice = { ...invoice, deletedAt: new Date().toISOString() };
-        // Move to deleted invoices (keep only last 10)
-        AppState.deletedInvoices.unshift(deletedInvoice);
-        if (AppState.deletedInvoices.length > 10) {
-            AppState.deletedInvoices = AppState.deletedInvoices.slice(0, 10);
+        if (associatedGoodsReturns.length > 0) {
+            const totalReturns = associatedGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
+            const message = `This invoice has ${associatedGoodsReturns.length} goods return(s) totaling ₹${totalReturns.toFixed(2)}.\n\nDeleting this invoice will also delete all associated goods returns. Are you sure you want to continue?`;
+            if (!confirm(message)) return;
+            
+            // Delete associated goods returns
+            AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId !== invoiceId);
+        } else {
+            if (!confirm('Are you sure you want to delete this invoice?')) return;
         }
+        
+        // Find the invoice to delete
+        const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
+        if (invoice) {
+            // Create a copy with deleted timestamp to avoid modifying the original
+            const deletedInvoice = { ...invoice, deletedAt: new Date().toISOString() };
+            // Move to deleted invoices (keep only last 10)
+            AppState.deletedInvoices.unshift(deletedInvoice);
+            if (AppState.deletedInvoices.length > 10) {
+                AppState.deletedInvoices = AppState.deletedInvoices.slice(0, 10);
+            }
+        }
+        
+        AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
+        saveCompanyData();
+        loadInvoices();
+        loadGoodsReturns(); // Refresh goods returns table if it's open
+        updateDashboard();
+        
+        // Reset UI state and restore focus to search input
+        resetUIStateAfterDelete();
+        restoreFocusToSearchInput('sales');
+        refreshAllInputFields();
+    } catch (error) {
+        console.error('Error deleting invoice:', error);
+        showError('Failed to delete invoice. Please try again.');
+        // Ensure UI is still responsive even if delete fails
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
     }
-    
-    AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
-    saveCompanyData();
-    loadInvoices();
-    loadGoodsReturns(); // Refresh goods returns table if it's open
-    updateDashboard();
-    
-    // Reset UI state and restore focus to search input
-    resetUIStateAfterDelete();
-    restoreFocusToSearchInput('sales');
-    refreshAllInputFields();
 }
 
 function showRestoreInvoiceModal() {
@@ -4549,17 +4581,25 @@ function updatePurchase(event, purchaseId) {
 }
 
 function deletePurchase(purchaseId) {
-    if (!confirm('Are you sure you want to delete this purchase?')) return;
-    
-    AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
-    saveCompanyData();
-    loadPurchases();
-    updateDashboard();
-    
-    // Reset UI state and restore focus to search input
-    resetUIStateAfterDelete();
-    restoreFocusToSearchInput('purchase');
-    refreshAllInputFields();
+    try {
+        if (!confirm('Are you sure you want to delete this purchase?')) return;
+        
+        AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
+        saveCompanyData();
+        loadPurchases();
+        updateDashboard();
+        
+        // Reset UI state and restore focus to search input
+        resetUIStateAfterDelete();
+        restoreFocusToSearchInput('purchase');
+        refreshAllInputFields();
+    } catch (error) {
+        console.error('Error deleting purchase:', error);
+        showError('Failed to delete purchase. Please try again.');
+        // Ensure UI is still responsive even if delete fails
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
+    }
 }
 
 // Continue in next part...
@@ -4847,17 +4887,25 @@ function updatePayment(event, paymentId) {
 }
 
 function deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment?')) return;
-    
-    AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
-    saveCompanyData();
-    loadPayments();
-    updateDashboard();
-    
-    // Reset UI state and restore focus to search input
-    resetUIStateAfterDelete();
-    restoreFocusToSearchInput('payments');
-    refreshAllInputFields();
+    try {
+        if (!confirm('Are you sure you want to delete this payment?')) return;
+        
+        AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
+        saveCompanyData();
+        loadPayments();
+        updateDashboard();
+        
+        // Reset UI state and restore focus to search input
+        resetUIStateAfterDelete();
+        restoreFocusToSearchInput('payments');
+        refreshAllInputFields();
+    } catch (error) {
+        console.error('Error deleting payment:', error);
+        showError('Failed to delete payment. Please try again.');
+        // Ensure UI is still responsive even if delete fails
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
+    }
 }
 
 // Goods Return Functions
@@ -5246,17 +5294,25 @@ function updateGoodsReturn(event, returnId) {
 }
 
 function deleteGoodsReturn(returnId) {
-    if (!confirm('Are you sure you want to delete this goods return?')) return;
-    
-    AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
-    saveCompanyData();
-    loadGoodsReturns();
-    updateDashboard();
-    
-    // Reset UI state and restore focus to search input
-    resetUIStateAfterDelete();
-    restoreFocusToSearchInput('goodsReturn');
-    refreshAllInputFields();
+    try {
+        if (!confirm('Are you sure you want to delete this goods return?')) return;
+        
+        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
+        saveCompanyData();
+        loadGoodsReturns();
+        updateDashboard();
+        
+        // Reset UI state and restore focus to search input
+        resetUIStateAfterDelete();
+        restoreFocusToSearchInput('goodsReturn');
+        refreshAllInputFields();
+    } catch (error) {
+        console.error('Error deleting goods return:', error);
+        showError('Failed to delete goods return. Please try again.');
+        // Ensure UI is still responsive even if delete fails
+        resetUIStateAfterDelete();
+        refreshAllInputFields();
+    }
 }
 
 function filterGoodsReturns() {
