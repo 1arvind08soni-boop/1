@@ -4436,12 +4436,27 @@ function addPurchase(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    const vendorId = formData.get('vendorId');
+    const amount = parseFloat(formData.get('amount'));
+    
+    // Validate vendor selection
+    if (!vendorId) {
+        showError('Please select a vendor');
+        return;
+    }
+    
+    // Validate amount
+    if (!amount || amount <= 0) {
+        showError('Please enter a valid amount');
+        return;
+    }
+    
     const purchase = {
         id: generateId(),
         purchaseNo: formData.get('purchaseNo'),
         date: formData.get('date'),
-        vendorId: formData.get('vendorId'),
-        total: parseFloat(formData.get('amount')),
+        vendorId: vendorId,
+        total: amount,
         description: formData.get('description'),
         status: 'Unpaid',
         createdAt: new Date().toISOString()
@@ -4518,12 +4533,27 @@ function updatePurchase(event, purchaseId) {
     const index = AppState.purchases.findIndex(p => p.id === purchaseId);
     if (index === -1) return;
     
+    const vendorId = formData.get('vendorId');
+    const amount = parseFloat(formData.get('amount'));
+    
+    // Validate vendor selection
+    if (!vendorId) {
+        showError('Please select a vendor');
+        return;
+    }
+    
+    // Validate amount
+    if (!amount || amount <= 0) {
+        showError('Please enter a valid amount');
+        return;
+    }
+    
     AppState.purchases[index] = {
         ...AppState.purchases[index],
         purchaseNo: formData.get('purchaseNo'),
         date: formData.get('date'),
-        vendorId: formData.get('vendorId'),
-        total: parseFloat(formData.get('amount')),
+        vendorId: vendorId,
+        total: amount,
         description: formData.get('description'),
         status: formData.get('status'),
         updatedAt: new Date().toISOString()
@@ -4664,13 +4694,27 @@ function addPayment(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    const type = formData.get('type');
+    const clientId = formData.get('clientId');
+    const vendorId = formData.get('vendorId');
+    
+    // Validate that appropriate party is selected based on payment type
+    if (type === 'receipt' && !clientId) {
+        showError('Please select a client for receipt');
+        return;
+    }
+    if (type === 'payment' && !vendorId) {
+        showError('Please select a vendor for payment');
+        return;
+    }
+    
     const payment = {
         id: generateId(),
         paymentNo: formData.get('paymentNo'),
         date: formData.get('date'),
-        type: formData.get('type'),
-        clientId: formData.get('clientId') || null,
-        vendorId: formData.get('vendorId') || null,
+        type: type,
+        clientId: clientId || null,
+        vendorId: vendorId || null,
         amount: parseFloat(formData.get('amount')),
         method: formData.get('method'),
         notes: formData.get('notes'),
@@ -4765,13 +4809,27 @@ function updatePayment(event, paymentId) {
     const index = AppState.payments.findIndex(p => p.id === paymentId);
     if (index === -1) return;
     
+    const type = formData.get('type');
+    const clientId = formData.get('clientId');
+    const vendorId = formData.get('vendorId');
+    
+    // Validate that appropriate party is selected based on payment type
+    if (type === 'receipt' && !clientId) {
+        showError('Please select a client for receipt');
+        return;
+    }
+    if (type === 'payment' && !vendorId) {
+        showError('Please select a vendor for payment');
+        return;
+    }
+    
     AppState.payments[index] = {
         ...AppState.payments[index],
         paymentNo: formData.get('paymentNo'),
         date: formData.get('date'),
-        type: formData.get('type'),
-        clientId: formData.get('clientId') || null,
-        vendorId: formData.get('vendorId') || null,
+        type: type,
+        clientId: clientId || null,
+        vendorId: vendorId || null,
         amount: parseFloat(formData.get('amount')),
         method: formData.get('method'),
         notes: formData.get('notes'),
