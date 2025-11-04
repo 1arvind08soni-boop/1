@@ -878,7 +878,7 @@ function deleteProduct(productId) {
     });
     
     if (usedInInvoices.length > 0) {
-        const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it may cause issues with those invoices.\n\nAre you sure you want to delete this product?`;
+        const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it will cause invoice line items to show missing product information.\n\nAre you sure you want to delete this product?`;
         if (!confirm(message)) return;
     } else {
         if (!confirm('Are you sure you want to delete this product?')) return;
@@ -4441,13 +4441,13 @@ function addPurchase(event) {
     
     // Validate vendor selection
     if (!vendorId) {
-        showError('Please select a vendor');
+        showError('Please select a vendor for this purchase');
         return;
     }
     
     // Validate amount
     if (!amount || amount <= 0) {
-        showError('Please enter a valid amount');
+        showError('Please enter a positive amount greater than 0');
         return;
     }
     
@@ -4538,13 +4538,13 @@ function updatePurchase(event, purchaseId) {
     
     // Validate vendor selection
     if (!vendorId) {
-        showError('Please select a vendor');
+        showError('Please select a vendor for this purchase');
         return;
     }
     
     // Validate amount
     if (!amount || amount <= 0) {
-        showError('Please enter a valid amount');
+        showError('Please enter a positive amount greater than 0');
         return;
     }
     
@@ -4711,7 +4711,7 @@ function addPayment(event) {
     
     // Validate amount
     if (!amount || amount <= 0) {
-        showError('Please enter a valid amount');
+        showError('Please enter a positive amount greater than 0');
         return;
     }
     
@@ -4833,7 +4833,7 @@ function updatePayment(event, paymentId) {
     
     // Validate amount
     if (!amount || amount <= 0) {
-        showError('Please enter a valid amount');
+        showError('Please enter a positive amount greater than 0');
         return;
     }
     
