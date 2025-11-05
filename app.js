@@ -4831,6 +4831,30 @@ function deletePayment(paymentId) {
 }
 
 // Goods Return Functions
+function renderGoodsReturnRow(gr) {
+    const client = AppState.clients.find(c => c.id === gr.clientId);
+    const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
+    
+    return `
+        <tr>
+            <td>${gr.returnNo}</td>
+            <td>${formatDate(gr.date)}</td>
+            <td>${client ? client.name : 'N/A'}</td>
+            <td>${gr.type === 'with_invoice' ? 'With Invoice' : 'Without Invoice'}</td>
+            <td>${invoice ? invoice.invoiceNo : (gr.type === 'without_invoice' ? 'N/A' : 'Deleted')}</td>
+            <td>₹${gr.amount.toFixed(2)}</td>
+            <td>
+                <button class="action-btn edit" onclick="editGoodsReturn('${gr.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete" onclick="deleteGoodsReturn('${gr.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
 function loadGoodsReturns() {
     const tbody = document.getElementById('goodsReturnTableBody');
     if (!tbody) return;
@@ -4842,30 +4866,7 @@ function loadGoodsReturns() {
     }
     
     const sortedGoodsReturns = sortByCreatedAtDesc(AppState.goodsReturns);
-    
-    tbody.innerHTML = sortedGoodsReturns.map(gr => {
-        const client = AppState.clients.find(c => c.id === gr.clientId);
-        const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
-        
-        return `
-            <tr>
-                <td>${gr.returnNo}</td>
-                <td>${formatDate(gr.date)}</td>
-                <td>${client ? client.name : 'N/A'}</td>
-                <td>${gr.type === 'with_invoice' ? 'With Invoice' : 'Without Invoice'}</td>
-                <td>${invoice ? invoice.invoiceNo : (gr.type === 'without_invoice' ? 'N/A' : 'Deleted')}</td>
-                <td>₹${gr.amount.toFixed(2)}</td>
-                <td>
-                    <button class="action-btn edit" onclick="editGoodsReturn('${gr.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="action-btn delete" onclick="deleteGoodsReturn('${gr.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    tbody.innerHTML = sortedGoodsReturns.map(renderGoodsReturnRow).join('');
 }
 
 function getNextGoodsReturnNumber() {
@@ -5256,29 +5257,7 @@ function filterGoodsReturns() {
         return;
     }
     
-    tbody.innerHTML = filteredGoodsReturns.map(gr => {
-        const client = AppState.clients.find(c => c.id === gr.clientId);
-        const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
-        
-        return `
-            <tr>
-                <td>${gr.returnNo}</td>
-                <td>${formatDate(gr.date)}</td>
-                <td>${client ? client.name : 'N/A'}</td>
-                <td>${gr.type === 'with_invoice' ? 'With Invoice' : 'Without Invoice'}</td>
-                <td>${invoice ? invoice.invoiceNo : (gr.type === 'without_invoice' ? 'N/A' : 'Deleted')}</td>
-                <td>₹${gr.amount.toFixed(2)}</td>
-                <td>
-                    <button class="action-btn edit" onclick="editGoodsReturn('${gr.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="action-btn delete" onclick="deleteGoodsReturn('${gr.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    tbody.innerHTML = filteredGoodsReturns.map(renderGoodsReturnRow).join('');
 }
 
 // Reports Functions
