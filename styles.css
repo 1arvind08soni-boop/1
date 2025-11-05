@@ -197,6 +197,12 @@ body {
     font-weight: 500;
 }
 
+/* Ensure icons inside all buttons don't block click events */
+.btn i,
+.btn-icon i {
+    pointer-events: none;
+}
+
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow);
@@ -379,6 +385,11 @@ body {
     transition: all 0.3s ease;
 }
 
+/* Ensure icons inside buttons don't block click events */
+.action-btn i {
+    pointer-events: none;
+}
+
 .action-btn.edit {
     background: var(--info-color);
     color: white;
@@ -508,6 +519,10 @@ body {
     font-size: 1.5rem;
     cursor: pointer;
     color: #666;
+}
+
+.close-btn i {
+    pointer-events: none;
 }
 
 .close-btn:hover {
