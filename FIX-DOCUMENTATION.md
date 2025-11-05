@@ -41,7 +41,7 @@ function filterGoodsReturns() {
 ## Solution Implemented
 
 ### New Implementation
-The `filterGoodsReturns()` function has been updated to match the pattern used by all other filter functions (`filterProducts()`, `filterClients()`, `filterVendors()`, `filterInvoices()`, `filterPurchases()`, `filterPayments()`):
+The `filterGoodsReturns()` function has been updated to match the pattern used by all other filter functions, with an additional performance optimization using Map lookups:
 
 ```javascript
 function filterGoodsReturns() {
@@ -57,10 +57,14 @@ function filterGoodsReturns() {
         return;
     }
     
+    // Create lookup maps for better performance (O(1) instead of O(n))
+    const clientMap = new Map(AppState.clients.map(c => [c.id, c]));
+    const invoiceMap = new Map(AppState.invoices.map(inv => [inv.id, inv]));
+    
     const filteredGoodsReturns = AppState.goodsReturns.filter(gr => {
-        const client = AppState.clients.find(c => c.id === gr.clientId);
+        const client = clientMap.get(gr.clientId);
         const clientName = client ? client.name.toLowerCase() : '';
-        const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
+        const invoice = gr.invoiceId ? invoiceMap.get(gr.invoiceId) : null;
         const invoiceNo = invoice ? invoice.invoiceNo.toLowerCase() : '';
         
         return gr.returnNo.toLowerCase().includes(searchTerm) ||
@@ -76,7 +80,27 @@ function filterGoodsReturns() {
     }
     
     tbody.innerHTML = filteredGoodsReturns.map(gr => {
-        // ... generate HTML from data
+        const client = clientMap.get(gr.clientId);
+        const invoice = gr.invoiceId ? invoiceMap.get(gr.invoiceId) : null;
+        
+        return `
+            <tr>
+                <td>${gr.returnNo}</td>
+                <td>${formatDate(gr.date)}</td>
+                <td>${client ? client.name : 'N/A'}</td>
+                <td>${gr.type === 'with_invoice' ? 'With Invoice' : 'Without Invoice'}</td>
+                <td>${invoice ? invoice.invoiceNo : (gr.type === 'without_invoice' ? 'N/A' : 'Deleted')}</td>
+                <td>₹${gr.amount.toFixed(2)}</td>
+                <td>
+                    <button class="action-btn edit" onclick="editGoodsReturn('${gr.id}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn delete" onclick="deleteGoodsReturn('${gr.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
     }).join('');
 }
 ```
@@ -89,6 +113,7 @@ function filterGoodsReturns() {
 4. **Better Search**: Searches across multiple fields (returnNo, client name, date, invoice number, type)
 5. **Null Safety**: Includes proper null checks for DOM elements
 6. **Empty Search Handling**: Empty search reloads all data via `loadGoodsReturns()`
+7. **Performance Optimization**: Uses Map lookups (O(1)) instead of array.find() (O(n)) for better performance with large datasets
 
 ## Testing Performed
 
