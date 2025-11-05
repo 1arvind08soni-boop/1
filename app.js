@@ -5237,10 +5237,14 @@ function filterGoodsReturns() {
         return;
     }
     
+    // Create lookup maps for better performance
+    const clientMap = new Map(AppState.clients.map(c => [c.id, c]));
+    const invoiceMap = new Map(AppState.invoices.map(inv => [inv.id, inv]));
+    
     const filteredGoodsReturns = AppState.goodsReturns.filter(gr => {
-        const client = AppState.clients.find(c => c.id === gr.clientId);
+        const client = clientMap.get(gr.clientId);
         const clientName = client ? client.name.toLowerCase() : '';
-        const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
+        const invoice = gr.invoiceId ? invoiceMap.get(gr.invoiceId) : null;
         const invoiceNo = invoice ? invoice.invoiceNo.toLowerCase() : '';
         
         return gr.returnNo.toLowerCase().includes(searchTerm) ||
@@ -5256,8 +5260,8 @@ function filterGoodsReturns() {
     }
     
     tbody.innerHTML = filteredGoodsReturns.map(gr => {
-        const client = AppState.clients.find(c => c.id === gr.clientId);
-        const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
+        const client = clientMap.get(gr.clientId);
+        const invoice = gr.invoiceId ? invoiceMap.get(gr.invoiceId) : null;
         
         return `
             <tr>
