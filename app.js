@@ -7614,9 +7614,17 @@ function closeModal() {
     const container = document.getElementById('modalContainer');
     container.innerHTML = '';
     
-    // Reset UI state after closing modal
+    // Reset UI state after closing modal - but don't refresh all inputs to avoid side effects
     resetUIStateAfterDelete();
-    refreshAllInputFields();
+    
+    // Return focus to the main document body to prevent focus trap
+    requestAnimationFrame(() => {
+        document.body.focus();
+        // Then blur to allow natural focusing
+        setTimeout(() => {
+            document.body.blur();
+        }, 10);
+    });
 }
 
 // Helper function to get or create notification container
@@ -7804,30 +7812,33 @@ function closeInlineModal() {
     if (inlineContainer) {
         inlineContainer.remove();
         // Restore focus to the parent modal if it exists
-        setTimeout(() => {
-            const parentModal = document.getElementById('modalContainer').querySelector('.modal');
-            if (parentModal) {
-                const firstInput = parentModal.querySelector(FOCUSABLE_INPUT_SELECTOR);
-                if (firstInput) {
-                    firstInput.focus();
-                    // Ensure it's enabled
-                    firstInput.disabled = false;
-                    if (firstInput.tagName !== 'SELECT') {
-                        firstInput.readOnly = false;
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const parentModal = document.getElementById('modalContainer').querySelector('.modal');
+                if (parentModal) {
+                    const firstInput = parentModal.querySelector(FOCUSABLE_INPUT_SELECTOR);
+                    if (firstInput) {
+                        // Ensure it's enabled
+                        firstInput.disabled = false;
+                        if (firstInput.tagName !== 'SELECT') {
+                            firstInput.readOnly = false;
+                        }
+                        if (firstInput.style.pointerEvents === 'none') {
+                            firstInput.style.pointerEvents = '';
+                        }
+                        firstInput.focus();
                     }
                 }
-            }
-            // Reset UI state
-            resetUIStateAfterDelete();
-            refreshAllInputFields();
-        }, 100);
+                // Reset UI state but don't refresh all inputs
+                resetUIStateAfterDelete();
+            }, 50);
+        });
     } else {
         // Fallback to regular close if no inline container
         const container = document.getElementById('modalContainer');
         container.innerHTML = '';
         // Reset UI state
         resetUIStateAfterDelete();
-        refreshAllInputFields();
     }
 }
 
@@ -7845,49 +7856,80 @@ function resetUIStateAfterDelete() {
         if (input.disabled) {
             input.disabled = false;
         }
+        // Remove any potential pointer-events blocking
+        if (input.style.pointerEvents === 'none') {
+            input.style.pointerEvents = '';
+        }
     });
     
     // Clear any stale validation states
     document.querySelectorAll('.form-control.is-invalid').forEach(el => {
         el.classList.remove('is-invalid');
     });
+    
+    // Ensure no modal backdrop is blocking interactions
+    const backdrops = document.querySelectorAll('.modal-backdrop, .modal');
+    backdrops.forEach(backdrop => {
+        if (backdrop.style.pointerEvents === 'all' || backdrop.style.pointerEvents === '') {
+            // Check if this is an active modal that should be there
+            const modalContainer = document.getElementById('modalContainer');
+            const inlineModalContainer = document.getElementById('inlineModalContainer');
+            const isActiveModal = (modalContainer && modalContainer.contains(backdrop)) || 
+                                 (inlineModalContainer && inlineModalContainer.contains(backdrop));
+            if (!isActiveModal) {
+                backdrop.style.pointerEvents = 'none';
+            }
+        }
+    });
 }
 
 function restoreFocusToSearchInput(screenName) {
     // Restore focus to the search input of the current screen after deletion
-    setTimeout(() => {
-        const searchInputs = {
-            'products': 'productSearchInput',
-            'clients': 'clientSearchInput',
-            'vendors': 'vendorSearchInput',
-            'sales': 'invoiceSearchInput',
-            'goodsReturn': 'goodsReturnSearchInput',
-            'purchase': 'purchaseSearchInput',
-            'payments': 'paymentSearchInput'
-        };
-        
-        const inputId = searchInputs[screenName];
-        if (inputId) {
-            const searchInput = document.getElementById(inputId);
-            if (searchInput) {
-                searchInput.focus();
-                // Ensure input is enabled and editable
-                searchInput.disabled = false;
-                searchInput.readOnly = false;
+    // Using requestAnimationFrame to ensure DOM is fully updated before focusing
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            const searchInputs = {
+                'products': 'productSearchInput',
+                'clients': 'clientSearchInput',
+                'vendors': 'vendorSearchInput',
+                'sales': 'invoiceSearchInput',
+                'goodsReturn': 'goodsReturnSearchInput',
+                'purchase': 'purchaseSearchInput',
+                'payments': 'paymentSearchInput'
+            };
+            
+            const inputId = searchInputs[screenName];
+            if (inputId) {
+                const searchInput = document.getElementById(inputId);
+                if (searchInput) {
+                    // Remove any blocking first
+                    searchInput.disabled = false;
+                    searchInput.readOnly = false;
+                    if (searchInput.style.pointerEvents === 'none') {
+                        searchInput.style.pointerEvents = '';
+                    }
+                    // Force focus
+                    searchInput.focus();
+                    // Also ensure it's clickable
+                    searchInput.click();
+                }
             }
-        }
-    }, 100);
+        }, 50);
+    });
 }
 
 function refreshAllInputFields() {
-    // Force refresh of all input fields to ensure they're responsive
+    // This function has been simplified to avoid causing side effects
+    // The main issue was dispatching input events on all fields which could trigger unwanted handlers
+    // Now we just ensure basic input responsiveness without triggering events
     const allInputs = document.querySelectorAll('input, select, textarea');
     allInputs.forEach(input => {
-        // Trigger input event to ensure event listeners are active
-        if (!input.disabled && !input.readOnly) {
-            // Dispatch input event to trigger any listeners
-            input.dispatchEvent(new Event('input', { bubbles: true }));
+        // Remove any potential event blocking
+        if (input.style.pointerEvents === 'none') {
+            input.style.pointerEvents = '';
         }
+        // Ensure input is not in a stuck state
+        input.blur();
     });
 }
 
