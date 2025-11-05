@@ -5225,13 +5225,60 @@ function deleteGoodsReturn(returnId) {
 }
 
 function filterGoodsReturns() {
-    const searchTerm = document.getElementById('goodsReturnSearchInput').value.toLowerCase();
-    const rows = document.querySelectorAll('#goodsReturnTableBody tr');
+    const searchInput = document.getElementById('goodsReturnSearchInput');
+    if (!searchInput) return;
     
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    const searchTerm = searchInput.value.toLowerCase();
+    const tbody = document.getElementById('goodsReturnTableBody');
+    if (!tbody) return;
+    
+    if (searchTerm === '') {
+        loadGoodsReturns();
+        return;
+    }
+    
+    const filteredGoodsReturns = AppState.goodsReturns.filter(gr => {
+        const client = AppState.clients.find(c => c.id === gr.clientId);
+        const clientName = client ? client.name.toLowerCase() : '';
+        const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
+        const invoiceNo = invoice ? invoice.invoiceNo.toLowerCase() : '';
+        const type = gr.type === 'with_invoice' ? 'with invoice' : 'without invoice';
+        
+        return gr.returnNo.toLowerCase().includes(searchTerm) ||
+               clientName.includes(searchTerm) ||
+               invoiceNo.includes(searchTerm) ||
+               type.includes(searchTerm) ||
+               gr.date.includes(searchTerm);
     });
+    
+    if (filteredGoodsReturns.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No goods returns found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filteredGoodsReturns.map(gr => {
+        const client = AppState.clients.find(c => c.id === gr.clientId);
+        const invoice = gr.invoiceId ? AppState.invoices.find(inv => inv.id === gr.invoiceId) : null;
+        
+        return `
+            <tr>
+                <td>${gr.returnNo}</td>
+                <td>${formatDate(gr.date)}</td>
+                <td>${client ? client.name : 'N/A'}</td>
+                <td>${gr.type === 'with_invoice' ? 'With Invoice' : 'Without Invoice'}</td>
+                <td>${invoice ? invoice.invoiceNo : (gr.type === 'without_invoice' ? 'N/A' : 'Deleted')}</td>
+                <td>₹${gr.amount.toFixed(2)}</td>
+                <td>
+                    <button class="action-btn edit" onclick="editGoodsReturn('${gr.id}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn delete" onclick="deleteGoodsReturn('${gr.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // Reports Functions
