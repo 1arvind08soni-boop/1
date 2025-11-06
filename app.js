@@ -847,7 +847,14 @@ function deleteProduct(productId) {
     
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
-    loadProducts();
+    
+    // Check if there's an active search and re-apply filter
+    const searchInput = document.getElementById('productSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterProducts();
+    } else {
+        loadProducts();
+    }
 }
 
 // Filter Products based on search
@@ -1488,7 +1495,15 @@ function deleteClient(clientId) {
     
     AppState.clients = AppState.clients.filter(c => c.id !== clientId);
     saveCompanyData();
-    loadClients();
+    
+    // Check if there's an active search and re-apply filter
+    const searchInput = document.getElementById('clientSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterClients();
+    } else {
+        loadClients();
+    }
+    
     updateDashboard();
 }
 
@@ -1804,7 +1819,15 @@ function deleteVendor(vendorId) {
     
     AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
     saveCompanyData();
-    loadVendors();
+    
+    // Check if there's an active search and re-apply filter
+    const searchInput = document.getElementById('vendorSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterVendors();
+    } else {
+        loadVendors();
+    }
+    
     updateDashboard();
 }
 
@@ -2613,8 +2636,23 @@ function deleteInvoice(invoiceId) {
     
     AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
     saveCompanyData();
-    loadInvoices();
-    loadGoodsReturns(); // Refresh goods returns table if it's open
+    
+    // Check if there's an active search and re-apply filter
+    const searchInput = document.getElementById('invoiceSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterInvoices();
+    } else {
+        loadInvoices();
+    }
+    
+    // Refresh goods returns table if it's open
+    const goodsReturnSearchInput = document.getElementById('goodsReturnSearchInput');
+    if (goodsReturnSearchInput && goodsReturnSearchInput.value.trim() !== '') {
+        filterGoodsReturns();
+    } else {
+        loadGoodsReturns();
+    }
+    
     updateDashboard();
 }
 
@@ -4533,7 +4571,15 @@ function deletePurchase(purchaseId) {
     
     AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
     saveCompanyData();
-    loadPurchases();
+    
+    // Check if there's an active search and re-apply filter
+    const searchInput = document.getElementById('purchaseSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterPurchases();
+    } else {
+        loadPurchases();
+    }
+    
     updateDashboard();
 }
 
@@ -4826,7 +4872,15 @@ function deletePayment(paymentId) {
     
     AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
     saveCompanyData();
-    loadPayments();
+    
+    // Check if there's an active search and re-apply filter
+    const searchInput = document.getElementById('paymentSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterPayments();
+    } else {
+        loadPayments();
+    }
+    
     updateDashboard();
 }
 
@@ -5220,7 +5274,15 @@ function deleteGoodsReturn(returnId) {
     
     AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
     saveCompanyData();
-    loadGoodsReturns();
+    
+    // Check if there's an active search and re-apply filter
+    const searchInput = document.getElementById('goodsReturnSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterGoodsReturns();
+    } else {
+        loadGoodsReturns();
+    }
+    
     updateDashboard();
 }
 
