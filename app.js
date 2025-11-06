@@ -34,7 +34,15 @@ function getProductDisplay(item) {
     return `${item.productCode} - ${category}`;
 }
 
-// Helper function to reload data with active search filter awareness
+/**
+ * Reloads data with search filter awareness
+ * Checks if there's an active search term in the input field and either re-applies
+ * the filter function or loads all data depending on the search state.
+ * 
+ * @param {string} searchInputId - The DOM ID of the search input element
+ * @param {Function} filterFunction - The filter function to call when search is active
+ * @param {Function} loadFunction - The load function to call when search is empty
+ */
 function reloadWithFilter(searchInputId, filterFunction, loadFunction) {
     const searchInput = document.getElementById(searchInputId);
     if (searchInput && searchInput.value.trim() !== '') {
@@ -2623,8 +2631,13 @@ function deleteInvoice(invoiceId) {
     
     AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
     saveCompanyData();
+    
+    // Reload invoice list with current filter state
     reloadWithFilter('invoiceSearchInput', filterInvoices, loadInvoices);
+    
+    // Also reload goods returns since deleting an invoice may delete associated returns
     reloadWithFilter('goodsReturnSearchInput', filterGoodsReturns, loadGoodsReturns);
+    
     updateDashboard();
 }
 
