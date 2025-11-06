@@ -34,6 +34,16 @@ function getProductDisplay(item) {
     return `${item.productCode} - ${category}`;
 }
 
+// Helper function to reload data with active search filter awareness
+function reloadWithFilter(searchInputId, filterFunction, loadFunction) {
+    const searchInput = document.getElementById(searchInputId);
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterFunction();
+    } else {
+        loadFunction();
+    }
+}
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
@@ -847,14 +857,7 @@ function deleteProduct(productId) {
     
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
-    
-    // Check if there's an active search and re-apply filter
-    const searchInput = document.getElementById('productSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
-        filterProducts();
-    } else {
-        loadProducts();
-    }
+    reloadWithFilter('productSearchInput', filterProducts, loadProducts);
 }
 
 // Filter Products based on search
@@ -1495,15 +1498,7 @@ function deleteClient(clientId) {
     
     AppState.clients = AppState.clients.filter(c => c.id !== clientId);
     saveCompanyData();
-    
-    // Check if there's an active search and re-apply filter
-    const searchInput = document.getElementById('clientSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
-        filterClients();
-    } else {
-        loadClients();
-    }
-    
+    reloadWithFilter('clientSearchInput', filterClients, loadClients);
     updateDashboard();
 }
 
@@ -1819,15 +1814,7 @@ function deleteVendor(vendorId) {
     
     AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
     saveCompanyData();
-    
-    // Check if there's an active search and re-apply filter
-    const searchInput = document.getElementById('vendorSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
-        filterVendors();
-    } else {
-        loadVendors();
-    }
-    
+    reloadWithFilter('vendorSearchInput', filterVendors, loadVendors);
     updateDashboard();
 }
 
@@ -2636,23 +2623,8 @@ function deleteInvoice(invoiceId) {
     
     AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
     saveCompanyData();
-    
-    // Check if there's an active search and re-apply filter
-    const searchInput = document.getElementById('invoiceSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
-        filterInvoices();
-    } else {
-        loadInvoices();
-    }
-    
-    // Refresh goods returns table if it's open
-    const goodsReturnSearchInput = document.getElementById('goodsReturnSearchInput');
-    if (goodsReturnSearchInput && goodsReturnSearchInput.value.trim() !== '') {
-        filterGoodsReturns();
-    } else {
-        loadGoodsReturns();
-    }
-    
+    reloadWithFilter('invoiceSearchInput', filterInvoices, loadInvoices);
+    reloadWithFilter('goodsReturnSearchInput', filterGoodsReturns, loadGoodsReturns);
     updateDashboard();
 }
 
@@ -4571,15 +4543,7 @@ function deletePurchase(purchaseId) {
     
     AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
     saveCompanyData();
-    
-    // Check if there's an active search and re-apply filter
-    const searchInput = document.getElementById('purchaseSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
-        filterPurchases();
-    } else {
-        loadPurchases();
-    }
-    
+    reloadWithFilter('purchaseSearchInput', filterPurchases, loadPurchases);
     updateDashboard();
 }
 
@@ -4872,15 +4836,7 @@ function deletePayment(paymentId) {
     
     AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
     saveCompanyData();
-    
-    // Check if there's an active search and re-apply filter
-    const searchInput = document.getElementById('paymentSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
-        filterPayments();
-    } else {
-        loadPayments();
-    }
-    
+    reloadWithFilter('paymentSearchInput', filterPayments, loadPayments);
     updateDashboard();
 }
 
@@ -5274,15 +5230,7 @@ function deleteGoodsReturn(returnId) {
     
     AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
     saveCompanyData();
-    
-    // Check if there's an active search and re-apply filter
-    const searchInput = document.getElementById('goodsReturnSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
-        filterGoodsReturns();
-    } else {
-        loadGoodsReturns();
-    }
-    
+    reloadWithFilter('goodsReturnSearchInput', filterGoodsReturns, loadGoodsReturns);
     updateDashboard();
 }
 
