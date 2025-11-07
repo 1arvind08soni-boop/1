@@ -848,6 +848,8 @@ function deleteProduct(productId) {
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
     loadProducts();
+    closeModal();
+    showSuccess('Product deleted successfully');
 }
 
 // Filter Products based on search
@@ -1490,6 +1492,8 @@ function deleteClient(clientId) {
     saveCompanyData();
     loadClients();
     updateDashboard();
+    closeModal();
+    showSuccess('Client deleted successfully');
 }
 
 // Vendor Management
@@ -1806,6 +1810,8 @@ function deleteVendor(vendorId) {
     saveCompanyData();
     loadVendors();
     updateDashboard();
+    closeModal();
+    showSuccess('Vendor deleted successfully');
 }
 
 // Continue in next part...
@@ -2616,6 +2622,8 @@ function deleteInvoice(invoiceId) {
     loadInvoices();
     loadGoodsReturns(); // Refresh goods returns table if it's open
     updateDashboard();
+    closeModal();
+    showSuccess('Invoice deleted successfully');
 }
 
 function showRestoreInvoiceModal() {
@@ -4535,6 +4543,8 @@ function deletePurchase(purchaseId) {
     saveCompanyData();
     loadPurchases();
     updateDashboard();
+    closeModal();
+    showSuccess('Purchase deleted successfully');
 }
 
 // Continue in next part...
@@ -4828,6 +4838,8 @@ function deletePayment(paymentId) {
     saveCompanyData();
     loadPayments();
     updateDashboard();
+    closeModal();
+    showSuccess('Payment deleted successfully');
 }
 
 // Goods Return Functions
@@ -5222,6 +5234,8 @@ function deleteGoodsReturn(returnId) {
     saveCompanyData();
     loadGoodsReturns();
     updateDashboard();
+    closeModal();
+    showSuccess('Goods return deleted successfully');
 }
 
 function filterGoodsReturns() {
@@ -7044,6 +7058,7 @@ function deleteFinancialYear(fyId) {
     
     saveCompanyData();
     showFinancialYearSettings();
+    showSuccess('Financial year deleted successfully');
 }
 
 function showYearEndProcessModal() {
