@@ -7057,6 +7057,7 @@ function deleteFinancialYear(fyId) {
     AppState.financialYears = AppState.financialYears.filter(f => f.id !== fyId);
     
     saveCompanyData();
+    closeModal();
     showFinancialYearSettings();
     showSuccess('Financial year deleted successfully');
 }
