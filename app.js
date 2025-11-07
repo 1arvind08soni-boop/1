@@ -119,18 +119,14 @@ async function saveCompanyData() {
     };
     // Wrap localStorage in setTimeout to yield control and prevent UI blocking
     return new Promise((resolve, reject) => {
-        try {
-            setTimeout(() => {
-                try {
-                    localStorage.setItem(companyKey, JSON.stringify(data));
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            }, 0);
-        } catch (error) {
-            reject(error);
-        }
+        setTimeout(() => {
+            try {
+                localStorage.setItem(companyKey, JSON.stringify(data));
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        }, 0);
     });
 }
 
@@ -4560,8 +4556,7 @@ async function deletePurchase(purchaseId) {
     } catch (error) {
         console.error("Failed to delete purchase:", error);
         alert("Error deleting purchase. Please try again.");
-        // Optionally reload data to ensure UI consistency
-        loadCompanyData();
+        // Reload UI to reflect current state
         loadPurchases();
         updateDashboard();
     }
@@ -4869,8 +4864,7 @@ async function deletePayment(paymentId) {
     } catch (error) {
         console.error("Failed to delete payment:", error);
         alert("Error deleting payment. Please try again.");
-        // Optionally reload data to ensure UI consistency
-        loadCompanyData();
+        // Reload UI to reflect current state
         loadPayments();
         updateDashboard();
     }
@@ -5279,8 +5273,7 @@ async function deleteGoodsReturn(returnId) {
     } catch (error) {
         console.error("Failed to delete goods return:", error);
         alert("Error deleting goods return. Please try again.");
-        // Optionally reload data to ensure UI consistency
-        loadCompanyData();
+        // Reload UI to reflect current state
         loadGoodsReturns();
         updateDashboard();
     }
