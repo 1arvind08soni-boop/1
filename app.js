@@ -7535,6 +7535,12 @@ function showModal(modalHTML) {
 function closeModal() {
     const container = document.getElementById('modalContainer');
     container.innerHTML = '';
+    
+    // Also remove inline modal container if it exists
+    const inlineContainer = document.getElementById('inlineModalContainer');
+    if (inlineContainer) {
+        inlineContainer.remove();
+    }
 }
 
 // Helper function to get or create notification container
