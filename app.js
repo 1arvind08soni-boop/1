@@ -101,7 +101,7 @@ function loadCompanyData() {
     }
 }
 
-function saveCompanyData() {
+async function saveCompanyData() {
     if (!AppState.currentCompany) return;
     
     const companyKey = `company_${AppState.currentCompany.id}`;
@@ -117,7 +117,21 @@ function saveCompanyData() {
         financialYears: AppState.financialYears,
         currentFinancialYear: AppState.currentFinancialYear
     };
-    localStorage.setItem(companyKey, JSON.stringify(data));
+    // Wrap localStorage in setTimeout to yield control and prevent UI blocking
+    return new Promise((resolve, reject) => {
+        try {
+            setTimeout(() => {
+                try {
+                    localStorage.setItem(companyKey, JSON.stringify(data));
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            }, 0);
+        } catch (error) {
+            reject(error);
+        }
+    });
 }
 
 function getCurrentFinancialYear() {
@@ -4528,13 +4542,29 @@ function updatePurchase(event, purchaseId) {
     closeModal();
 }
 
-function deletePurchase(purchaseId) {
+async function deletePurchase(purchaseId) {
+    // Confirm deletion with user
     if (!confirm('Are you sure you want to delete this purchase?')) return;
     
-    AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
-    saveCompanyData();
-    loadPurchases();
-    updateDashboard();
+    try {
+        // Update state immutably
+        AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
+        
+        // Asynchronous save operation
+        await saveCompanyData();
+        
+        // Reload UI-related data
+        loadPurchases();
+        updateDashboard();
+        
+    } catch (error) {
+        console.error("Failed to delete purchase:", error);
+        alert("Error deleting purchase. Please try again.");
+        // Optionally reload data to ensure UI consistency
+        loadCompanyData();
+        loadPurchases();
+        updateDashboard();
+    }
 }
 
 // Continue in next part...
@@ -4821,13 +4851,29 @@ function updatePayment(event, paymentId) {
     closeModal();
 }
 
-function deletePayment(paymentId) {
+async function deletePayment(paymentId) {
+    // Confirm deletion with user
     if (!confirm('Are you sure you want to delete this payment?')) return;
     
-    AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
-    saveCompanyData();
-    loadPayments();
-    updateDashboard();
+    try {
+        // Update state immutably
+        AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
+        
+        // Asynchronous save operation
+        await saveCompanyData();
+        
+        // Reload UI-related data
+        loadPayments();
+        updateDashboard();
+        
+    } catch (error) {
+        console.error("Failed to delete payment:", error);
+        alert("Error deleting payment. Please try again.");
+        // Optionally reload data to ensure UI consistency
+        loadCompanyData();
+        loadPayments();
+        updateDashboard();
+    }
 }
 
 // Goods Return Functions
@@ -5215,13 +5261,29 @@ function updateGoodsReturn(event, returnId) {
     closeModal();
 }
 
-function deleteGoodsReturn(returnId) {
+async function deleteGoodsReturn(returnId) {
+    // Confirm deletion with user
     if (!confirm('Are you sure you want to delete this goods return?')) return;
     
-    AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
-    saveCompanyData();
-    loadGoodsReturns();
-    updateDashboard();
+    try {
+        // Update state immutably
+        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
+        
+        // Asynchronous save operation
+        await saveCompanyData();
+        
+        // Reload UI-related data
+        loadGoodsReturns();
+        updateDashboard();
+        
+    } catch (error) {
+        console.error("Failed to delete goods return:", error);
+        alert("Error deleting goods return. Please try again.");
+        // Optionally reload data to ensure UI consistency
+        loadCompanyData();
+        loadGoodsReturns();
+        updateDashboard();
+    }
 }
 
 function filterGoodsReturns() {
