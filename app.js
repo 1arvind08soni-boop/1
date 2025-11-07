@@ -4555,7 +4555,7 @@ async function deletePurchase(purchaseId) {
         
     } catch (error) {
         console.error("Failed to delete purchase:", error);
-        alert("Error deleting purchase. Please try again.");
+        alert("Error deleting purchase. The data may not have been saved. Please try again or refresh the page.");
         // Reload UI to reflect current state
         loadPurchases();
         updateDashboard();
@@ -4863,7 +4863,7 @@ async function deletePayment(paymentId) {
         
     } catch (error) {
         console.error("Failed to delete payment:", error);
-        alert("Error deleting payment. Please try again.");
+        alert("Error deleting payment. The data may not have been saved. Please try again or refresh the page.");
         // Reload UI to reflect current state
         loadPayments();
         updateDashboard();
@@ -5272,7 +5272,7 @@ async function deleteGoodsReturn(returnId) {
         
     } catch (error) {
         console.error("Failed to delete goods return:", error);
-        alert("Error deleting goods return. Please try again.");
+        alert("Error deleting goods return. The data may not have been saved. Please try again or refresh the page.");
         // Reload UI to reflect current state
         loadGoodsReturns();
         updateDashboard();
