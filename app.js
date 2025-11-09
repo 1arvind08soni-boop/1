@@ -17,7 +17,8 @@ const AppState = {
         printSize: 'a4',
         reportTemplate: 'modern',
         customTemplates: {}
-    }
+    },
+    operationInProgress: false // Flag to prevent concurrent operations
 };
 
 // UI Messages and Constants
@@ -428,45 +429,65 @@ function showContentScreen(screenName) {
 
 // Dashboard Functions
 function updateDashboard() {
-    const totalInvoices = AppState.invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-    const totalGoodsReturns = AppState.goodsReturns.reduce((sum, gr) => sum + (gr.amount || 0), 0);
-    const totalSales = totalInvoices - totalGoodsReturns;
-    const totalPurchase = AppState.purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
-    
-    document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
-    document.getElementById('totalPurchase').textContent = `₹${totalPurchase.toFixed(2)}`;
-    document.getElementById('totalClients').textContent = AppState.clients.length;
-    document.getElementById('totalProducts').textContent = AppState.products.length;
-    
-    // Recent Invoices
-    const recentInvoices = AppState.invoices.slice(-5).reverse();
-    const recentInvoicesHTML = recentInvoices.length > 0 ? `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Invoice No</th>
-                    <th>Client</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${recentInvoices.map(inv => {
-                    const client = AppState.clients.find(c => c.id === inv.clientId);
-                    return `
-                        <tr>
-                            <td>${inv.invoiceNo}</td>
-                            <td>${client ? client.name : 'N/A'}</td>
-                            <td>${formatDate(inv.date)}</td>
-                            <td>₹${inv.total.toFixed(2)}</td>
-                        </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
-    ` : '<p>No recent invoices</p>';
-    
-    document.getElementById('recentInvoices').innerHTML = recentInvoicesHTML;
+    try {
+        // Ensure arrays exist and are valid
+        const invoices = Array.isArray(AppState.invoices) ? AppState.invoices : [];
+        const goodsReturns = Array.isArray(AppState.goodsReturns) ? AppState.goodsReturns : [];
+        const purchases = Array.isArray(AppState.purchases) ? AppState.purchases : [];
+        const clients = Array.isArray(AppState.clients) ? AppState.clients : [];
+        const products = Array.isArray(AppState.products) ? AppState.products : [];
+        
+        const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+        const totalGoodsReturns = goodsReturns.reduce((sum, gr) => sum + (gr.amount || 0), 0);
+        const totalSales = totalInvoices - totalGoodsReturns;
+        const totalPurchase = purchases.reduce((sum, pur) => sum + (pur.total || 0), 0);
+        
+        const totalSalesElement = document.getElementById('totalSales');
+        const totalPurchaseElement = document.getElementById('totalPurchase');
+        const totalClientsElement = document.getElementById('totalClients');
+        const totalProductsElement = document.getElementById('totalProducts');
+        
+        if (totalSalesElement) totalSalesElement.textContent = `₹${totalSales.toFixed(2)}`;
+        if (totalPurchaseElement) totalPurchaseElement.textContent = `₹${totalPurchase.toFixed(2)}`;
+        if (totalClientsElement) totalClientsElement.textContent = clients.length;
+        if (totalProductsElement) totalProductsElement.textContent = products.length;
+        
+        // Recent Invoices
+        const recentInvoices = invoices.slice(-5).reverse();
+        const recentInvoicesHTML = recentInvoices.length > 0 ? `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice No</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${recentInvoices.map(inv => {
+                        const client = clients.find(c => c.id === inv.clientId);
+                        return `
+                            <tr>
+                                <td>${inv.invoiceNo}</td>
+                                <td>${client ? client.name : 'N/A'}</td>
+                                <td>${formatDate(inv.date)}</td>
+                                <td>₹${inv.total.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        ` : '<p>No recent invoices</p>';
+        
+        const recentInvoicesElement = document.getElementById('recentInvoices');
+        if (recentInvoicesElement) {
+            recentInvoicesElement.innerHTML = recentInvoicesHTML;
+        }
+    } catch (error) {
+        console.error('Error updating dashboard:', error);
+        // Don't show error to user as dashboard updates frequently
+    }
 }
 
 // Product Management
@@ -874,6 +895,12 @@ function updateProduct(event, productId) {
 }
 
 function deleteProduct(productId) {
+    // Prevent concurrent delete operations
+    if (AppState.operationInProgress) {
+        showError('Another operation is in progress. Please wait.');
+        return;
+    }
+    
     try {
         // Validate product exists
         const product = AppState.products.find(p => p.id === productId);
@@ -897,6 +924,9 @@ function deleteProduct(productId) {
             if (!confirm('Are you sure you want to delete this product?')) return;
         }
         
+        // Set operation flag
+        AppState.operationInProgress = true;
+        
         // Perform deletion
         AppState.products = AppState.products.filter(p => p.id !== productId);
         saveCompanyData();
@@ -909,6 +939,9 @@ function deleteProduct(productId) {
     } catch (error) {
         console.error('Error deleting product:', error);
         showError('Failed to delete product. Please try again.');
+    } finally {
+        // Always clear the operation flag
+        AppState.operationInProgress = false;
     }
 }
 
@@ -1526,6 +1559,12 @@ function updateClient(event, clientId) {
 }
 
 function deleteClient(clientId) {
+    // Prevent concurrent delete operations
+    if (AppState.operationInProgress) {
+        showError('Another operation is in progress. Please wait.');
+        return;
+    }
+    
     try {
         // Validate client exists
         const client = AppState.clients.find(c => c.id === clientId);
@@ -1556,6 +1595,9 @@ function deleteClient(clientId) {
             if (!confirm('Are you sure you want to delete this client?')) return;
         }
         
+        // Set operation flag
+        AppState.operationInProgress = true;
+        
         // Perform deletion
         AppState.clients = AppState.clients.filter(c => c.id !== clientId);
         saveCompanyData();
@@ -1569,6 +1611,9 @@ function deleteClient(clientId) {
     } catch (error) {
         console.error('Error deleting client:', error);
         showError('Failed to delete client. Please try again.');
+    } finally {
+        // Always clear the operation flag
+        AppState.operationInProgress = false;
     }
 }
 
@@ -2683,6 +2728,12 @@ function updateSimplifiedInvoice(event, invoiceId) {
 }
 
 function deleteInvoice(invoiceId) {
+    // Prevent concurrent delete operations
+    if (AppState.operationInProgress) {
+        showError('Another operation is in progress. Please wait.');
+        return;
+    }
+    
     try {
         // Validate invoice exists
         const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
@@ -2704,6 +2755,9 @@ function deleteInvoice(invoiceId) {
         } else {
             if (!confirm('Are you sure you want to delete this invoice?')) return;
         }
+        
+        // Set operation flag
+        AppState.operationInProgress = true;
         
         // Create a copy with deleted timestamp to avoid modifying the original
         const deletedInvoice = { ...invoice, deletedAt: new Date().toISOString() };
@@ -2727,6 +2781,9 @@ function deleteInvoice(invoiceId) {
     } catch (error) {
         console.error('Error deleting invoice:', error);
         showError('Failed to delete invoice. Please try again.');
+    } finally {
+        // Always clear the operation flag
+        AppState.operationInProgress = false;
     }
 }
 
