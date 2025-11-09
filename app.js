@@ -549,6 +549,7 @@ function loadProducts() {
 }
 
 function showAddProductModal() {
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
     const clientOptions = AppState.clients.map(c => 
         `<option value="${c.id}">${c.name}</option>`
     ).join('');
@@ -577,6 +578,28 @@ function showAddProductModal() {
                     </select>
                 </div>
             </div>
+            ${gstEnabled ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>HSN Code</label>
+                    <input type="text" class="form-control" name="hsnCode" maxlength="8" placeholder="e.g., 7113">
+                    <small class="form-text text-muted">HSN code for GST compliance (4, 6, or 8 digits)</small>
+                </div>
+                <div class="form-group">
+                    <label>GST Rate (%)</label>
+                    <select class="form-control" name="gstRate">
+                        <option value="0">0% (Exempt)</option>
+                        <option value="0.25">0.25%</option>
+                        <option value="3">3%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18" selected>18%</option>
+                        <option value="28">28%</option>
+                    </select>
+                    <small class="form-text text-muted">GST rate applicable to this product</small>
+                </div>
+            </div>
+            ` : ''}
             <div class="form-row">
                 <div class="form-group">
                     <label>Unit Per Box *</label>
@@ -585,6 +608,7 @@ function showAddProductModal() {
                 <div class="form-group">
                     <label>Default Price Per Unit (₹) *</label>
                     <input type="number" class="form-control" name="pricePerUnit" step="0.01" min="0" required>
+                    <small class="form-text text-muted">${gstEnabled ? 'Price should be inclusive of GST' : 'Base price per unit'}</small>
                 </div>
             </div>
             <div class="form-group">
@@ -659,10 +683,14 @@ function addProduct(event) {
         }
     });
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    
     const product = {
         id: generateId(),
         code: code,
         category: category,
+        hsnCode: gstEnabled ? (formData.get('hsnCode') || '') : '',
+        gstRate: gstEnabled ? parseFloat(formData.get('gstRate')) : 0,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
         openingStock: parseFloat(formData.get('openingStock')) || 0,
@@ -679,6 +707,8 @@ function addProduct(event) {
 
 // Inline product creation for invoice forms
 function showInlineProductModal(buttonElement) {
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    
     const inlineModal = createModal('Create New Product', `
         <form id="inlineProductForm" onsubmit="addInlineProduct(event)">
             <div class="form-row">
@@ -703,6 +733,26 @@ function showInlineProductModal(buttonElement) {
                     </select>
                 </div>
             </div>
+            ${gstEnabled ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>HSN Code</label>
+                    <input type="text" class="form-control" name="hsnCode" maxlength="8" placeholder="e.g., 7113">
+                </div>
+                <div class="form-group">
+                    <label>GST Rate (%)</label>
+                    <select class="form-control" name="gstRate">
+                        <option value="0">0%</option>
+                        <option value="0.25">0.25%</option>
+                        <option value="3">3%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18" selected>18%</option>
+                        <option value="28">28%</option>
+                    </select>
+                </div>
+            </div>
+            ` : ''}
             <div class="form-row">
                 <div class="form-group">
                     <label>Unit Per Box *</label>
@@ -747,10 +797,14 @@ function addInlineProduct(event) {
         return;
     }
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    
     const product = {
         id: generateId(),
         code: code,
         category: category,
+        hsnCode: gstEnabled ? (formData.get('hsnCode') || '') : '',
+        gstRate: gstEnabled ? parseFloat(formData.get('gstRate')) : 0,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
         description: formData.get('description'),
@@ -792,6 +846,8 @@ function editProduct(productId) {
     const product = AppState.products.find(p => p.id === productId);
     if (!product) return;
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    
     const modal = createModal('Edit Product', `
         <form id="editProductForm" onsubmit="updateProduct(event, '${productId}')">
             <div class="form-row">
@@ -816,6 +872,28 @@ function editProduct(productId) {
                     </select>
                 </div>
             </div>
+            ${gstEnabled ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>HSN Code</label>
+                    <input type="text" class="form-control" name="hsnCode" value="${product.hsnCode || ''}" maxlength="8" placeholder="e.g., 7113">
+                    <small class="form-text text-muted">HSN code for GST compliance (4, 6, or 8 digits)</small>
+                </div>
+                <div class="form-group">
+                    <label>GST Rate (%)</label>
+                    <select class="form-control" name="gstRate">
+                        <option value="0" ${(product.gstRate || 0) === 0 ? 'selected' : ''}>0% (Exempt)</option>
+                        <option value="0.25" ${product.gstRate === 0.25 ? 'selected' : ''}>0.25%</option>
+                        <option value="3" ${product.gstRate === 3 ? 'selected' : ''}>3%</option>
+                        <option value="5" ${product.gstRate === 5 ? 'selected' : ''}>5%</option>
+                        <option value="12" ${product.gstRate === 12 ? 'selected' : ''}>12%</option>
+                        <option value="18" ${(product.gstRate || 18) === 18 ? 'selected' : ''}>18%</option>
+                        <option value="28" ${product.gstRate === 28 ? 'selected' : ''}>28%</option>
+                    </select>
+                    <small class="form-text text-muted">GST rate applicable to this product</small>
+                </div>
+            </div>
+            ` : ''}
             <div class="form-row">
                 <div class="form-group">
                     <label>Unit Per Box *</label>
@@ -824,6 +902,7 @@ function editProduct(productId) {
                 <div class="form-group">
                     <label>Default Price Per Unit (₹) *</label>
                     <input type="number" class="form-control" name="pricePerUnit" value="${product.pricePerUnit}" step="0.01" min="0" required>
+                    <small class="form-text text-muted">${gstEnabled ? 'Price should be inclusive of GST' : 'Base price per unit'}</small>
                 </div>
             </div>
             <div class="form-group">
@@ -904,10 +983,14 @@ function updateProduct(event, productId) {
         }
     });
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    
     AppState.products[index] = {
         ...AppState.products[index],
         code: code,
         category: category,
+        hsnCode: gstEnabled ? (formData.get('hsnCode') || '') : '',
+        gstRate: gstEnabled ? parseFloat(formData.get('gstRate')) : 0,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
         openingStock: parseFloat(formData.get('openingStock')) || 0,
