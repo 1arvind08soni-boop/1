@@ -265,12 +265,18 @@ function addCompany(event) {
     closeModal();
 }
 
-function deleteCompany(companyId) {
+async function deleteCompany(companyId) {
     const company = AppState.companies.find(c => c.id === companyId);
     if (!company) return;
     
     // Show confirmation dialog
-    if (!confirm(UI_MESSAGES.DELETE_COMPANY_CONFIRM(company.name))) {
+    const confirmed = await showConfirm(UI_MESSAGES.DELETE_COMPANY_CONFIRM(company.name), {
+        title: 'Delete Company',
+        confirmText: 'Delete',
+        confirmClass: 'btn-danger'
+    });
+    
+    if (!confirmed) {
         return;
     }
     
@@ -829,7 +835,7 @@ function updateProduct(event, productId) {
     closeModal();
 }
 
-function deleteProduct(productId) {
+async function deleteProduct(productId) {
     // Check if product is used in any invoices
     const usedInInvoices = AppState.invoices.filter(inv => {
         if (inv.items && Array.isArray(inv.items)) {
@@ -838,12 +844,23 @@ function deleteProduct(productId) {
         return false;
     });
     
+    let confirmed;
     if (usedInInvoices.length > 0) {
         const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it will cause invoice line items to show missing product information.\n\nAre you sure you want to delete this product?`;
-        if (!confirm(message)) return;
+        confirmed = await showConfirm(message, {
+            title: 'Delete Product',
+            confirmText: 'Delete',
+            confirmClass: 'btn-danger'
+        });
     } else {
-        if (!confirm('Are you sure you want to delete this product?')) return;
+        confirmed = await showConfirm('Are you sure you want to delete this product?', {
+            title: 'Delete Product',
+            confirmText: 'Delete',
+            confirmClass: 'btn-danger'
+        });
     }
+    
+    if (!confirmed) return;
     
     AppState.products = AppState.products.filter(p => p.id !== productId);
     saveCompanyData();
@@ -1463,12 +1480,13 @@ function updateClient(event, clientId) {
     closeModal();
 }
 
-function deleteClient(clientId) {
+async function deleteClient(clientId) {
     // Check if client has any related records
     const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
     const clientPayments = AppState.payments.filter(pay => pay.clientId === clientId);
     const clientGoodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === clientId);
     
+    let confirmed;
     if (clientInvoices.length > 0 || clientPayments.length > 0 || clientGoodsReturns.length > 0) {
         let message = 'This client has the following related records:\n';
         if (clientInvoices.length > 0) message += `\n- ${clientInvoices.length} invoice(s)`;
@@ -1476,14 +1494,26 @@ function deleteClient(clientId) {
         if (clientGoodsReturns.length > 0) message += `\n- ${clientGoodsReturns.length} goods return(s)`;
         message += '\n\nDeleting this client will also delete all these records. Are you sure you want to continue?';
         
-        if (!confirm(message)) return;
+        confirmed = await showConfirm(message, {
+            title: 'Delete Client',
+            confirmText: 'Delete All',
+            confirmClass: 'btn-danger'
+        });
+        
+        if (!confirmed) return;
         
         // Delete all related records
         AppState.invoices = AppState.invoices.filter(inv => inv.clientId !== clientId);
         AppState.payments = AppState.payments.filter(pay => pay.clientId !== clientId);
         AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId !== clientId);
     } else {
-        if (!confirm('Are you sure you want to delete this client?')) return;
+        confirmed = await showConfirm('Are you sure you want to delete this client?', {
+            title: 'Delete Client',
+            confirmText: 'Delete',
+            confirmClass: 'btn-danger'
+        });
+        
+        if (!confirmed) return;
     }
     
     AppState.clients = AppState.clients.filter(c => c.id !== clientId);
@@ -1782,24 +1812,37 @@ function updateVendor(event, vendorId) {
     closeModal();
 }
 
-function deleteVendor(vendorId) {
+async function deleteVendor(vendorId) {
     // Check if vendor has any related records
     const vendorPurchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
     const vendorPayments = AppState.payments.filter(pay => pay.vendorId === vendorId);
     
+    let confirmed;
     if (vendorPurchases.length > 0 || vendorPayments.length > 0) {
         let message = 'This vendor has the following related records:\n';
         if (vendorPurchases.length > 0) message += `\n- ${vendorPurchases.length} purchase(s)`;
         if (vendorPayments.length > 0) message += `\n- ${vendorPayments.length} payment(s)`;
         message += '\n\nDeleting this vendor will also delete all these records. Are you sure you want to continue?';
         
-        if (!confirm(message)) return;
+        confirmed = await showConfirm(message, {
+            title: 'Delete Vendor',
+            confirmText: 'Delete All',
+            confirmClass: 'btn-danger'
+        });
+        
+        if (!confirmed) return;
         
         // Delete all related records
         AppState.purchases = AppState.purchases.filter(pur => pur.vendorId !== vendorId);
         AppState.payments = AppState.payments.filter(pay => pay.vendorId !== vendorId);
     } else {
-        if (!confirm('Are you sure you want to delete this vendor?')) return;
+        confirmed = await showConfirm('Are you sure you want to delete this vendor?', {
+            title: 'Delete Vendor',
+            confirmText: 'Delete',
+            confirmClass: 'btn-danger'
+        });
+        
+        if (!confirmed) return;
     }
     
     AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
@@ -2584,19 +2627,32 @@ function updateSimplifiedInvoice(event, invoiceId) {
     closeModal();
 }
 
-function deleteInvoice(invoiceId) {
+async function deleteInvoice(invoiceId) {
     // Check if there are any goods returns associated with this invoice
     const associatedGoodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
     
+    let confirmed;
     if (associatedGoodsReturns.length > 0) {
         const totalReturns = associatedGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
         const message = `This invoice has ${associatedGoodsReturns.length} goods return(s) totaling ₹${totalReturns.toFixed(2)}.\n\nDeleting this invoice will also delete all associated goods returns. Are you sure you want to continue?`;
-        if (!confirm(message)) return;
+        confirmed = await showConfirm(message, {
+            title: 'Delete Invoice',
+            confirmText: 'Delete All',
+            confirmClass: 'btn-danger'
+        });
+        
+        if (!confirmed) return;
         
         // Delete associated goods returns
         AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId !== invoiceId);
     } else {
-        if (!confirm('Are you sure you want to delete this invoice?')) return;
+        confirmed = await showConfirm('Are you sure you want to delete this invoice?', {
+            title: 'Delete Invoice',
+            confirmText: 'Delete',
+            confirmClass: 'btn-danger'
+        });
+        
+        if (!confirmed) return;
     }
     
     // Find the invoice to delete
@@ -2670,7 +2726,7 @@ function showRestoreInvoiceModal() {
     showModal(modal);
 }
 
-function restoreInvoice(invoiceId) {
+async function restoreInvoice(invoiceId) {
     const invoice = AppState.deletedInvoices.find(inv => inv.id === invoiceId);
     if (!invoice) {
         showError('Invoice not found.');
@@ -2684,7 +2740,16 @@ function restoreInvoice(invoiceId) {
     // Check if invoice number already exists
     const existingInvoice = AppState.invoices.find(inv => inv.invoiceNo === restoredInvoice.invoiceNo);
     if (existingInvoice) {
-        if (!confirm(`An invoice with number ${restoredInvoice.invoiceNo} already exists. Do you want to restore this invoice with a new invoice number?`)) {
+        const confirmed = await showConfirm(
+            `An invoice with number ${restoredInvoice.invoiceNo} already exists. Do you want to restore this invoice with a new invoice number?`,
+            {
+                title: 'Restore Invoice',
+                confirmText: 'Restore with New Number',
+                confirmClass: 'btn-primary'
+            }
+        );
+        
+        if (!confirmed) {
             return;
         }
         // Assign new invoice number based on current highest number
@@ -4528,8 +4593,14 @@ function updatePurchase(event, purchaseId) {
     closeModal();
 }
 
-function deletePurchase(purchaseId) {
-    if (!confirm('Are you sure you want to delete this purchase?')) return;
+async function deletePurchase(purchaseId) {
+    const confirmed = await showConfirm('Are you sure you want to delete this purchase?', {
+        title: 'Delete Purchase',
+        confirmText: 'Delete',
+        confirmClass: 'btn-danger'
+    });
+    
+    if (!confirmed) return;
     
     AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
     saveCompanyData();
@@ -4821,8 +4892,14 @@ function updatePayment(event, paymentId) {
     closeModal();
 }
 
-function deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment?')) return;
+async function deletePayment(paymentId) {
+    const confirmed = await showConfirm('Are you sure you want to delete this payment?', {
+        title: 'Delete Payment',
+        confirmText: 'Delete',
+        confirmClass: 'btn-danger'
+    });
+    
+    if (!confirmed) return;
     
     AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
     saveCompanyData();
@@ -5215,8 +5292,14 @@ function updateGoodsReturn(event, returnId) {
     closeModal();
 }
 
-function deleteGoodsReturn(returnId) {
-    if (!confirm('Are you sure you want to delete this goods return?')) return;
+async function deleteGoodsReturn(returnId) {
+    const confirmed = await showConfirm('Are you sure you want to delete this goods return?', {
+        title: 'Delete Goods Return',
+        confirmText: 'Delete',
+        confirmClass: 'btn-danger'
+    });
+    
+    if (!confirmed) return;
     
     AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
     saveCompanyData();
@@ -7012,11 +7095,20 @@ function switchToFinancialYear(fyId) {
     }
 }
 
-function deleteFinancialYear(fyId) {
+async function deleteFinancialYear(fyId) {
     const fy = AppState.financialYears.find(f => f.id === fyId);
     if (!fy) return;
     
-    if (!confirm(`Are you sure you want to delete financial year "${fy.name}"? This will delete all transactions within this period.`)) {
+    const confirmed = await showConfirm(
+        `Are you sure you want to delete financial year "${fy.name}"? This will delete all transactions within this period.`,
+        {
+            title: 'Delete Financial Year',
+            confirmText: 'Delete',
+            confirmClass: 'btn-danger'
+        }
+    );
+    
+    if (!confirmed) {
         return;
     }
     
@@ -7051,7 +7143,7 @@ function showYearEndProcessModal() {
     
     const currentFY = AppState.currentFinancialYear;
     if (currentFY.closedDate) {
-        alert('This financial year is already closed.');
+        showError('This financial year is already closed.');
         showFinancialYearSettings();
         return;
     }
@@ -7435,7 +7527,7 @@ function backupData() {
     a.click();
     window.URL.revokeObjectURL(url);
     
-    alert('Backup created successfully');
+    showSuccess('Backup created successfully');
 }
 
 function restoreData() {
@@ -7443,15 +7535,21 @@ function restoreData() {
     input.type = 'file';
     input.accept = '.json';
     
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
         const file = e.target.files[0];
         const reader = new FileReader();
         
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const data = JSON.parse(event.target.result);
                 
-                if (confirm('This will replace all current data. Are you sure?')) {
+                const confirmed = await showConfirm('This will replace all current data. Are you sure?', {
+                    title: 'Restore Data',
+                    confirmText: 'Restore',
+                    confirmClass: 'btn-danger'
+                });
+                
+                if (confirmed) {
                     AppState.products = data.products || [];
                     AppState.clients = data.clients || [];
                     AppState.vendors = data.vendors || [];
@@ -7478,8 +7576,8 @@ function restoreData() {
                     }
                     
                     saveCompanyData();
-                    alert('Data restored successfully');
-                    location.reload();
+                    showSuccess('Data restored successfully');
+                    setTimeout(() => location.reload(), 1000);
                 }
             } catch (error) {
                 alert('Error restoring data: Invalid backup file');
@@ -7717,6 +7815,95 @@ function closeInlineModal() {
         const container = document.getElementById('modalContainer');
         container.innerHTML = '';
     }
+}
+
+// Custom Confirm Dialog (replaces native confirm to prevent input focus issues)
+function showConfirm(message, options = {}) {
+    return new Promise((resolve) => {
+        const { 
+            title = 'Confirm', 
+            confirmText = 'Yes', 
+            cancelText = 'Cancel',
+            confirmClass = 'btn-danger'
+        } = options;
+        
+        // Store currently focused element to restore later
+        const previouslyFocused = document.activeElement;
+        
+        // Create confirmation container
+        let confirmContainer = document.getElementById('confirmDialogContainer');
+        if (!confirmContainer) {
+            confirmContainer = document.createElement('div');
+            confirmContainer.id = 'confirmDialogContainer';
+            confirmContainer.style.position = 'fixed';
+            confirmContainer.style.top = '0';
+            confirmContainer.style.left = '0';
+            confirmContainer.style.width = '100%';
+            confirmContainer.style.height = '100%';
+            confirmContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            confirmContainer.style.zIndex = '10003'; // Higher than modals
+            confirmContainer.style.display = 'flex';
+            confirmContainer.style.alignItems = 'center';
+            confirmContainer.style.justifyContent = 'center';
+            document.body.appendChild(confirmContainer);
+        }
+        
+        const dialogHTML = `
+            <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h3 style="margin-top: 0; margin-bottom: 1rem; color: #333;">${title}</h3>
+                <p style="margin-bottom: 1.5rem; white-space: pre-wrap; color: #666;">${message}</p>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button id="confirmDialogCancel" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+                        ${cancelText}
+                    </button>
+                    <button id="confirmDialogConfirm" class="btn ${confirmClass}" style="padding: 0.5rem 1rem;">
+                        ${confirmText}
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        confirmContainer.innerHTML = dialogHTML;
+        
+        // Function to close and restore focus
+        const closeConfirm = (result) => {
+            confirmContainer.remove();
+            // Restore focus to previously focused element
+            setTimeout(() => {
+                if (previouslyFocused && previouslyFocused !== document.body) {
+                    try {
+                        previouslyFocused.focus();
+                        // For number inputs, ensure they're ready for input
+                        if (previouslyFocused.type === 'number') {
+                            previouslyFocused.blur();
+                            previouslyFocused.focus();
+                        }
+                    } catch (e) {
+                        // Element might not be focusable anymore
+                    }
+                }
+            }, 50);
+            resolve(result);
+        };
+        
+        // Add event listeners
+        document.getElementById('confirmDialogConfirm').addEventListener('click', () => closeConfirm(true));
+        document.getElementById('confirmDialogCancel').addEventListener('click', () => closeConfirm(false));
+        
+        // ESC key to cancel
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                document.removeEventListener('keydown', escHandler);
+                closeConfirm(false);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
+        // Focus the confirm button by default
+        setTimeout(() => {
+            document.getElementById('confirmDialogConfirm').focus();
+        }, 50);
+    });
 }
 
 
