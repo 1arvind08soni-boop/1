@@ -1412,6 +1412,11 @@ function addClient(event) {
 
 // Inline client creation for invoice/sales forms
 function showInlineClientModal() {
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}">${state.name} (${state.code})</option>`
+    ).join('');
+    
     const inlineModal = createModal('Create New Client', `
         <form id="inlineClientForm" onsubmit="addInlineClient(event)">
             <div class="form-row">
@@ -1438,16 +1443,28 @@ function showInlineClientModal() {
                 <label>Address</label>
                 <textarea class="form-control" name="address" rows="3"></textarea>
             </div>
+            ${gstEnabled ? `
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>PAN</label>
-                    <input type="text" class="form-control" name="pan">
+                    <label>GSTIN</label>
+                    <input type="text" class="form-control" name="gstin" maxlength="15" style="text-transform: uppercase;">
                 </div>
             </div>
+            ` : `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>PAN</label>
+                    <input type="text" class="form-control" name="pan" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            `}
             <div class="form-group">
                 <label>Opening Balance (₹)</label>
                 <input type="number" class="form-control" name="openingBalance" step="0.01" value="0">
@@ -1472,6 +1489,10 @@ function addInlineClient(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateCode = gstEnabled ? formData.get('stateCode') : '';
+    const stateName = stateCode ? INDIAN_STATES.find(s => s.code === stateCode)?.name || '' : '';
+    
     const client = {
         id: generateId(),
         code: formData.get('code'),
@@ -1479,8 +1500,10 @@ function addInlineClient(event) {
         contact: formData.get('contact'),
         email: formData.get('email'),
         address: formData.get('address'),
-        gstin: formData.get('gstin'),
-        pan: formData.get('pan'),
+        stateCode: stateCode,
+        stateName: stateName,
+        gstin: gstEnabled ? (formData.get('gstin') || '') : '',
+        pan: !gstEnabled ? (formData.get('pan') || '') : '',
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
         createdAt: new Date().toISOString()
@@ -1508,6 +1531,11 @@ function editClient(clientId) {
     const client = AppState.clients.find(c => c.id === clientId);
     if (!client) return;
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}" ${client.stateCode === state.code ? 'selected' : ''}>${state.name} (${state.code})</option>`
+    ).join('');
+    
     const modal = createModal('Edit Client', `
         <form id="editClientForm" onsubmit="updateClient(event, '${clientId}')">
             <div class="form-row">
@@ -1534,16 +1562,28 @@ function editClient(clientId) {
                 <label>Address</label>
                 <textarea class="form-control" name="address" rows="3">${client.address || ''}</textarea>
             </div>
+            ${gstEnabled ? `
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin" value="${client.gstin || ''}">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>PAN</label>
-                    <input type="text" class="form-control" name="pan" value="${client.pan || ''}">
+                    <label>GSTIN</label>
+                    <input type="text" class="form-control" name="gstin" value="${client.gstin || ''}" maxlength="15" style="text-transform: uppercase;">
                 </div>
             </div>
+            ` : `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>PAN</label>
+                    <input type="text" class="form-control" name="pan" value="${client.pan || ''}" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            `}
             <div class="form-group">
                 <label>Opening Balance (₹)</label>
                 <input type="number" class="form-control" name="openingBalance" step="0.01" value="${client.openingBalance || 0}">
@@ -1571,6 +1611,10 @@ function updateClient(event, clientId) {
     const index = AppState.clients.findIndex(c => c.id === clientId);
     if (index === -1) return;
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateCode = gstEnabled ? formData.get('stateCode') : '';
+    const stateName = stateCode ? INDIAN_STATES.find(s => s.code === stateCode)?.name || '' : '';
+    
     AppState.clients[index] = {
         ...AppState.clients[index],
         code: formData.get('code'),
@@ -1578,8 +1622,10 @@ function updateClient(event, clientId) {
         contact: formData.get('contact'),
         email: formData.get('email'),
         address: formData.get('address'),
-        gstin: formData.get('gstin'),
-        pan: formData.get('pan'),
+        stateCode: stateCode,
+        stateName: stateName,
+        gstin: gstEnabled ? (formData.get('gstin') || '') : '',
+        pan: !gstEnabled ? (formData.get('pan') || '') : '',
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
         updatedAt: new Date().toISOString()
@@ -1681,6 +1727,11 @@ function calculateVendorBalance(vendorId) {
 }
 
 function showAddVendorModal() {
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}">${state.name} (${state.code})</option>`
+    ).join('');
+    
     const modal = createModal('Add New Vendor', `
         <form id="addVendorForm" onsubmit="addVendor(event)">
             <div class="form-row">
@@ -1707,16 +1758,28 @@ function showAddVendorModal() {
                 <label>Address</label>
                 <textarea class="form-control" name="address" rows="3"></textarea>
             </div>
+            ${gstEnabled ? `
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>PAN</label>
-                    <input type="text" class="form-control" name="pan">
+                    <label>GSTIN</label>
+                    <input type="text" class="form-control" name="gstin" maxlength="15" style="text-transform: uppercase;">
                 </div>
             </div>
+            ` : `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>PAN</label>
+                    <input type="text" class="form-control" name="pan" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            `}
             <div class="form-group">
                 <label>Opening Balance (₹)</label>
                 <input type="number" class="form-control" name="openingBalance" step="0.01" value="0">
@@ -1736,6 +1799,10 @@ function addVendor(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateCode = gstEnabled ? formData.get('stateCode') : '';
+    const stateName = stateCode ? INDIAN_STATES.find(s => s.code === stateCode)?.name || '' : '';
+    
     const vendor = {
         id: generateId(),
         code: formData.get('code'),
@@ -1743,8 +1810,10 @@ function addVendor(event) {
         contact: formData.get('contact'),
         email: formData.get('email'),
         address: formData.get('address'),
-        gstin: formData.get('gstin'),
-        pan: formData.get('pan'),
+        stateCode: stateCode,
+        stateName: stateName,
+        gstin: gstEnabled ? (formData.get('gstin') || '') : '',
+        pan: !gstEnabled ? (formData.get('pan') || '') : '',
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         createdAt: new Date().toISOString()
     };
@@ -1757,6 +1826,11 @@ function addVendor(event) {
 
 // Inline vendor creation for purchase forms
 function showInlineVendorModal() {
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}">${state.name} (${state.code})</option>`
+    ).join('');
+    
     const inlineModal = createModal('Create New Vendor', `
         <form id="inlineVendorForm" onsubmit="addInlineVendor(event)">
             <div class="form-row">
@@ -1783,16 +1857,28 @@ function showInlineVendorModal() {
                 <label>Address</label>
                 <textarea class="form-control" name="address" rows="3"></textarea>
             </div>
+            ${gstEnabled ? `
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>PAN</label>
-                    <input type="text" class="form-control" name="pan">
+                    <label>GSTIN</label>
+                    <input type="text" class="form-control" name="gstin" maxlength="15" style="text-transform: uppercase;">
                 </div>
             </div>
+            ` : `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>PAN</label>
+                    <input type="text" class="form-control" name="pan" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            `}
             <div class="form-group">
                 <label>Opening Balance (₹)</label>
                 <input type="number" class="form-control" name="openingBalance" step="0.01" value="0">
@@ -1812,6 +1898,10 @@ function addInlineVendor(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateCode = gstEnabled ? formData.get('stateCode') : '';
+    const stateName = stateCode ? INDIAN_STATES.find(s => s.code === stateCode)?.name || '' : '';
+    
     const vendor = {
         id: generateId(),
         code: formData.get('code'),
@@ -1819,8 +1909,10 @@ function addInlineVendor(event) {
         contact: formData.get('contact'),
         email: formData.get('email'),
         address: formData.get('address'),
-        gstin: formData.get('gstin'),
-        pan: formData.get('pan'),
+        stateCode: stateCode,
+        stateName: stateName,
+        gstin: gstEnabled ? (formData.get('gstin') || '') : '',
+        pan: !gstEnabled ? (formData.get('pan') || '') : '',
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         createdAt: new Date().toISOString()
     };
@@ -1845,6 +1937,11 @@ function addInlineVendor(event) {
 function editVendor(vendorId) {
     const vendor = AppState.vendors.find(v => v.id === vendorId);
     if (!vendor) return;
+    
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}" ${vendor.stateCode === state.code ? 'selected' : ''}>${state.name} (${state.code})</option>`
+    ).join('');
     
     const modal = createModal('Edit Vendor', `
         <form id="editVendorForm" onsubmit="updateVendor(event, '${vendorId}')">
@@ -1872,16 +1969,28 @@ function editVendor(vendorId) {
                 <label>Address</label>
                 <textarea class="form-control" name="address" rows="3">${vendor.address || ''}</textarea>
             </div>
+            ${gstEnabled ? `
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin" value="${vendor.gstin || ''}">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>PAN</label>
-                    <input type="text" class="form-control" name="pan" value="${vendor.pan || ''}">
+                    <label>GSTIN</label>
+                    <input type="text" class="form-control" name="gstin" value="${vendor.gstin || ''}" maxlength="15" style="text-transform: uppercase;">
                 </div>
             </div>
+            ` : `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>PAN</label>
+                    <input type="text" class="form-control" name="pan" value="${vendor.pan || ''}" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            `}
             <div class="form-group">
                 <label>Opening Balance (₹)</label>
                 <input type="number" class="form-control" name="openingBalance" step="0.01" value="${vendor.openingBalance || 0}">
@@ -1904,6 +2013,10 @@ function updateVendor(event, vendorId) {
     const index = AppState.vendors.findIndex(v => v.id === vendorId);
     if (index === -1) return;
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateCode = gstEnabled ? formData.get('stateCode') : '';
+    const stateName = stateCode ? INDIAN_STATES.find(s => s.code === stateCode)?.name || '' : '';
+    
     AppState.vendors[index] = {
         ...AppState.vendors[index],
         code: formData.get('code'),
@@ -1911,8 +2024,10 @@ function updateVendor(event, vendorId) {
         contact: formData.get('contact'),
         email: formData.get('email'),
         address: formData.get('address'),
-        gstin: formData.get('gstin'),
-        pan: formData.get('pan'),
+        stateCode: stateCode,
+        stateName: stateName,
+        gstin: gstEnabled ? (formData.get('gstin') || '') : '',
+        pan: !gstEnabled ? (formData.get('pan') || '') : '',
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         updatedAt: new Date().toISOString()
     };
