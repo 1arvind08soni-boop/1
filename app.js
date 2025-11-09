@@ -26,6 +26,46 @@ const UI_MESSAGES = {
         `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
 };
 
+// Indian States and Union Territories with GST State Codes
+const INDIAN_STATES = [
+    { name: 'Andaman and Nicobar Islands', code: '35' },
+    { name: 'Andhra Pradesh', code: '37' },
+    { name: 'Arunachal Pradesh', code: '12' },
+    { name: 'Assam', code: '18' },
+    { name: 'Bihar', code: '10' },
+    { name: 'Chandigarh', code: '04' },
+    { name: 'Chhattisgarh', code: '22' },
+    { name: 'Dadra and Nagar Haveli and Daman and Diu', code: '26' },
+    { name: 'Delhi', code: '07' },
+    { name: 'Goa', code: '30' },
+    { name: 'Gujarat', code: '24' },
+    { name: 'Haryana', code: '06' },
+    { name: 'Himachal Pradesh', code: '02' },
+    { name: 'Jammu and Kashmir', code: '01' },
+    { name: 'Jharkhand', code: '20' },
+    { name: 'Karnataka', code: '29' },
+    { name: 'Kerala', code: '32' },
+    { name: 'Ladakh', code: '38' },
+    { name: 'Lakshadweep', code: '31' },
+    { name: 'Madhya Pradesh', code: '23' },
+    { name: 'Maharashtra', code: '27' },
+    { name: 'Manipur', code: '14' },
+    { name: 'Meghalaya', code: '17' },
+    { name: 'Mizoram', code: '15' },
+    { name: 'Nagaland', code: '13' },
+    { name: 'Odisha', code: '21' },
+    { name: 'Puducherry', code: '34' },
+    { name: 'Punjab', code: '03' },
+    { name: 'Rajasthan', code: '08' },
+    { name: 'Sikkim', code: '11' },
+    { name: 'Tamil Nadu', code: '33' },
+    { name: 'Telangana', code: '36' },
+    { name: 'Tripura', code: '16' },
+    { name: 'Uttar Pradesh', code: '09' },
+    { name: 'Uttarakhand', code: '05' },
+    { name: 'West Bengal', code: '19' }
+];
+
 // Helper Functions
 function getProductDisplay(item) {
     // Helper to get product display string with backward compatibility
@@ -193,6 +233,10 @@ function displayCompanyList() {
 }
 
 function showAddCompanyModal() {
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}">${state.name} (${state.code})</option>`
+    ).join('');
+    
     const modal = createModal('Add New Company', `
         <form id="addCompanyForm" onsubmit="addCompany(event)">
             <div class="form-group">
@@ -215,12 +259,34 @@ function showAddCompanyModal() {
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>PAN</label>
-                    <input type="text" class="form-control" name="pan">
+                    <input type="text" class="form-control" name="pan" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="gstEnabled" id="companyGstEnabled" onchange="toggleCompanyGstFields()">
+                    Enable GST/Tax Features
+                </label>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">
+                    When enabled: GST fields, HSN codes, and tax calculations will be available.<br>
+                    When disabled: All GST-related features will be hidden.
+                </small>
+            </div>
+            <div id="companyGstFields" style="display: none;">
+                <div class="form-group">
+                    <label>GSTIN *</label>
+                    <input type="text" class="form-control" name="gstin" maxlength="15" style="text-transform: uppercase;" placeholder="e.g., 29ABCDE1234F1Z5">
+                    <small style="display: block; color: #666; margin-top: 0.25rem;">
+                        15-digit GSTIN number (format: 2 digits state code + 10 digits PAN + 2 digits entity + 1 digit check + 1 alphabet)
+                    </small>
                 </div>
             </div>
             <div class="form-group">
@@ -247,14 +313,21 @@ function addCompany(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    const gstEnabled = formData.get('gstEnabled') === 'on';
+    const stateCode = formData.get('stateCode');
+    const stateName = INDIAN_STATES.find(s => s.code === stateCode)?.name || '';
+    
     const company = {
         id: generateId(),
         name: formData.get('name'),
         address: formData.get('address'),
         phone: formData.get('phone'),
         email: formData.get('email'),
-        gstin: formData.get('gstin'),
+        stateCode: stateCode,
+        stateName: stateName,
         pan: formData.get('pan'),
+        gstEnabled: gstEnabled,
+        gstin: gstEnabled ? formData.get('gstin') : '',
         detailedInvoicing: formData.get('detailedInvoicing') === 'on',
         createdAt: new Date().toISOString()
     };
@@ -263,6 +336,19 @@ function addCompany(event) {
     saveToStorage();
     displayCompanyList();
     closeModal();
+}
+
+// Toggle GST fields visibility in company form
+function toggleCompanyGstFields() {
+    const gstEnabled = document.getElementById('companyGstEnabled').checked;
+    const gstFields = document.getElementById('companyGstFields');
+    if (gstFields) {
+        gstFields.style.display = gstEnabled ? 'block' : 'none';
+        const gstinInput = gstFields.querySelector('input[name="gstin"]');
+        if (gstinInput) {
+            gstinInput.required = gstEnabled;
+        }
+    }
 }
 
 async function deleteCompany(companyId) {
@@ -1220,6 +1306,11 @@ function calculateClientBalance(clientId) {
 }
 
 function showAddClientModal() {
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}">${state.name} (${state.code})</option>`
+    ).join('');
+    
     const modal = createModal('Add New Client', `
         <form id="addClientForm" onsubmit="addClient(event)">
             <div class="form-row">
@@ -1246,16 +1337,29 @@ function showAddClientModal() {
                 <label>Address</label>
                 <textarea class="form-control" name="address" rows="3"></textarea>
             </div>
+            ${gstEnabled ? `
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>PAN</label>
-                    <input type="text" class="form-control" name="pan">
+                    <label>GSTIN</label>
+                    <input type="text" class="form-control" name="gstin" maxlength="15" style="text-transform: uppercase;" placeholder="15-digit GSTIN">
+                    <small class="form-text text-muted">Optional: Leave blank if not registered</small>
                 </div>
             </div>
+            ` : `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>PAN</label>
+                    <input type="text" class="form-control" name="pan" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            `}
             <div class="form-group">
                 <label>Opening Balance (₹)</label>
                 <input type="number" class="form-control" name="openingBalance" step="0.01" value="0">
@@ -1280,6 +1384,10 @@ function addClient(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const stateCode = gstEnabled ? formData.get('stateCode') : '';
+    const stateName = stateCode ? INDIAN_STATES.find(s => s.code === stateCode)?.name || '' : '';
+    
     const client = {
         id: generateId(),
         code: formData.get('code'),
@@ -1287,8 +1395,10 @@ function addClient(event) {
         contact: formData.get('contact'),
         email: formData.get('email'),
         address: formData.get('address'),
-        gstin: formData.get('gstin'),
-        pan: formData.get('pan'),
+        stateCode: stateCode,
+        stateName: stateName,
+        gstin: gstEnabled ? (formData.get('gstin') || '') : '',
+        pan: !gstEnabled ? (formData.get('pan') || '') : '',
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
         createdAt: new Date().toISOString()
@@ -6842,6 +6952,11 @@ async function saveAccountLedgerReportToPDF() {
 function editCompanySettings() {
     const company = AppState.currentCompany;
     const detailedInvoicingEnabled = company.detailedInvoicing !== false; // Default to true if not set
+    const gstEnabled = company.gstEnabled || false;
+    
+    const stateOptions = INDIAN_STATES.map(state => 
+        `<option value="${state.code}" ${company.stateCode === state.code ? 'selected' : ''}>${state.name} (${state.code})</option>`
+    ).join('');
     
     const modal = createModal('Edit Company Settings', `
         <form id="editCompanyForm" onsubmit="updateCompanySettings(event)">
@@ -6865,12 +6980,34 @@ function editCompanySettings() {
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin" value="${company.gstin || ''}">
+                    <label>State/UT *</label>
+                    <select class="form-control" name="stateCode" required>
+                        <option value="">-- Select State/UT --</option>
+                        ${stateOptions}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>PAN</label>
-                    <input type="text" class="form-control" name="pan" value="${company.pan || ''}">
+                    <input type="text" class="form-control" name="pan" value="${company.pan || ''}" maxlength="10" style="text-transform: uppercase;">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="gstEnabled" id="companyGstEnabledEdit" ${gstEnabled ? 'checked' : ''} onchange="toggleCompanyGstFieldsEdit()">
+                    Enable GST/Tax Features
+                </label>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">
+                    When enabled: GST fields, HSN codes, and tax calculations will be available.<br>
+                    When disabled: All GST-related features will be hidden.
+                </small>
+            </div>
+            <div id="companyGstFieldsEdit" style="display: ${gstEnabled ? 'block' : 'none'};">
+                <div class="form-group">
+                    <label>GSTIN *</label>
+                    <input type="text" class="form-control" name="gstin" value="${company.gstin || ''}" maxlength="15" style="text-transform: uppercase;" placeholder="e.g., 29ABCDE1234F1Z5" ${gstEnabled ? 'required' : ''}>
+                    <small style="display: block; color: #666; margin-top: 0.25rem;">
+                        15-digit GSTIN number (format: 2 digits state code + 10 digits PAN + 2 digits entity + 1 digit check + 1 alphabet)
+                    </small>
                 </div>
             </div>
             <div class="form-group">
@@ -6892,6 +7029,19 @@ function editCompanySettings() {
     showModal(modal);
 }
 
+// Toggle GST fields visibility in company edit form
+function toggleCompanyGstFieldsEdit() {
+    const gstEnabled = document.getElementById('companyGstEnabledEdit').checked;
+    const gstFields = document.getElementById('companyGstFieldsEdit');
+    if (gstFields) {
+        gstFields.style.display = gstEnabled ? 'block' : 'none';
+        const gstinInput = gstFields.querySelector('input[name="gstin"]');
+        if (gstinInput) {
+            gstinInput.required = gstEnabled;
+        }
+    }
+}
+
 function updateCompanySettings(event) {
     event.preventDefault();
     const form = event.target;
@@ -6900,14 +7050,21 @@ function updateCompanySettings(event) {
     const index = AppState.companies.findIndex(c => c.id === AppState.currentCompany.id);
     if (index === -1) return;
     
+    const gstEnabled = formData.get('gstEnabled') === 'on';
+    const stateCode = formData.get('stateCode');
+    const stateName = INDIAN_STATES.find(s => s.code === stateCode)?.name || '';
+    
     AppState.companies[index] = {
         ...AppState.companies[index],
         name: formData.get('name'),
         address: formData.get('address'),
         phone: formData.get('phone'),
         email: formData.get('email'),
-        gstin: formData.get('gstin'),
+        stateCode: stateCode,
+        stateName: stateName,
         pan: formData.get('pan'),
+        gstEnabled: gstEnabled,
+        gstin: gstEnabled ? formData.get('gstin') : '',
         detailedInvoicing: formData.get('detailedInvoicing') === 'on',
         updatedAt: new Date().toISOString()
     };
