@@ -2323,121 +2323,234 @@ function getNextInvoiceNumber() {
 function showAddInvoiceModal() {
     const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     const detailedInvoicing = AppState.currentCompany.detailedInvoicing !== false; // Default to true
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
     
     if (detailedInvoicing) {
-        // Show detailed invoice form with products
-        const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
-        
-        const modal = createModal('New Sales Invoice', `
-            <form id="addInvoiceForm" onsubmit="addInvoice(event)">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Invoice Number *</label>
-                        <input type="text" class="form-control" name="invoiceNo" value="${getNextInvoiceNumber()}" required>
-                        <small class="form-text text-muted">You can edit this to use a specific invoice number</small>
+        // For GST-enabled companies, show GST-compliant invoice form
+        if (gstEnabled) {
+            const modal = createModal('New GST Invoice', `
+                <form id="addInvoiceForm" onsubmit="addGSTInvoice(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Invoice Number *</label>
+                            <input type="text" class="form-control" name="invoiceNo" value="${getNextInvoiceNumber()}" required>
+                            <small class="form-text text-muted">You can edit this to use a specific invoice number</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Date *</label>
-                        <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                        <label>Select Client *</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select class="form-control" name="clientId" id="invoiceClientSelect" required style="flex: 1;">
+                                <option value="">-- Select Client --</option>
+                                ${clientOptions}
+                            </select>
+                            <button type="button" class="btn btn-secondary" onclick="showInlineClientModal()" title="Create New Client">
+                                <i class="fas fa-plus"></i> New
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Select Client *</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <select class="form-control" name="clientId" id="invoiceClientSelect" required style="flex: 1;">
-                            <option value="">-- Select Client --</option>
-                            ${clientOptions}
-                        </select>
-                        <button type="button" class="btn btn-secondary" onclick="showInlineClientModal()" title="Create New Client">
-                            <i class="fas fa-plus"></i> New
-                        </button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Invoice Category *</label>
-                    <select class="form-control" name="category" required>
-                        <option value="LESS" selected>LESS/Discount Invoice</option>
-                        <option value="NET">NET (Regular Invoice)</option>
-                    </select>
-                    <small class="form-text text-muted">Select category for grouping in sales ledger report</small>
-                </div>
-                
-                <h4>Invoice Items</h4>
-                <table class="items-table" id="invoiceItemsTable">
-                    <thead>
-                        <tr>
-                            <th>S.No</th>
-                            <th>Product/Design No</th>
-                            <th>No of Box</th>
-                            <th>Unit Per Box</th>
-                            <th>Quantity</th>
-                            <th>Rate</th>
-                            <th>Amount</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="invoiceItemsBody">
-                        <tr data-serial="1">
-                            <td class="serial-no">1</td>
-                            <td>
-                                <div style="display: flex; gap: 0.25rem;">
-                                    <select class="form-control product-select" onchange="updateInvoiceItem(this)" style="flex: 1;">
-                                        <option value="">-- Select Product --</option>
-                                        ${productOptions}
+                    
+                    <h4>Invoice Items</h4>
+                    <table class="items-table" id="gstInvoiceItemsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">S.No</th>
+                                <th>Description of Goods</th>
+                                <th style="width: 100px;">HSN/SAC</th>
+                                <th style="width: 80px;">Qty</th>
+                                <th style="width: 100px;">Rate</th>
+                                <th style="width: 80px;">GST %</th>
+                                <th style="width: 110px;">Amount</th>
+                                <th style="width: 60px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gstInvoiceItemsBody">
+                            <tr data-serial="1">
+                                <td class="serial-no">1</td>
+                                <td>
+                                    <input type="text" class="form-control gst-description-input" placeholder="Enter item description" required>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control gst-hsn-input" placeholder="HSN" maxlength="8">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control gst-qty-input" min="0.01" step="0.01" value="1" onchange="calculateGSTInvoiceItem(this)" required>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control gst-rate-input" min="0" step="0.01" value="0" onchange="calculateGSTInvoiceItem(this)" required>
+                                </td>
+                                <td>
+                                    <select class="form-control gst-rate-select" onchange="calculateGSTInvoiceItem(this)">
+                                        <option value="0">0%</option>
+                                        <option value="0.25">0.25%</option>
+                                        <option value="3">3%</option>
+                                        <option value="5">5%</option>
+                                        <option value="12">12%</option>
+                                        <option value="18" selected>18%</option>
+                                        <option value="28">28%</option>
                                     </select>
-                                    <button type="button" class="btn btn-secondary" onclick="showInlineProductModal(this)" title="Create New Product" style="padding: 0.375rem 0.5rem;">
-                                        <i class="fas fa-plus"></i>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control gst-amount-input" step="0.01" readonly value="0">
+                                </td>
+                                <td>
+                                    <button type="button" class="action-btn delete" onclick="removeGSTInvoiceItem(this)">
+                                        <i class="fas fa-trash"></i>
                                     </button>
-                                </div>
-                            </td>
-                            <td><input type="number" class="form-control boxes-input" min="0" step="0.01" value="0" onchange="calculateInvoiceItem(this)"></td>
-                            <td><input type="number" class="form-control unit-per-box-input" min="1" value="0" readonly></td>
-                            <td><input type="number" class="form-control quantity-input" min="0" value="0" readonly></td>
-                            <td><input type="number" class="form-control rate-input" step="0.01" min="0" value="0" readonly></td>
-                            <td><input type="number" class="form-control amount-input" step="0.01" min="0" value="0" readonly></td>
-                            <td><button type="button" class="action-btn delete" onclick="removeInvoiceItem(this)"><i class="fas fa-trash"></i></button></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <button type="button" class="btn btn-secondary" onclick="addInvoiceItem()">
-                    <i class="fas fa-plus"></i> Add Item
-                </button>
-                
-                <div class="form-row mt-3">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn btn-secondary" onclick="addGSTInvoiceItem()">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                    
+                    <div class="form-row mt-3" style="background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+                        <div class="form-group">
+                            <label><strong>Total Taxable Value</strong></label>
+                            <input type="number" class="form-control" id="gstTaxableValue" step="0.01" readonly value="0">
+                        </div>
+                        <div class="form-group">
+                            <label><strong>Total GST</strong></label>
+                            <input type="number" class="form-control" id="gstTotalTax" step="0.01" readonly value="0">
+                        </div>
+                        <div class="form-group">
+                            <label><strong>Grand Total</strong></label>
+                            <input type="number" class="form-control" id="gstGrandTotal" step="0.01" readonly value="0" style="font-weight: bold;">
+                        </div>
+                    </div>
+                    
                     <div class="form-group">
-                        <label>Subtotal</label>
-                        <input type="number" class="form-control" id="invoiceSubtotal" step="0.01" readonly value="0">
+                        <label>Notes</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Terms & Conditions, Payment Terms, etc."></textarea>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create GST Invoice</button>
+                    </div>
+                </form>
+            `);
+            showModal(modal);
+        } else {
+            // Show standard detailed invoice form with products
+            const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
+            
+            const modal = createModal('New Sales Invoice', `
+                <form id="addInvoiceForm" onsubmit="addInvoice(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Invoice Number *</label>
+                            <input type="text" class="form-control" name="invoiceNo" value="${getNextInvoiceNumber()}" required>
+                            <small class="form-text text-muted">You can edit this to use a specific invoice number</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Tax %</label>
-                        <input type="number" class="form-control" id="invoiceTax" step="0.01" min="0" value="0" onchange="calculateInvoiceTotal()">
+                        <label>Select Client *</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select class="form-control" name="clientId" id="invoiceClientSelect" required style="flex: 1;">
+                                <option value="">-- Select Client --</option>
+                                ${clientOptions}
+                            </select>
+                            <button type="button" class="btn btn-secondary" onclick="showInlineClientModal()" title="Create New Client">
+                                <i class="fas fa-plus"></i> New
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Total</label>
-                        <input type="number" class="form-control" id="invoiceTotal" step="0.01" readonly value="0">
+                        <label>Invoice Category *</label>
+                        <select class="form-control" name="category" required>
+                            <option value="LESS" selected>LESS/Discount Invoice</option>
+                            <option value="NET">NET (Regular Invoice)</option>
+                        </select>
+                        <small class="form-text text-muted">Select category for grouping in sales ledger report</small>
                     </div>
-                </div>
-                
-                <div class="form-row">
+                    
+                    <h4>Invoice Items</h4>
+                    <table class="items-table" id="invoiceItemsTable">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Product/Design No</th>
+                                <th>No of Box</th>
+                                <th>Unit Per Box</th>
+                                <th>Quantity</th>
+                                <th>Rate</th>
+                                <th>Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoiceItemsBody">
+                            <tr data-serial="1">
+                                <td class="serial-no">1</td>
+                                <td>
+                                    <div style="display: flex; gap: 0.25rem;">
+                                        <select class="form-control product-select" onchange="updateInvoiceItem(this)" style="flex: 1;">
+                                            <option value="">-- Select Product --</option>
+                                            ${productOptions}
+                                        </select>
+                                        <button type="button" class="btn btn-secondary" onclick="showInlineProductModal(this)" title="Create New Product" style="padding: 0.375rem 0.5rem;">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td><input type="number" class="form-control boxes-input" min="0" step="0.01" value="0" onchange="calculateInvoiceItem(this)"></td>
+                                <td><input type="number" class="form-control unit-per-box-input" min="1" value="0" readonly></td>
+                                <td><input type="number" class="form-control quantity-input" min="0" value="0" readonly></td>
+                                <td><input type="number" class="form-control rate-input" step="0.01" min="0" value="0" readonly></td>
+                                <td><input type="number" class="form-control amount-input" step="0.01" min="0" value="0" readonly></td>
+                                <td><button type="button" class="action-btn delete" onclick="removeInvoiceItem(this)"><i class="fas fa-trash"></i></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn btn-secondary" onclick="addInvoiceItem()">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                    
+                    <div class="form-row mt-3">
+                        <div class="form-group">
+                            <label>Subtotal</label>
+                            <input type="number" class="form-control" id="invoiceSubtotal" step="0.01" readonly value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Tax %</label>
+                            <input type="number" class="form-control" id="invoiceTax" step="0.01" min="0" value="0" onchange="calculateInvoiceTotal()">
+                        </div>
+                        <div class="form-group">
+                            <label>Total</label>
+                            <input type="number" class="form-control" id="invoiceTotal" step="0.01" readonly value="0">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Total Boxes (Rounded Up)</label>
+                            <input type="number" class="form-control" id="invoiceTotalBoxes" readonly value="0">
+                            <small style="color: #666;">Decimal boxes rounded up: 0.1-1.0 → 1 box, 1.1-2.0 → 2 boxes, etc.</small>
+                        </div>
+                    </div>
+                    
                     <div class="form-group">
-                        <label>Total Boxes (Rounded Up)</label>
-                        <input type="number" class="form-control" id="invoiceTotalBoxes" readonly value="0">
-                        <small style="color: #666;">Decimal boxes rounded up: 0.1-1.0 → 1 box, 1.1-2.0 → 2 boxes, etc.</small>
+                        <label>Notes</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea class="form-control" name="notes" rows="2"></textarea>
-                </div>
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Invoice</button>
-                </div>
-            </form>
-        `);
-        showModal(modal);
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create Invoice</button>
+                    </div>
+                </form>
+            `);
+            showModal(modal);
+        }
     } else {
         // Show simplified invoice form
         const modal = createModal('New Sales Invoice (Simplified)', `
@@ -2620,6 +2733,193 @@ function removeInvoiceItem(button) {
         });
         calculateInvoiceTotal();
     }
+}
+
+// GST Invoice Helper Functions
+function calculateGSTInvoiceItem(inputElement) {
+    const row = inputElement.closest('tr');
+    const qty = parseFloat(row.querySelector('.gst-qty-input').value) || 0;
+    const rate = parseFloat(row.querySelector('.gst-rate-input').value) || 0;
+    
+    const amount = qty * rate;
+    row.querySelector('.gst-amount-input').value = amount.toFixed(2);
+    
+    calculateGSTInvoiceTotal();
+}
+
+function addGSTInvoiceItem() {
+    const tbody = document.getElementById('gstInvoiceItemsBody');
+    const serialNo = tbody.children.length + 1;
+    
+    const newRow = document.createElement('tr');
+    newRow.dataset.serial = serialNo;
+    newRow.innerHTML = `
+        <td class="serial-no">${serialNo}</td>
+        <td>
+            <input type="text" class="form-control gst-description-input" placeholder="Enter item description" required>
+        </td>
+        <td>
+            <input type="text" class="form-control gst-hsn-input" placeholder="HSN" maxlength="8">
+        </td>
+        <td>
+            <input type="number" class="form-control gst-qty-input" min="0.01" step="0.01" value="1" onchange="calculateGSTInvoiceItem(this)" required>
+        </td>
+        <td>
+            <input type="number" class="form-control gst-rate-input" min="0" step="0.01" value="0" onchange="calculateGSTInvoiceItem(this)" required>
+        </td>
+        <td>
+            <select class="form-control gst-rate-select" onchange="calculateGSTInvoiceItem(this)">
+                <option value="0">0%</option>
+                <option value="0.25">0.25%</option>
+                <option value="3">3%</option>
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18" selected>18%</option>
+                <option value="28">28%</option>
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control gst-amount-input" step="0.01" readonly value="0">
+        </td>
+        <td>
+            <button type="button" class="action-btn delete" onclick="removeGSTInvoiceItem(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    
+    tbody.appendChild(newRow);
+}
+
+function removeGSTInvoiceItem(button) {
+    const tbody = document.getElementById('gstInvoiceItemsBody');
+    if (tbody.children.length > 1) {
+        button.closest('tr').remove();
+        // Recalculate serial numbers
+        Array.from(tbody.children).forEach((row, index) => {
+            row.dataset.serial = index + 1;
+            const serialCell = row.querySelector('.serial-no');
+            if (serialCell) {
+                serialCell.textContent = index + 1;
+            }
+        });
+        calculateGSTInvoiceTotal();
+    }
+}
+
+function calculateGSTInvoiceTotal() {
+    const rows = document.querySelectorAll('#gstInvoiceItemsBody tr');
+    let totalTaxable = 0;
+    let totalTax = 0;
+    
+    rows.forEach(row => {
+        const amount = parseFloat(row.querySelector('.gst-amount-input').value) || 0;
+        const gstRate = parseFloat(row.querySelector('.gst-rate-select').value) || 0;
+        
+        // Calculate taxable value and tax from GST-inclusive amount
+        const taxableValue = amount / (1 + gstRate / 100);
+        const taxAmount = amount - taxableValue;
+        
+        totalTaxable += taxableValue;
+        totalTax += taxAmount;
+    });
+    
+    const grandTotal = totalTaxable + totalTax;
+    
+    document.getElementById('gstTaxableValue').value = totalTaxable.toFixed(2);
+    document.getElementById('gstTotalTax').value = totalTax.toFixed(2);
+    document.getElementById('gstGrandTotal').value = grandTotal.toFixed(2);
+}
+
+function addGSTInvoice(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Check for duplicate invoice number
+    const invoiceNo = formData.get('invoiceNo').trim();
+    if (!invoiceNo) {
+        showError('Please enter an invoice number');
+        return;
+    }
+    
+    const duplicateInvoice = AppState.invoices.find(inv => inv.invoiceNo === invoiceNo);
+    if (duplicateInvoice) {
+        showError(`Invoice number "${invoiceNo}" already exists. Please use a different invoice number.`);
+        return;
+    }
+    
+    const clientId = formData.get('clientId');
+    const client = AppState.clients.find(c => c.id === clientId);
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const isIntraState = gstEnabled && client ? isIntraStateTransaction(AppState.currentCompany.stateCode, client.stateCode) : false;
+    
+    const items = [];
+    const rows = document.querySelectorAll('#gstInvoiceItemsBody tr');
+    
+    rows.forEach((row, index) => {
+        const description = row.querySelector('.gst-description-input').value.trim();
+        const hsnCode = row.querySelector('.gst-hsn-input').value.trim();
+        const qty = parseFloat(row.querySelector('.gst-qty-input').value) || 0;
+        const rate = parseFloat(row.querySelector('.gst-rate-input').value) || 0;
+        const gstRate = parseFloat(row.querySelector('.gst-rate-select').value) || 0;
+        const amount = parseFloat(row.querySelector('.gst-amount-input').value) || 0;
+        
+        if (description && qty > 0 && rate >= 0) {
+            // Calculate GST for this item
+            const gstDetails = calculateGSTForItem(amount, gstRate, isIntraState);
+            
+            items.push({
+                serialNo: index + 1,
+                description: description,
+                hsnCode: hsnCode,
+                quantity: qty,
+                rate: rate,
+                gstRate: gstRate,
+                amount: amount,
+                gstDetails: gstDetails,
+                // For compatibility with existing system
+                productCode: description,
+                productCategory: 'GST Item'
+            });
+        }
+    });
+    
+    if (items.length === 0) {
+        showError('Please add at least one item to the invoice');
+        return;
+    }
+    
+    const subtotal = parseFloat(document.getElementById('gstGrandTotal').value) || 0;
+    
+    const invoice = {
+        id: generateId(),
+        invoiceNo: invoiceNo,
+        date: formData.get('date'),
+        clientId: clientId,
+        category: 'NET', // GST invoices are always NET category
+        items: items,
+        subtotal: subtotal,
+        tax: 0, // GST tax is calculated per item
+        total: subtotal,
+        notes: formData.get('notes'),
+        status: 'Unpaid',
+        gstEnabled: true,
+        isIntraState: isIntraState,
+        isGSTDirectInvoice: true, // Flag to indicate this is a direct GST invoice
+        createdAt: new Date().toISOString()
+    };
+    
+    // Calculate and store GST summary
+    const gstSummary = calculateInvoiceGST(invoice, AppState.currentCompany, client);
+    invoice.gstSummary = gstSummary;
+    
+    AppState.invoices.push(invoice);
+    saveCompanyData();
+    loadInvoices();
+    updateDashboard();
+    closeModal();
+    showSuccess('GST Invoice created successfully!');
 }
 
 function addInvoice(event) {
@@ -3264,6 +3564,9 @@ function updatePrintPreview() {
     let html = '';
     
     switch(template) {
+        case 'gst_compliant':
+            html = generateGSTCompliantInvoice(invoice, client, size);
+            break;
         case 'modern':
             html = generateModernInvoice(invoice, client, size);
             break;
@@ -3460,6 +3763,217 @@ function generateModernInvoice(invoice, client, size) {
                 <p>Thank you for your business!</p>
                 ${gstEnabled ? '<p style="font-size: 0.85em; margin-top: 0.5rem;">This is a GST compliant invoice</p>' : ''}
             </div>
+        </div>
+    `;
+}
+
+function generateGSTCompliantInvoice(invoice, client, size) {
+    const company = AppState.currentCompany;
+    const fontSize = size === 'a5' ? '0.60em' : '0.9em';
+    const padding = size === 'a5' ? '0.3rem' : '0.5rem';
+    const smallPadding = size === 'a5' ? '0.2rem' : '0.3rem';
+    const margin = size === 'a5' ? '0.8rem' : '1.5rem';
+    
+    // Page dimensions
+    const pageHeight = size === 'a5' ? '210mm' : '297mm';
+    const pageWidth = size === 'a5' ? '148mm' : '210mm';
+    
+    const gstEnabled = company.gstEnabled && invoice.gstEnabled;
+    const isIntraState = invoice.isIntraState || false;
+    
+    // Calculate totals
+    let totalQty = 0;
+    let totalTaxableValue = 0;
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+    
+    const itemsHTML = invoice.items.map((item, index) => {
+        const quantity = item.quantity || 1;
+        totalQty += quantity;
+        
+        let gstInfo = '';
+        let taxableValue = item.amount;
+        let itemCGST = 0;
+        let itemSGST = 0;
+        let itemIGST = 0;
+        
+        if (gstEnabled && item.gstDetails) {
+            const gst = item.gstDetails;
+            taxableValue = gst.taxableValue;
+            itemCGST = gst.cgst;
+            itemSGST = gst.sgst;
+            itemIGST = gst.igst;
+            
+            totalTaxableValue += taxableValue;
+            totalCGST += itemCGST;
+            totalSGST += itemSGST;
+            totalIGST += itemIGST;
+        } else {
+            totalTaxableValue += item.amount;
+        }
+        
+        const description = item.description || getProductDisplay(item);
+        
+        return `
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #ddd;">${index + 1}</td>
+            <td style="padding: ${smallPadding}; border-right: 1px solid #ddd;">
+                <div>${description}</div>
+                ${item.hsnCode ? `<div style="font-size: 0.85em; color: #666;">HSN: ${item.hsnCode}</div>` : ''}
+            </td>
+            <td style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #ddd;">${quantity}</td>
+            <td style="padding: ${smallPadding}; text-align: right; border-right: 1px solid #ddd;">₹${item.rate.toFixed(2)}</td>
+            <td style="padding: ${smallPadding}; text-align: right; border-right: 1px solid #ddd;">₹${taxableValue.toFixed(2)}</td>
+            <td style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #ddd;">${item.gstRate || 0}%</td>
+            ${isIntraState ? `
+                <td style="padding: ${smallPadding}; text-align: right; border-right: 1px solid #ddd;">₹${itemCGST.toFixed(2)}</td>
+                <td style="padding: ${smallPadding}; text-align: right; border-right: 1px solid #ddd;">₹${itemSGST.toFixed(2)}</td>
+            ` : `
+                <td style="padding: ${smallPadding}; text-align: right; border-right: 1px solid #ddd;" colspan="2">₹${itemIGST.toFixed(2)}</td>
+            `}
+            <td style="padding: ${smallPadding}; text-align: right;">₹${item.amount.toFixed(2)}</td>
+        </tr>
+        `;
+    }).join('');
+    
+    const grandTotal = totalTaxableValue + totalCGST + totalSGST + totalIGST;
+    const transactionType = isIntraState ? 'Intra-State Transaction' : 'Inter-State Transaction';
+    
+    return `
+        <div class="invoice-template" style="font-family: Arial, sans-serif; font-size: ${fontSize}; width: ${pageWidth}; min-height: ${pageHeight}; margin: 0 auto; padding: ${size === 'a5' ? '8mm' : '12mm'}; box-sizing: border-box; border: 2px solid #000;">
+            
+            <!-- Header -->
+            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <h1 style="margin: 0; font-size: ${size === 'a5' ? '1.4em' : '1.8em'}; text-transform: uppercase;">Tax Invoice</h1>
+                <div style="margin-top: 0.3rem; font-weight: bold; font-size: ${size === 'a5' ? '0.85em' : '0.95em'};">(Original for Recipient)</div>
+            </div>
+            
+            <!-- Company and Client Details -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid #000; padding-bottom: 0.5rem;">
+                <div style="border-right: 1px solid #000; padding-right: 0.5rem;">
+                    <div style="font-weight: bold; margin-bottom: 0.3rem; font-size: 1.1em;">${company.name}</div>
+                    <div style="margin-bottom: 0.2rem;">${company.address || ''}</div>
+                    ${company.stateName ? `<div style="margin-bottom: 0.2rem;">State: ${company.stateName} (Code: ${company.stateCode})</div>` : ''}
+                    <div style="margin-bottom: 0.2rem;">${company.phone || ''} ${company.email ? '| ' + company.email : ''}</div>
+                    ${gstEnabled && company.gstin ? `<div style="margin-bottom: 0.2rem;"><strong>GSTIN: ${company.gstin}</strong></div>` : ''}
+                </div>
+                <div style="padding-left: 0.5rem;">
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong>Invoice No:</strong> ${invoice.invoiceNo}<br>
+                        <strong>Date:</strong> ${formatDate(invoice.date)}
+                    </div>
+                    <div style="font-weight: bold; margin-bottom: 0.3rem;">Bill To:</div>
+                    <div style="font-weight: bold;">${client.name}</div>
+                    <div style="margin-bottom: 0.2rem;">${client.address || ''}</div>
+                    ${client.stateName ? `<div style="margin-bottom: 0.2rem;">State: ${client.stateName} (Code: ${client.stateCode})</div>` : ''}
+                    ${client.contact ? `<div style="margin-bottom: 0.2rem;">${client.contact}</div>` : ''}
+                    ${gstEnabled && client.gstin ? `<div style="margin-bottom: 0.2rem;"><strong>GSTIN: ${client.gstin}</strong></div>` : ''}
+                </div>
+            </div>
+            
+            ${gstEnabled ? `<div style="text-align: center; background: #f0f0f0; padding: 0.2rem; margin-bottom: 0.5rem; font-weight: bold; font-size: 0.9em;">${transactionType}</div>` : ''}
+            
+            <!-- Items Table -->
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 0.5rem;">
+                <thead>
+                    <tr style="background: #e0e0e0; border-bottom: 2px solid #000;">
+                        <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 30px;">S.No</th>
+                        <th style="padding: ${smallPadding}; border-right: 1px solid #000;">Description of Goods</th>
+                        <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 50px;">Qty</th>
+                        <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 70px;">Rate</th>
+                        <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 80px;">Taxable Value</th>
+                        <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 50px;">GST %</th>
+                        ${isIntraState ? `
+                            <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 70px;">CGST</th>
+                            <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 70px;">SGST</th>
+                        ` : `
+                            <th style="padding: ${smallPadding}; text-align: center; border-right: 1px solid #000; width: 140px;" colspan="2">IGST</th>
+                        `}
+                        <th style="padding: ${smallPadding}; text-align: center; width: 90px;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHTML}
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight: bold; background: #f5f5f5; border-top: 2px solid #000;">
+                        <td colspan="2" style="padding: ${padding}; text-align: right; border-right: 1px solid #000;">Total:</td>
+                        <td style="padding: ${padding}; text-align: center; border-right: 1px solid #000;">${totalQty}</td>
+                        <td style="padding: ${padding}; border-right: 1px solid #000;"></td>
+                        <td style="padding: ${padding}; text-align: right; border-right: 1px solid #000;">₹${totalTaxableValue.toFixed(2)}</td>
+                        <td style="padding: ${padding}; border-right: 1px solid #000;"></td>
+                        ${isIntraState ? `
+                            <td style="padding: ${padding}; text-align: right; border-right: 1px solid #000;">₹${totalCGST.toFixed(2)}</td>
+                            <td style="padding: ${padding}; text-align: right; border-right: 1px solid #000;">₹${totalSGST.toFixed(2)}</td>
+                        ` : `
+                            <td style="padding: ${padding}; text-align: right; border-right: 1px solid #000;" colspan="2">₹${totalIGST.toFixed(2)}</td>
+                        `}
+                        <td style="padding: ${padding}; text-align: right;">₹${grandTotal.toFixed(2)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <!-- Tax Summary -->
+            ${gstEnabled ? `
+            <div style="border: 1px solid #000; padding: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div>
+                        <div><strong>Tax Summary:</strong></div>
+                        <div style="margin-top: 0.3rem;">
+                            Total Taxable Value: ₹${totalTaxableValue.toFixed(2)}<br>
+                            ${isIntraState ? `
+                                CGST: ₹${totalCGST.toFixed(2)}<br>
+                                SGST: ₹${totalSGST.toFixed(2)}<br>
+                            ` : `
+                                IGST: ₹${totalIGST.toFixed(2)}<br>
+                            `}
+                            <strong>Total Tax: ₹${(totalCGST + totalSGST + totalIGST).toFixed(2)}</strong>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.2em; margin-top: 1rem;">
+                            <strong>Grand Total (₹):</strong><br>
+                            <div style="font-size: 1.5em; margin-top: 0.3rem;">₹${grandTotal.toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Notes -->
+            ${invoice.notes ? `
+            <div style="border: 1px solid #000; padding: 0.5rem; margin-bottom: 0.5rem;">
+                <strong>Notes:</strong> ${invoice.notes}
+            </div>
+            ` : ''}
+            
+            <!-- Footer -->
+            <div style="margin-top: auto; padding-top: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div style="border-top: 1px solid #000; padding-top: 0.5rem;">
+                        <strong>Terms & Conditions:</strong>
+                        <div style="font-size: 0.85em; margin-top: 0.3rem;">
+                            1. Goods once sold will not be taken back<br>
+                            2. Interest @ 18% p.a. will be charged if payment is not made within due date
+                        </div>
+                    </div>
+                    <div style="text-align: right; border-top: 1px solid #000; padding-top: 0.5rem;">
+                        <div style="margin-top: 2rem;">
+                            <strong>For ${company.name}</strong><br>
+                            <div style="margin-top: 2rem; border-top: 1px solid #000; display: inline-block; padding-top: 0.3rem;">
+                                Authorized Signatory
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${gstEnabled ? `
+            <div style="text-align: center; margin-top: 0.5rem; font-size: 0.75em; color: #666;">
+                This is a computer-generated GST-compliant invoice
+            </div>
+            ` : ''}
         </div>
     `;
 }
@@ -7806,6 +8320,9 @@ function showTemplateSettings() {
             <div class="form-group">
                 <label>Invoice Template *</label>
                 <select class="form-control" name="invoiceTemplate" required>
+                    <optgroup label="GST Templates">
+                        <option value="gst_compliant" ${AppState.settings.invoiceTemplate === 'gst_compliant' ? 'selected' : ''}>GST Compliant Invoice (Recommended for GST-enabled)</option>
+                    </optgroup>
                     <optgroup label="Classic Templates">
                         <option value="modern" ${AppState.settings.invoiceTemplate === 'modern' ? 'selected' : ''}>Modern Template</option>
                         <option value="classic" ${AppState.settings.invoiceTemplate === 'classic' ? 'selected' : ''}>Classic Template</option>
