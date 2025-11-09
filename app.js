@@ -3312,6 +3312,8 @@ function generateModernInvoice(invoice, client, size) {
     const pageHeight = size === 'a5' ? '210mm' : '297mm';
     const pageWidth = size === 'a5' ? '148mm' : '210mm';
     
+    const gstEnabled = company.gstEnabled && invoice.gstEnabled;
+    
     // Calculate totals for boxes and quantity
     let totalBoxes = 0;
     let totalBoxesRounded = 0;
@@ -3324,18 +3326,63 @@ function generateModernInvoice(invoice, client, size) {
         totalBoxesRounded += Math.ceil(item.boxes);
         totalQuantity += quantity;
         
+        // Show GST details if enabled
+        let gstInfo = '';
+        if (gstEnabled && item.gstDetails) {
+            const gst = item.gstDetails;
+            gstInfo = `
+                <div style="font-size: 0.85em; color: #666;">
+                    HSN: ${item.hsnCode || 'N/A'} | GST: ${item.gstRate}% | 
+                    Taxable: ₹${gst.taxableValue.toFixed(2)}
+                </div>
+            `;
+        }
+        
         return `
         <tr>
-            <td class="text-center">${index + 1}</td>
-            <td>${getProductDisplay(item)}</td>
-            <td class="text-center">${item.boxes}</td>
-            <td class="text-center">${item.unitPerBox}</td>
-            <td class="text-center">${quantity}</td>
-            <td class="text-right">₹${item.rate.toFixed(2)}</td>
-            <td class="text-right">₹${item.amount.toFixed(2)}</td>
+            <td class="text-center" style="padding: ${padding}; border: 1px solid #ddd;">${index + 1}</td>
+            <td style="padding: ${padding}; border: 1px solid #ddd;">${getProductDisplay(item)}${gstInfo}</td>
+            <td class="text-center" style="padding: ${padding}; border: 1px solid #ddd;">${item.boxes}</td>
+            <td class="text-center" style="padding: ${padding}; border: 1px solid #ddd;">${item.unitPerBox}</td>
+            <td class="text-center" style="padding: ${padding}; border: 1px solid #ddd;">${quantity}</td>
+            <td class="text-right" style="padding: ${padding}; border: 1px solid #ddd;">₹${item.rate.toFixed(2)}</td>
+            <td class="text-right" style="padding: ${padding}; border: 1px solid #ddd;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
     }).join('');
+    
+    // Generate GST summary if enabled
+    let gstSummaryHTML = '';
+    if (gstEnabled && invoice.gstSummary) {
+        const gst = invoice.gstSummary;
+        const transactionType = gst.isIntraState ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)';
+        
+        gstSummaryHTML = `
+            <tr style="background: #fff3cd;">
+                <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Taxable Value:</strong></td>
+                <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${gst.totalTaxableValue.toFixed(2)}</strong></td>
+            </tr>
+            ${gst.isIntraState ? `
+                <tr style="background: #fff3cd;">
+                    <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>CGST:</strong></td>
+                    <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${gst.totalCGST.toFixed(2)}</strong></td>
+                </tr>
+                <tr style="background: #fff3cd;">
+                    <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>SGST:</strong></td>
+                    <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${gst.totalSGST.toFixed(2)}</strong></td>
+                </tr>
+            ` : `
+                <tr style="background: #fff3cd;">
+                    <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>IGST:</strong></td>
+                    <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${gst.totalIGST.toFixed(2)}</strong></td>
+                </tr>
+            `}
+            <tr style="background: #fff3cd;">
+                <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Total GST:</strong></td>
+                <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${gst.totalTax.toFixed(2)}</strong></td>
+            </tr>
+        `;
+    }
     
     return `
         <div class="invoice-template" style="font-size: ${fontSize}; width: ${pageWidth}; min-height: ${pageHeight}; margin: 0 auto; padding: ${size === 'a5' ? '10mm' : '15mm'}; box-sizing: border-box; display: flex; flex-direction: column;">
@@ -3343,8 +3390,9 @@ function generateModernInvoice(invoice, client, size) {
                 <h1 style="color: white; margin-bottom: 0.5rem; font-size: ${size === 'a5' ? '1.5em' : '2em'};">INVOICE</h1>
                 <h2 style="color: white; font-size: ${size === 'a5' ? '1.2em' : '1.5em'};">${company.name}</h2>
                 <p style="margin: 0; opacity: 0.9; font-size: ${size === 'a5' ? '0.85em' : '1em'};">${company.address || ''}</p>
+                ${company.stateName ? `<p style="margin: 0; opacity: 0.9; font-size: ${size === 'a5' ? '0.85em' : '1em'};">State: ${company.stateName} (Code: ${company.stateCode})</p>` : ''}
                 <p style="margin: 0; opacity: 0.9; font-size: ${size === 'a5' ? '0.85em' : '1em'};">${company.phone || ''} | ${company.email || ''}</p>
-                ${company.gstin ? `<p style="margin: 0; opacity: 0.9; font-size: ${size === 'a5' ? '0.85em' : '1em'};">GSTIN: ${company.gstin}</p>` : ''}
+                ${gstEnabled && company.gstin ? `<p style="margin: 0; opacity: 0.9; font-size: ${size === 'a5' ? '0.85em' : '1em'};"><strong>GSTIN: ${company.gstin}</strong></p>` : ''}
             </div>
             
             <div class="invoice-details" style="margin-bottom: ${margin}; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -3352,12 +3400,14 @@ function generateModernInvoice(invoice, client, size) {
                     <h3 style="color: #4a90e2; margin-bottom: 0.5rem; font-size: ${size === 'a5' ? '1em' : '1.2em'};">Bill To:</h3>
                     <p style="margin: 0.25rem 0;"><strong>${client.name}</strong></p>
                     <p style="margin: 0.25rem 0; font-size: ${size === 'a5' ? '0.9em' : '1em'};">${client.address || ''}</p>
+                    ${client.stateName ? `<p style="margin: 0.25rem 0; font-size: ${size === 'a5' ? '0.9em' : '1em'};">State: ${client.stateName} (${client.stateCode})</p>` : ''}
                     <p style="margin: 0.25rem 0; font-size: ${size === 'a5' ? '0.9em' : '1em'};">${client.contact || ''}</p>
-                    ${client.gstin ? `<p style="margin: 0.25rem 0; font-size: ${size === 'a5' ? '0.9em' : '1em'};">GSTIN: ${client.gstin}</p>` : ''}
+                    ${gstEnabled && client.gstin ? `<p style="margin: 0.25rem 0; font-size: ${size === 'a5' ? '0.9em' : '1em'};"><strong>GSTIN: ${client.gstin}</strong></p>` : ''}
                 </div>
                 <div style="text-align: right;">
                     <p style="margin: 0.25rem 0;"><strong>Invoice #:</strong> ${invoice.invoiceNo}</p>
                     <p style="margin: 0.25rem 0;"><strong>Date:</strong> ${formatDate(invoice.date)}</p>
+                    ${gstEnabled && invoice.gstSummary ? `<p style="margin: 0.25rem 0; color: #666; font-size: 0.9em;">${invoice.gstSummary.isIntraState ? 'Intra-State' : 'Inter-State'} Transaction</p>` : ''}
                 </div>
             </div>
             
@@ -3389,15 +3439,16 @@ function generateModernInvoice(invoice, client, size) {
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Subtotal:</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${invoice.subtotal.toFixed(2)}</strong></td>
                         </tr>
-                        ${invoice.tax > 0 ? `
+                        ${!gstEnabled && invoice.tax > 0 ? `
                         <tr style="background: #ecf0f1;">
                             <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Tax (${invoice.tax}%):</strong></td>
                             <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${((invoice.subtotal * invoice.tax) / 100).toFixed(2)}</strong></td>
                         </tr>
                         ` : ''}
+                        ${gstSummaryHTML}
                         <tr style="background: #4a90e2; color: white;">
-                            <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>Total:</strong></td>
-                            <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${invoice.total.toFixed(2)}</strong></td>
+                            <td colspan="6" style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>${gstEnabled ? 'Grand Total:' : 'Total:'}</strong></td>
+                            <td style="padding: ${padding}; border: 1px solid #ddd; text-align: right;"><strong>₹${(gstEnabled && invoice.gstSummary ? invoice.gstSummary.grandTotal : invoice.total).toFixed(2)}</strong></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -3407,6 +3458,7 @@ function generateModernInvoice(invoice, client, size) {
             
             <div class="invoice-footer" style="margin-top: auto; padding-top: ${size === 'a5' ? '0.5rem' : '1rem'}; border-top: 2px solid #4a90e2; text-align: center; color: #666;">
                 <p>Thank you for your business!</p>
+                ${gstEnabled ? '<p style="font-size: 0.85em; margin-top: 0.5rem;">This is a GST compliant invoice</p>' : ''}
             </div>
         </div>
     `;
