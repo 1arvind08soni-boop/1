@@ -26,6 +26,19 @@ const UI_MESSAGES = {
         `Are you sure you want to delete "${companyName}"? This will delete all data associated with this company including invoices, products, clients, and vendors.`
 };
 
+// Debounce utility function for performance optimization
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 // Helper Functions
 function getProductDisplay(item) {
     // Helper to get product display string with backward compatibility
@@ -42,82 +55,102 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Storage Management
 function loadFromStorage() {
-    const stored = localStorage.getItem('billingAppData');
-    if (stored) {
-        const data = JSON.parse(stored);
-        AppState.companies = data.companies || [];
-        AppState.settings = data.settings || AppState.settings;
+    try {
+        const stored = localStorage.getItem('billingAppData');
+        if (stored) {
+            const data = JSON.parse(stored);
+            AppState.companies = data.companies || [];
+            AppState.settings = data.settings || AppState.settings;
+        }
+    } catch (error) {
+        console.error('Error loading from storage:', error);
+        showError('Failed to load application data. Please refresh the page.');
     }
 }
 
 function saveToStorage() {
-    const data = {
-        companies: AppState.companies,
-        settings: AppState.settings
-    };
-    localStorage.setItem('billingAppData', JSON.stringify(data));
+    try {
+        const data = {
+            companies: AppState.companies,
+            settings: AppState.settings
+        };
+        localStorage.setItem('billingAppData', JSON.stringify(data));
+    } catch (error) {
+        console.error('Error saving to storage:', error);
+        showError('Failed to save application data. Your changes may not be preserved.');
+    }
 }
 
 function loadCompanyData() {
     if (!AppState.currentCompany) return;
     
-    const companyKey = `company_${AppState.currentCompany.id}`;
-    const stored = localStorage.getItem(companyKey);
-    
-    if (stored) {
-        const data = JSON.parse(stored);
-        AppState.products = data.products || [];
-        AppState.clients = data.clients || [];
-        AppState.vendors = data.vendors || [];
-        AppState.invoices = data.invoices || [];
-        AppState.purchases = data.purchases || [];
-        AppState.payments = data.payments || [];
-        AppState.goodsReturns = data.goodsReturns || [];
-        AppState.deletedInvoices = data.deletedInvoices || [];
-        AppState.financialYears = data.financialYears || [];
+    try {
+        const companyKey = `company_${AppState.currentCompany.id}`;
+        const stored = localStorage.getItem(companyKey);
         
-        // Initialize financial years if empty
-        if (AppState.financialYears.length === 0) {
+        if (stored) {
+            const data = JSON.parse(stored);
+            AppState.products = data.products || [];
+            AppState.clients = data.clients || [];
+            AppState.vendors = data.vendors || [];
+            AppState.invoices = data.invoices || [];
+            AppState.purchases = data.purchases || [];
+            AppState.payments = data.payments || [];
+            AppState.goodsReturns = data.goodsReturns || [];
+            AppState.deletedInvoices = data.deletedInvoices || [];
+            AppState.financialYears = data.financialYears || [];
+            
+            // Initialize financial years if empty
+            if (AppState.financialYears.length === 0) {
+                const currentFY = createDefaultFinancialYear();
+                AppState.financialYears = [currentFY];
+                AppState.currentFinancialYear = currentFY;
+            } else {
+                // Find current financial year or use the latest one
+                const currentFY = AppState.financialYears.find(fy => fy.isCurrent);
+                AppState.currentFinancialYear = currentFY || AppState.financialYears[AppState.financialYears.length - 1];
+            }
+        } else {
+            AppState.products = [];
+            AppState.clients = [];
+            AppState.vendors = [];
+            AppState.invoices = [];
+            AppState.purchases = [];
+            AppState.payments = [];
+            AppState.goodsReturns = [];
+            AppState.deletedInvoices = [];
             const currentFY = createDefaultFinancialYear();
             AppState.financialYears = [currentFY];
             AppState.currentFinancialYear = currentFY;
-        } else {
-            // Find current financial year or use the latest one
-            const currentFY = AppState.financialYears.find(fy => fy.isCurrent);
-            AppState.currentFinancialYear = currentFY || AppState.financialYears[AppState.financialYears.length - 1];
         }
-    } else {
-        AppState.products = [];
-        AppState.clients = [];
-        AppState.vendors = [];
-        AppState.invoices = [];
-        AppState.purchases = [];
-        AppState.payments = [];
-        AppState.goodsReturns = [];
-        AppState.deletedInvoices = [];
-        const currentFY = createDefaultFinancialYear();
-        AppState.financialYears = [currentFY];
-        AppState.currentFinancialYear = currentFY;
+    } catch (error) {
+        console.error('Error loading company data:', error);
+        showError('Failed to load company data. Please try again.');
     }
 }
 
 function saveCompanyData() {
     if (!AppState.currentCompany) return;
     
-    const companyKey = `company_${AppState.currentCompany.id}`;
-    const data = {
-        products: AppState.products,
-        clients: AppState.clients,
-        vendors: AppState.vendors,
-        invoices: AppState.invoices,
-        purchases: AppState.purchases,
-        payments: AppState.payments,
-        goodsReturns: AppState.goodsReturns,
-        deletedInvoices: AppState.deletedInvoices,
-        financialYears: AppState.financialYears,
-        currentFinancialYear: AppState.currentFinancialYear
-    };
-    localStorage.setItem(companyKey, JSON.stringify(data));
+    try {
+        const companyKey = `company_${AppState.currentCompany.id}`;
+        const data = {
+            products: AppState.products,
+            clients: AppState.clients,
+            vendors: AppState.vendors,
+            invoices: AppState.invoices,
+            purchases: AppState.purchases,
+            payments: AppState.payments,
+            goodsReturns: AppState.goodsReturns,
+            deletedInvoices: AppState.deletedInvoices,
+            financialYears: AppState.financialYears,
+            currentFinancialYear: AppState.currentFinancialYear
+        };
+        localStorage.setItem(companyKey, JSON.stringify(data));
+    } catch (error) {
+        console.error('Error saving company data:', error);
+        showError('Failed to save company data. Your changes may not be preserved.');
+    }
 }
 
 function getCurrentFinancialYear() {
@@ -266,26 +299,37 @@ function addCompany(event) {
 }
 
 function deleteCompany(companyId) {
-    const company = AppState.companies.find(c => c.id === companyId);
-    if (!company) return;
-    
-    // Show confirmation dialog
-    if (!confirm(UI_MESSAGES.DELETE_COMPANY_CONFIRM(company.name))) {
-        return;
+    try {
+        const company = AppState.companies.find(c => c.id === companyId);
+        if (!company) {
+            showError('Company not found');
+            return;
+        }
+        
+        // Show confirmation dialog
+        if (!confirm(UI_MESSAGES.DELETE_COMPANY_CONFIRM(company.name))) {
+            return;
+        }
+        
+        // Remove company from list
+        AppState.companies = AppState.companies.filter(c => c.id !== companyId);
+        
+        // Remove company data from localStorage
+        const companyKey = `company_${companyId}`;
+        localStorage.removeItem(companyKey);
+        
+        // Save updated companies list
+        saveToStorage();
+        
+        // Refresh the company list display
+        displayCompanyList();
+        
+        // Show success message
+        showSuccess('Company deleted successfully');
+    } catch (error) {
+        console.error('Error deleting company:', error);
+        showError('Failed to delete company. Please try again.');
     }
-    
-    // Remove company from list
-    AppState.companies = AppState.companies.filter(c => c.id !== companyId);
-    
-    // Remove company data from localStorage
-    const companyKey = `company_${companyId}`;
-    localStorage.removeItem(companyKey);
-    
-    // Save updated companies list
-    saveToStorage();
-    
-    // Refresh the company list display
-    displayCompanyList();
 }
 
 function selectCompany(companyId) {
@@ -830,32 +874,50 @@ function updateProduct(event, productId) {
 }
 
 function deleteProduct(productId) {
-    // Check if product is used in any invoices
-    const usedInInvoices = AppState.invoices.filter(inv => {
-        if (inv.items && Array.isArray(inv.items)) {
-            return inv.items.some(item => item.productId === productId);
+    try {
+        // Validate product exists
+        const product = AppState.products.find(p => p.id === productId);
+        if (!product) {
+            showError('Product not found');
+            return;
         }
-        return false;
-    });
-    
-    if (usedInInvoices.length > 0) {
-        const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it will cause invoice line items to show missing product information.\n\nAre you sure you want to delete this product?`;
-        if (!confirm(message)) return;
-    } else {
-        if (!confirm('Are you sure you want to delete this product?')) return;
+        
+        // Check if product is used in any invoices
+        const usedInInvoices = AppState.invoices.filter(inv => {
+            if (inv.items && Array.isArray(inv.items)) {
+                return inv.items.some(item => item.productId === productId);
+            }
+            return false;
+        });
+        
+        if (usedInInvoices.length > 0) {
+            const message = `This product is used in ${usedInInvoices.length} invoice(s). Deleting it will cause invoice line items to show missing product information.\n\nAre you sure you want to delete this product?`;
+            if (!confirm(message)) return;
+        } else {
+            if (!confirm('Are you sure you want to delete this product?')) return;
+        }
+        
+        // Perform deletion
+        AppState.products = AppState.products.filter(p => p.id !== productId);
+        saveCompanyData();
+        
+        // Refresh UI immediately
+        loadProducts();
+        
+        // Show success message
+        showSuccess('Product deleted successfully');
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        showError('Failed to delete product. Please try again.');
     }
-    
-    AppState.products = AppState.products.filter(p => p.id !== productId);
-    saveCompanyData();
-    loadProducts();
 }
 
 // Filter Products based on search
-function filterProducts() {
+const filterProducts = debounce(function() {
     const searchInput = document.getElementById('productSearchInput');
     if (!searchInput) return;
     
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = searchInput.value.toLowerCase().trim();
     const tbody = document.getElementById('productsTableBody');
     if (!tbody) return;
     
@@ -892,14 +954,14 @@ function filterProducts() {
             </td>
         </tr>
     `).join('');
-}
+}, 300);
 
 // Filter Clients based on search
-function filterClients() {
+const filterClients = debounce(function() {
     const searchInput = document.getElementById('clientSearchInput');
     if (!searchInput) return;
     
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = searchInput.value.toLowerCase().trim();
     const tbody = document.getElementById('clientsTableBody');
     if (!tbody) return;
     
@@ -943,14 +1005,14 @@ function filterClients() {
             </tr>
         `;
     }).join('');
-}
+}, 300);
 
 // Filter Vendors based on search
-function filterVendors() {
+const filterVendors = debounce(function() {
     const searchInput = document.getElementById('vendorSearchInput');
     if (!searchInput) return;
     
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = searchInput.value.toLowerCase().trim();
     const tbody = document.getElementById('vendorsTableBody');
     if (!tbody) return;
     
@@ -994,14 +1056,14 @@ function filterVendors() {
             </tr>
         `;
     }).join('');
-}
+}, 300);
 
 // Filter Invoices based on search
-function filterInvoices() {
+const filterInvoices = debounce(function() {
     const searchInput = document.getElementById('invoiceSearchInput');
     if (!searchInput) return;
     
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = searchInput.value.toLowerCase().trim();
     const tbody = document.getElementById('invoicesTableBody');
     if (!tbody) return;
     
@@ -1048,14 +1110,14 @@ function filterInvoices() {
             </tr>
         `;
     }).join('');
-}
+}, 300);
 
 // Filter Purchases based on search
-function filterPurchases() {
+const filterPurchases = debounce(function() {
     const searchInput = document.getElementById('purchaseSearchInput');
     if (!searchInput) return;
     
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = searchInput.value.toLowerCase().trim();
     const tbody = document.getElementById('purchaseTableBody');
     if (!tbody) return;
     
@@ -1097,14 +1159,14 @@ function filterPurchases() {
             </tr>
         `;
     }).join('');
-}
+}, 300);
 
 // Filter Payments based on search
-function filterPayments() {
+const filterPayments = debounce(function() {
     const searchInput = document.getElementById('paymentSearchInput');
     if (!searchInput) return;
     
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = searchInput.value.toLowerCase().trim();
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
     
@@ -1150,7 +1212,7 @@ function filterPayments() {
             </tr>
         `;
     }).join('');
-}
+}, 300);
 
 // Client Management
 function loadClients() {
@@ -1464,32 +1526,50 @@ function updateClient(event, clientId) {
 }
 
 function deleteClient(clientId) {
-    // Check if client has any related records
-    const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
-    const clientPayments = AppState.payments.filter(pay => pay.clientId === clientId);
-    const clientGoodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === clientId);
-    
-    if (clientInvoices.length > 0 || clientPayments.length > 0 || clientGoodsReturns.length > 0) {
-        let message = 'This client has the following related records:\n';
-        if (clientInvoices.length > 0) message += `\n- ${clientInvoices.length} invoice(s)`;
-        if (clientPayments.length > 0) message += `\n- ${clientPayments.length} payment(s)`;
-        if (clientGoodsReturns.length > 0) message += `\n- ${clientGoodsReturns.length} goods return(s)`;
-        message += '\n\nDeleting this client will also delete all these records. Are you sure you want to continue?';
+    try {
+        // Validate client exists
+        const client = AppState.clients.find(c => c.id === clientId);
+        if (!client) {
+            showError('Client not found');
+            return;
+        }
         
-        if (!confirm(message)) return;
+        // Check if client has any related records
+        const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
+        const clientPayments = AppState.payments.filter(pay => pay.clientId === clientId);
+        const clientGoodsReturns = AppState.goodsReturns.filter(gr => gr.clientId === clientId);
         
-        // Delete all related records
-        AppState.invoices = AppState.invoices.filter(inv => inv.clientId !== clientId);
-        AppState.payments = AppState.payments.filter(pay => pay.clientId !== clientId);
-        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId !== clientId);
-    } else {
-        if (!confirm('Are you sure you want to delete this client?')) return;
+        if (clientInvoices.length > 0 || clientPayments.length > 0 || clientGoodsReturns.length > 0) {
+            let message = 'This client has the following related records:\n';
+            if (clientInvoices.length > 0) message += `\n- ${clientInvoices.length} invoice(s)`;
+            if (clientPayments.length > 0) message += `\n- ${clientPayments.length} payment(s)`;
+            if (clientGoodsReturns.length > 0) message += `\n- ${clientGoodsReturns.length} goods return(s)`;
+            message += '\n\nDeleting this client will also delete all these records. Are you sure you want to continue?';
+            
+            if (!confirm(message)) return;
+            
+            // Delete all related records
+            AppState.invoices = AppState.invoices.filter(inv => inv.clientId !== clientId);
+            AppState.payments = AppState.payments.filter(pay => pay.clientId !== clientId);
+            AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.clientId !== clientId);
+        } else {
+            if (!confirm('Are you sure you want to delete this client?')) return;
+        }
+        
+        // Perform deletion
+        AppState.clients = AppState.clients.filter(c => c.id !== clientId);
+        saveCompanyData();
+        
+        // Refresh UI immediately
+        loadClients();
+        updateDashboard();
+        
+        // Show success message
+        showSuccess('Client deleted successfully');
+    } catch (error) {
+        console.error('Error deleting client:', error);
+        showError('Failed to delete client. Please try again.');
     }
-    
-    AppState.clients = AppState.clients.filter(c => c.id !== clientId);
-    saveCompanyData();
-    loadClients();
-    updateDashboard();
 }
 
 // Vendor Management
@@ -1783,29 +1863,47 @@ function updateVendor(event, vendorId) {
 }
 
 function deleteVendor(vendorId) {
-    // Check if vendor has any related records
-    const vendorPurchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
-    const vendorPayments = AppState.payments.filter(pay => pay.vendorId === vendorId);
-    
-    if (vendorPurchases.length > 0 || vendorPayments.length > 0) {
-        let message = 'This vendor has the following related records:\n';
-        if (vendorPurchases.length > 0) message += `\n- ${vendorPurchases.length} purchase(s)`;
-        if (vendorPayments.length > 0) message += `\n- ${vendorPayments.length} payment(s)`;
-        message += '\n\nDeleting this vendor will also delete all these records. Are you sure you want to continue?';
+    try {
+        // Validate vendor exists
+        const vendor = AppState.vendors.find(v => v.id === vendorId);
+        if (!vendor) {
+            showError('Vendor not found');
+            return;
+        }
         
-        if (!confirm(message)) return;
+        // Check if vendor has any related records
+        const vendorPurchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
+        const vendorPayments = AppState.payments.filter(pay => pay.vendorId === vendorId);
         
-        // Delete all related records
-        AppState.purchases = AppState.purchases.filter(pur => pur.vendorId !== vendorId);
-        AppState.payments = AppState.payments.filter(pay => pay.vendorId !== vendorId);
-    } else {
-        if (!confirm('Are you sure you want to delete this vendor?')) return;
+        if (vendorPurchases.length > 0 || vendorPayments.length > 0) {
+            let message = 'This vendor has the following related records:\n';
+            if (vendorPurchases.length > 0) message += `\n- ${vendorPurchases.length} purchase(s)`;
+            if (vendorPayments.length > 0) message += `\n- ${vendorPayments.length} payment(s)`;
+            message += '\n\nDeleting this vendor will also delete all these records. Are you sure you want to continue?';
+            
+            if (!confirm(message)) return;
+            
+            // Delete all related records
+            AppState.purchases = AppState.purchases.filter(pur => pur.vendorId !== vendorId);
+            AppState.payments = AppState.payments.filter(pay => pay.vendorId !== vendorId);
+        } else {
+            if (!confirm('Are you sure you want to delete this vendor?')) return;
+        }
+        
+        // Perform deletion
+        AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
+        saveCompanyData();
+        
+        // Refresh UI immediately
+        loadVendors();
+        updateDashboard();
+        
+        // Show success message
+        showSuccess('Vendor deleted successfully');
+    } catch (error) {
+        console.error('Error deleting vendor:', error);
+        showError('Failed to delete vendor. Please try again.');
     }
-    
-    AppState.vendors = AppState.vendors.filter(v => v.id !== vendorId);
-    saveCompanyData();
-    loadVendors();
-    updateDashboard();
 }
 
 // Continue in next part...
@@ -2585,23 +2683,28 @@ function updateSimplifiedInvoice(event, invoiceId) {
 }
 
 function deleteInvoice(invoiceId) {
-    // Check if there are any goods returns associated with this invoice
-    const associatedGoodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
-    
-    if (associatedGoodsReturns.length > 0) {
-        const totalReturns = associatedGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
-        const message = `This invoice has ${associatedGoodsReturns.length} goods return(s) totaling ₹${totalReturns.toFixed(2)}.\n\nDeleting this invoice will also delete all associated goods returns. Are you sure you want to continue?`;
-        if (!confirm(message)) return;
+    try {
+        // Validate invoice exists
+        const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
+        if (!invoice) {
+            showError('Invoice not found');
+            return;
+        }
         
-        // Delete associated goods returns
-        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId !== invoiceId);
-    } else {
-        if (!confirm('Are you sure you want to delete this invoice?')) return;
-    }
-    
-    // Find the invoice to delete
-    const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
-    if (invoice) {
+        // Check if there are any goods returns associated with this invoice
+        const associatedGoodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
+        
+        if (associatedGoodsReturns.length > 0) {
+            const totalReturns = associatedGoodsReturns.reduce((sum, gr) => sum + gr.amount, 0);
+            const message = `This invoice has ${associatedGoodsReturns.length} goods return(s) totaling ₹${totalReturns.toFixed(2)}.\n\nDeleting this invoice will also delete all associated goods returns. Are you sure you want to continue?`;
+            if (!confirm(message)) return;
+            
+            // Delete associated goods returns
+            AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId !== invoiceId);
+        } else {
+            if (!confirm('Are you sure you want to delete this invoice?')) return;
+        }
+        
         // Create a copy with deleted timestamp to avoid modifying the original
         const deletedInvoice = { ...invoice, deletedAt: new Date().toISOString() };
         // Move to deleted invoices (keep only last 10)
@@ -2609,13 +2712,22 @@ function deleteInvoice(invoiceId) {
         if (AppState.deletedInvoices.length > 10) {
             AppState.deletedInvoices = AppState.deletedInvoices.slice(0, 10);
         }
+        
+        // Perform deletion
+        AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
+        saveCompanyData();
+        
+        // Refresh UI immediately
+        loadInvoices();
+        loadGoodsReturns(); // Refresh goods returns table if it's open
+        updateDashboard();
+        
+        // Show success message
+        showSuccess('Invoice deleted successfully');
+    } catch (error) {
+        console.error('Error deleting invoice:', error);
+        showError('Failed to delete invoice. Please try again.');
     }
-    
-    AppState.invoices = AppState.invoices.filter(inv => inv.id !== invoiceId);
-    saveCompanyData();
-    loadInvoices();
-    loadGoodsReturns(); // Refresh goods returns table if it's open
-    updateDashboard();
 }
 
 function showRestoreInvoiceModal() {
@@ -4529,12 +4641,30 @@ function updatePurchase(event, purchaseId) {
 }
 
 function deletePurchase(purchaseId) {
-    if (!confirm('Are you sure you want to delete this purchase?')) return;
-    
-    AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
-    saveCompanyData();
-    loadPurchases();
-    updateDashboard();
+    try {
+        // Validate purchase exists
+        const purchase = AppState.purchases.find(p => p.id === purchaseId);
+        if (!purchase) {
+            showError('Purchase not found');
+            return;
+        }
+        
+        if (!confirm('Are you sure you want to delete this purchase?')) return;
+        
+        // Perform deletion
+        AppState.purchases = AppState.purchases.filter(p => p.id !== purchaseId);
+        saveCompanyData();
+        
+        // Refresh UI immediately
+        loadPurchases();
+        updateDashboard();
+        
+        // Show success message
+        showSuccess('Purchase deleted successfully');
+    } catch (error) {
+        console.error('Error deleting purchase:', error);
+        showError('Failed to delete purchase. Please try again.');
+    }
 }
 
 // Continue in next part...
@@ -4822,12 +4952,30 @@ function updatePayment(event, paymentId) {
 }
 
 function deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment?')) return;
-    
-    AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
-    saveCompanyData();
-    loadPayments();
-    updateDashboard();
+    try {
+        // Validate payment exists
+        const payment = AppState.payments.find(p => p.id === paymentId);
+        if (!payment) {
+            showError('Payment not found');
+            return;
+        }
+        
+        if (!confirm('Are you sure you want to delete this payment?')) return;
+        
+        // Perform deletion
+        AppState.payments = AppState.payments.filter(p => p.id !== paymentId);
+        saveCompanyData();
+        
+        // Refresh UI immediately
+        loadPayments();
+        updateDashboard();
+        
+        // Show success message
+        showSuccess('Payment deleted successfully');
+    } catch (error) {
+        console.error('Error deleting payment:', error);
+        showError('Failed to delete payment. Please try again.');
+    }
 }
 
 // Goods Return Functions
@@ -5216,12 +5364,30 @@ function updateGoodsReturn(event, returnId) {
 }
 
 function deleteGoodsReturn(returnId) {
-    if (!confirm('Are you sure you want to delete this goods return?')) return;
-    
-    AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
-    saveCompanyData();
-    loadGoodsReturns();
-    updateDashboard();
+    try {
+        // Validate goods return exists
+        const goodsReturn = AppState.goodsReturns.find(gr => gr.id === returnId);
+        if (!goodsReturn) {
+            showError('Goods return not found');
+            return;
+        }
+        
+        if (!confirm('Are you sure you want to delete this goods return?')) return;
+        
+        // Perform deletion
+        AppState.goodsReturns = AppState.goodsReturns.filter(gr => gr.id !== returnId);
+        saveCompanyData();
+        
+        // Refresh UI immediately
+        loadGoodsReturns();
+        updateDashboard();
+        
+        // Show success message
+        showSuccess('Goods return deleted successfully');
+    } catch (error) {
+        console.error('Error deleting goods return:', error);
+        showError('Failed to delete goods return. Please try again.');
+    }
 }
 
 function filterGoodsReturns() {
