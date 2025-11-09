@@ -74,6 +74,108 @@ function getProductDisplay(item) {
     return `${item.productCode} - ${category}`;
 }
 
+// GST Calculation Helper Functions
+function isIntraStateTransaction(companyStateCode, clientStateCode) {
+    // Check if transaction is within the same state (intra-state)
+    return companyStateCode === clientStateCode;
+}
+
+function calculateGSTForItem(itemAmount, gstRate, isIntraState) {
+    // Calculate GST breakdown for an item
+    if (!gstRate || gstRate === 0) {
+        return {
+            taxableValue: itemAmount,
+            cgst: 0,
+            sgst: 0,
+            igst: 0,
+            totalTax: 0,
+            totalWithTax: itemAmount
+        };
+    }
+    
+    // Assuming prices are GST-inclusive, extract the taxable value
+    const taxableValue = itemAmount / (1 + gstRate / 100);
+    const totalTax = itemAmount - taxableValue;
+    
+    if (isIntraState) {
+        // Intra-state: Split tax into CGST and SGST (50-50)
+        const cgst = totalTax / 2;
+        const sgst = totalTax / 2;
+        return {
+            taxableValue: taxableValue,
+            cgst: cgst,
+            sgst: sgst,
+            igst: 0,
+            totalTax: totalTax,
+            totalWithTax: itemAmount,
+            gstRate: gstRate
+        };
+    } else {
+        // Inter-state: All tax is IGST
+        return {
+            taxableValue: taxableValue,
+            cgst: 0,
+            sgst: 0,
+            igst: totalTax,
+            totalTax: totalTax,
+            totalWithTax: itemAmount,
+            gstRate: gstRate
+        };
+    }
+}
+
+function calculateInvoiceGST(invoice, company, client) {
+    // Calculate GST breakdown for entire invoice
+    if (!company.gstEnabled) {
+        return {
+            subtotal: invoice.total || 0,
+            totalTaxableValue: invoice.total || 0,
+            totalCGST: 0,
+            totalSGST: 0,
+            totalIGST: 0,
+            totalTax: 0,
+            grandTotal: invoice.total || 0,
+            isIntraState: false
+        };
+    }
+    
+    const isIntraState = isIntraStateTransaction(company.stateCode, client.stateCode);
+    
+    let totalTaxableValue = 0;
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+    
+    // Calculate GST for each item
+    if (invoice.items && invoice.items.length > 0) {
+        invoice.items.forEach(item => {
+            const product = AppState.products.find(p => p.id === item.productId);
+            const gstRate = product ? (product.gstRate || 0) : 0;
+            
+            const gst = calculateGSTForItem(item.amount, gstRate, isIntraState);
+            
+            totalTaxableValue += gst.taxableValue;
+            totalCGST += gst.cgst;
+            totalSGST += gst.sgst;
+            totalIGST += gst.igst;
+        });
+    }
+    
+    const totalTax = totalCGST + totalSGST + totalIGST;
+    const grandTotal = totalTaxableValue + totalTax;
+    
+    return {
+        subtotal: invoice.subtotal || 0,
+        totalTaxableValue: totalTaxableValue,
+        totalCGST: totalCGST,
+        totalSGST: totalSGST,
+        totalIGST: totalIGST,
+        totalTax: totalTax,
+        grandTotal: grandTotal,
+        isIntraState: isIntraState
+    };
+}
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
@@ -2538,6 +2640,11 @@ function addInvoice(event) {
         return;
     }
     
+    const clientId = formData.get('clientId');
+    const client = AppState.clients.find(c => c.id === clientId);
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const isIntraState = gstEnabled && client ? isIntraStateTransaction(AppState.currentCompany.stateCode, client.stateCode) : false;
+    
     const items = [];
     const rows = document.querySelectorAll('#invoiceItemsBody tr');
     
@@ -2553,16 +2660,26 @@ function addInvoice(event) {
             const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
             const amount = parseFloat(row.querySelector('.amount-input').value) || 0;
             
+            // Calculate GST for this item if GST is enabled
+            let gstDetails = null;
+            if (gstEnabled && product) {
+                const gstRate = product.gstRate || 0;
+                gstDetails = calculateGSTForItem(amount, gstRate, isIntraState);
+            }
+            
             items.push({
                 serialNo: index + 1,
                 productId,
                 productCode: product.code,
                 productCategory: product.category,
+                hsnCode: product.hsnCode || '',
+                gstRate: product.gstRate || 0,
                 boxes,
                 unitPerBox,
                 quantity,
                 rate,
-                amount
+                amount,
+                gstDetails: gstDetails
             });
         }
     });
@@ -2580,21 +2697,33 @@ function addInvoice(event) {
         }
     });
     
+    const subtotal = parseFloat(document.getElementById('invoiceSubtotal').value);
+    const tax = parseFloat(document.getElementById('invoiceTax').value);
+    const total = parseFloat(document.getElementById('invoiceTotal').value);
+    
     const invoice = {
         id: generateId(),
         invoiceNo: invoiceNo,
         date: formData.get('date'),
-        clientId: formData.get('clientId'),
+        clientId: clientId,
         category: formData.get('category') || 'LESS',
         items: items,
-        subtotal: parseFloat(document.getElementById('invoiceSubtotal').value),
-        tax: parseFloat(document.getElementById('invoiceTax').value),
-        total: parseFloat(document.getElementById('invoiceTotal').value),
+        subtotal: subtotal,
+        tax: tax,
+        total: total,
         totalBoxes: totalBoxes,
         notes: formData.get('notes'),
         status: 'Unpaid',
+        gstEnabled: gstEnabled,
+        isIntraState: isIntraState,
         createdAt: new Date().toISOString()
     };
+    
+    // Calculate and store GST summary if GST is enabled
+    if (gstEnabled) {
+        const gstSummary = calculateInvoiceGST(invoice, AppState.currentCompany, client);
+        invoice.gstSummary = gstSummary;
+    }
     
     AppState.invoices.push(invoice);
     saveCompanyData();
