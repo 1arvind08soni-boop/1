@@ -28,3 +28,8 @@ tmp/
 temp/
 test-*.html
 *-example.html
+
+# Google Drive Configuration (contains sensitive OAuth tokens)
+gdrive-token.json
+gdrive-credentials.json
+gdrive-settings.json
