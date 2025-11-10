@@ -15,6 +15,20 @@ A comprehensive desktop application for Windows that helps manage billing, invoi
 - **Year-End Process**: Automated closing of financial years with balance carry forward
 - **Data Export**: Export data to CSV/Excel format
 - **Backup & Restore**: Backup and restore company data with full financial year support
+- **🆕 Google Drive Backup**: Automated cloud backups to Google Drive with scheduling (daily/weekly)
+
+## New: Google Drive Cloud Backup
+
+Keep your business data safe with automatic backups to Google Drive:
+
+- **Automated Backups**: Schedule daily or weekly automatic backups
+- **Cloud Storage**: Store backups securely in your Google Drive
+- **Easy Restore**: Restore data from any previous backup with one click
+- **Organized Storage**: Save backups in a specific Google Drive folder
+- **Manual Backup**: Create on-demand backups anytime
+- **Backup Management**: View, download, and delete old backups
+
+📖 **Setup Guide**: See [Google Drive Setup Guide](GOOGLE-DRIVE-SETUP.md) for step-by-step instructions
 
 ## New: Financial Year Management
 
