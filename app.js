@@ -7591,7 +7591,6 @@ function restoreData() {
 }
 
 // Google Drive Configuration and State
-let gdriveCredentials = null;
 let gdriveAuthenticated = false;
 
 // Check Google Drive authentication status on load
@@ -7625,53 +7624,36 @@ async function showGoogleDriveSettings() {
     }
     
     const authStatus = gdriveAuthenticated ? 
-        '<span style="color: green;"><i class="fas fa-check-circle"></i> Authenticated</span>' : 
-        '<span style="color: red;"><i class="fas fa-times-circle"></i> Not Authenticated</span>';
+        '<span style="color: green;"><i class="fas fa-check-circle"></i> Connected</span>' : 
+        '<span style="color: red;"><i class="fas fa-times-circle"></i> Not Connected</span>';
     
     const content = `
         <div class="form-group">
-            <label>Authentication Status:</label>
+            <label>Google Drive Status:</label>
             <p>${authStatus}</p>
         </div>
         
         ${!gdriveAuthenticated ? `
-        <div class="form-group">
-            <label>Step 1: Upload OAuth2 Credentials JSON</label>
-            <p style="font-size: 0.9em; color: #666;">
-                Get your OAuth2 credentials from Google Cloud Console:
-                <br>1. Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>
-                <br>2. Create/Select a project
-                <br>3. Enable Google Drive API
-                <br>4. Create OAuth 2.0 Client ID credentials (Desktop app)
-                <br>5. Download the JSON file
+        <div class="form-group" style="text-align: center; padding: 20px 0;">
+            <h3 style="margin-bottom: 15px;">Connect to Google Drive</h3>
+            <p style="font-size: 0.95em; color: #666; margin-bottom: 20px;">
+                Click the button below to sign in with your Google account.<br>
+                This allows the app to backup your data to Google Drive.
             </p>
-            <input type="file" id="credentialsFile" accept=".json" style="margin-top: 10px;">
-            <button class="btn btn-secondary" onclick="uploadGoogleCredentials()" style="margin-top: 10px;">
-                <i class="fas fa-upload"></i> Upload Credentials
+            <button class="btn btn-primary btn-lg" onclick="simpleGoogleAuth()" style="padding: 12px 30px; font-size: 1.1em;">
+                <i class="fab fa-google"></i> Sign in with Google
             </button>
-        </div>
-        
-        <div class="form-group" id="authSection" style="display: none;">
-            <label>Step 2: Authenticate with Google</label>
-            <button class="btn btn-primary" onclick="authenticateGoogleDrive()">
-                <i class="fab fa-google"></i> Authenticate with Google Drive
-            </button>
-            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
-                A browser window will open. Sign in and authorize the app, then paste the authorization code below.
+            <p style="font-size: 0.85em; color: #888; margin-top: 15px;">
+                Your data stays private and secure in your own Google Drive.
             </p>
-            <input type="text" id="authCode" placeholder="Paste authorization code here" style="margin-top: 10px; width: 100%;">
-            <button class="btn btn-success" onclick="submitAuthCode()" style="margin-top: 10px;">
-                <i class="fas fa-check"></i> Submit Code
-            </button>
         </div>
-        ` : ''}
-        
+        ` : `
         <div class="form-group">
             <label for="gdriveFolderId">Google Drive Folder ID (Optional):</label>
-            <input type="text" id="gdriveFolderId" value="${settings.folderId}" placeholder="Leave empty for root folder">
+            <input type="text" id="gdriveFolderId" value="${settings.folderId}" placeholder="Leave empty to backup to root folder">
             <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
-                To backup to a specific folder, paste the folder ID from its URL:<br>
-                https://drive.google.com/drive/folders/<strong>FOLDER_ID_HERE</strong>
+                <strong>Optional:</strong> To organize backups in a specific folder, paste the folder ID from its URL:<br>
+                Example: https://drive.google.com/drive/folders/<strong>abc123xyz</strong>
             </p>
         </div>
         
@@ -7687,7 +7669,7 @@ async function showGoogleDriveSettings() {
             <select id="gdriveSchedule" ${!settings.enabled ? 'disabled' : ''}>
                 <option value="manual" ${settings.schedule === 'manual' ? 'selected' : ''}>Manual Only</option>
                 <option value="daily" ${settings.schedule === 'daily' ? 'selected' : ''}>Daily</option>
-                <option value="weekly" ${settings.schedule === 'weekly' ? 'selected' : ''}>Weekly</option>
+                <option value="weekly" ${settings.schedule === 'weekly' ? 'selected' : ''}>Weekly (Sunday)</option>
             </select>
         </div>
         
@@ -7712,13 +7694,59 @@ async function showGoogleDriveSettings() {
                 document.getElementById('gdriveScheduleTime').disabled = !enabled;
             });
         </script>
+        `}
     `;
     
     const modal = createModal('Google Drive Settings', content, 'modal-large');
     showModal(modal);
 }
 
-// Upload Google Credentials
+// Simplified Google Authentication - just one click!
+async function simpleGoogleAuth() {
+    if (window.electronAPI && window.electronAPI.gdriveGetAuthUrl) {
+        showInfo('Opening Google sign-in page...');
+        
+        const result = await window.electronAPI.gdriveGetAuthUrl();
+        if (result.success) {
+            // Open auth URL in default browser
+            window.open(result.authUrl, '_blank');
+            
+            // Show code input prompt
+            const authCode = prompt(
+                'After signing in with Google:\n\n' +
+                '1. Authorize the app to access Google Drive\n' +
+                '2. Copy the authorization code shown\n' +
+                '3. Paste it here\n\n' +
+                'Authorization Code:'
+            );
+            
+            if (authCode && authCode.trim()) {
+                await submitSimpleAuthCode(authCode.trim());
+            }
+        } else {
+            showError('Failed to start authentication: ' + result.error);
+        }
+    }
+}
+
+// Submit Auth Code (simplified)
+async function submitSimpleAuthCode(code) {
+    if (window.electronAPI && window.electronAPI.gdriveSetToken) {
+        showInfo('Connecting to Google Drive...');
+        
+        const result = await window.electronAPI.gdriveSetToken(code);
+        if (result.success) {
+            gdriveAuthenticated = true;
+            showSuccess('Successfully connected to Google Drive!');
+            closeModal();
+            showGoogleDriveSettings();
+        } else {
+            showError('Connection failed: ' + result.error);
+        }
+    }
+}
+
+// Upload Google Credentials (optional - for advanced users)
 async function uploadGoogleCredentials() {
     const fileInput = document.getElementById('credentialsFile');
     const file = fileInput.files[0];
@@ -7743,9 +7771,7 @@ async function uploadGoogleCredentials() {
             if (window.electronAPI && window.electronAPI.gdriveSaveCredentials) {
                 const result = await window.electronAPI.gdriveSaveCredentials(credentials);
                 if (result.success) {
-                    gdriveCredentials = credentials;
-                    showSuccess('Credentials uploaded successfully');
-                    document.getElementById('authSection').style.display = 'block';
+                    showSuccess('Custom credentials uploaded successfully');
                 } else {
                     showError('Failed to save credentials: ' + result.error);
                 }
@@ -7758,26 +7784,12 @@ async function uploadGoogleCredentials() {
     reader.readAsText(file);
 }
 
-// Authenticate with Google Drive
+// Authenticate with Google Drive (old method - kept for compatibility)
 async function authenticateGoogleDrive() {
-    if (!gdriveCredentials) {
-        showError('Please upload credentials first');
-        return;
-    }
-    
-    if (window.electronAPI && window.electronAPI.gdriveGetAuthUrl) {
-        const result = await window.electronAPI.gdriveGetAuthUrl(gdriveCredentials);
-        if (result.success) {
-            // Open auth URL in default browser
-            window.open(result.authUrl, '_blank');
-            showInfo('Please authorize the app in your browser and paste the code below');
-        } else {
-            showError('Failed to generate auth URL: ' + result.error);
-        }
-    }
+    simpleGoogleAuth();
 }
 
-// Submit Auth Code
+// Submit Auth Code (old method - kept for compatibility)
 async function submitAuthCode() {
     const code = document.getElementById('authCode').value.trim();
     
@@ -7786,22 +7798,7 @@ async function submitAuthCode() {
         return;
     }
     
-    if (!gdriveCredentials) {
-        showError('Credentials not found');
-        return;
-    }
-    
-    if (window.electronAPI && window.electronAPI.gdriveSetToken) {
-        const result = await window.electronAPI.gdriveSetToken(gdriveCredentials, code);
-        if (result.success) {
-            gdriveAuthenticated = true;
-            showSuccess('Successfully authenticated with Google Drive!');
-            closeModal();
-            showGoogleDriveSettings();
-        } else {
-            showError('Authentication failed: ' + result.error);
-        }
-    }
+    await submitSimpleAuthCode(code);
 }
 
 // Save Google Drive Settings

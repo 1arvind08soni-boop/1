@@ -27,12 +27,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     printInvoice: (html, pageSize, marginType) => 
         ipcRenderer.invoke('print-invoice', { html, pageSize, marginType }),
     
-    // Google Drive API
-    gdriveGetAuthUrl: (credentials) => 
-        ipcRenderer.invoke('gdrive-get-auth-url', credentials),
+    // Google Drive API (simplified)
+    gdriveGetAuthUrl: () => 
+        ipcRenderer.invoke('gdrive-get-auth-url'),
     
-    gdriveSetToken: (credentials, code) => 
-        ipcRenderer.invoke('gdrive-set-token', { credentials, code }),
+    gdriveSetToken: (code) => 
+        ipcRenderer.invoke('gdrive-set-token', { code }),
     
     gdriveCheckAuth: () => 
         ipcRenderer.invoke('gdrive-check-auth'),

@@ -26,36 +26,40 @@ Your billing software now has **complete Google Drive integration** for automati
 ### 4. Backup Management
 - List all backups
 - Delete old backups you don't need
-- Organize backups in a specific Google Drive folder
+- Organize backups in a specific Google Drive folder (optional)
 
 ## 🚀 How to Get Started
 
-### Step 1: Get Google Credentials (One-time setup)
+### For End Users (Super Simple - 2 Minutes!)
+
+1. Open your billing software
+2. Go to **Settings** tab
+3. Click **"Configure Google Drive"**
+4. Click the big **"Sign in with Google"** button
+5. Sign in with your Google account in the browser
+6. Click "Allow" to authorize
+7. Copy the authorization code shown
+8. Paste it in the app
+9. **Done!** ✅
+
+Now you can:
+- Click "Backup to Google Drive" for instant backup
+- Enable automatic backups in settings
+- Restore from any backup anytime
+
+### For Developers/Distributors (One-Time Setup)
+
+**If you're building the app for distribution**, you need to configure OAuth credentials once in the source code:
+
 1. Go to https://console.cloud.google.com/
 2. Create a new project (e.g., "Billing Backup")
 3. Enable "Google Drive API"
 4. Create OAuth 2.0 credentials (Desktop app type)
-5. Download the JSON credentials file
+5. Copy your Client ID and Client Secret
+6. Edit `main.js` and replace the placeholders in `DEFAULT_CREDENTIALS`
+7. Rebuild the app: `npm run build`
 
-**⚠️ Important:** You need your OWN Google Cloud credentials. This keeps your data 100% private and secure!
-
-**📖 Detailed Guide:** See `GOOGLE-DRIVE-SETUP.md` for step-by-step instructions with explanations.
-
-### Step 2: Configure in Application (One-time setup)
-1. Open your billing software
-2. Go to **Settings** tab
-3. Find **Google Drive Backup** section
-4. Click **"Configure Google Drive"**
-5. Upload your credentials JSON file
-6. Click **"Authenticate with Google Drive"**
-7. Sign in to your Google account in browser
-8. Copy authorization code and paste it back
-9. Done! ✅
-
-### Step 3: Start Using
-- **Immediate Backup:** Click "Backup to Google Drive"
-- **Schedule Backups:** Enable automatic backups in settings
-- **Restore Data:** Click "Restore from Google Drive" anytime
+**📖 Detailed Guide:** See `GOOGLE-DRIVE-SETUP.md` for complete instructions.
 
 ## 🎨 User Interface
 
@@ -67,7 +71,7 @@ Your billing software now has **complete Google Drive integration** for automati
 ├─────────────────────────────────────┤
 │                                     │
 │  [Configure Google Drive]  🔧       │
-│  - Setup authentication             │
+│  - Sign in with Google (1 click!)   │
 │  - Set backup schedule              │
 │  - Choose Google Drive folder       │
 │                                     │

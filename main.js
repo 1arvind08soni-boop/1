@@ -347,6 +347,22 @@ const TOKEN_PATH = path.join(app.getPath('userData'), 'gdrive-token.json');
 const CREDENTIALS_PATH = path.join(app.getPath('userData'), 'gdrive-credentials.json');
 const SETTINGS_PATH = path.join(app.getPath('userData'), 'gdrive-settings.json');
 
+// Default embedded credentials (users can optionally provide their own)
+// IMPORTANT: Replace these placeholder values with your own OAuth2 credentials
+// from Google Cloud Console for the app to work properly.
+// See GOOGLE-DRIVE-SETUP.md for instructions on how to get these credentials.
+const DEFAULT_CREDENTIALS = {
+    installed: {
+        client_id: "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com",
+        project_id: "billing-backup",
+        auth_uri: "https://accounts.google.com/o/oauth2/auth",
+        token_uri: "https://oauth2.googleapis.com/token",
+        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+        client_secret: "YOUR_CLIENT_SECRET_HERE",
+        redirect_uris: ["http://localhost"]
+    }
+};
+
 // Initialize OAuth2 Client
 function initOAuth2Client(credentials) {
     const { client_id, client_secret, redirect_uris } = credentials.installed || credentials.web || credentials;
@@ -355,6 +371,19 @@ function initOAuth2Client(credentials) {
         client_secret,
         redirect_uris[0]
     );
+}
+
+// Get credentials (use saved or default)
+function getCredentials() {
+    try {
+        if (fs.existsSync(CREDENTIALS_PATH)) {
+            const data = fs.readFileSync(CREDENTIALS_PATH, 'utf-8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error loading credentials:', error);
+    }
+    return DEFAULT_CREDENTIALS;
 }
 
 // Load Google Drive Settings
@@ -386,9 +415,10 @@ function saveGDriveSettings(settings) {
     }
 }
 
-// Get OAuth URL
-ipcMain.handle('gdrive-get-auth-url', async (event, credentials) => {
+// Get OAuth URL (simplified - uses embedded credentials)
+ipcMain.handle('gdrive-get-auth-url', async (event) => {
     try {
+        const credentials = getCredentials();
         initOAuth2Client(credentials);
         
         const authUrl = oauth2Client.generateAuthUrl({
@@ -403,9 +433,10 @@ ipcMain.handle('gdrive-get-auth-url', async (event, credentials) => {
     }
 });
 
-// Set OAuth Token
-ipcMain.handle('gdrive-set-token', async (event, { credentials, code }) => {
+// Set OAuth Token (simplified - uses embedded credentials)
+ipcMain.handle('gdrive-set-token', async (event, { code }) => {
     try {
+        const credentials = getCredentials();
         initOAuth2Client(credentials);
         
         const { tokens } = await oauth2Client.getToken(code);
@@ -425,10 +456,9 @@ ipcMain.handle('gdrive-set-token', async (event, { credentials, code }) => {
 ipcMain.handle('gdrive-check-auth', async (event) => {
     try {
         const tokenExists = fs.existsSync(TOKEN_PATH);
-        const credentialsExist = fs.existsSync(CREDENTIALS_PATH);
         
-        if (tokenExists && credentialsExist) {
-            const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'));
+        if (tokenExists) {
+            const credentials = getCredentials();
             const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
             
             initOAuth2Client(credentials);

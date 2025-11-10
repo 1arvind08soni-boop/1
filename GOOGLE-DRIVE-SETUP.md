@@ -8,7 +8,7 @@ The Google Drive backup feature allows you to:
 - **Upload backups** directly to your Google Drive
 - **Restore backups** from Google Drive
 - **Schedule automatic backups** (daily or weekly)
-- **Organize backups** in a specific Google Drive folder
+- **Organize backups** in a specific Google Drive folder (optional)
 - **Manage backups** (view, download, delete old backups)
 
 ## Prerequisites
@@ -17,7 +17,32 @@ The Google Drive backup feature allows you to:
 2. Internet connection
 3. Billing & Account Management application installed
 
-## Setup Instructions
+## Quick Setup (5 Minutes)
+
+### For End Users (Simplified Process):
+
+**Note:** The app comes with pre-configured credentials. However, for the app to work, the developer needs to set up the Google Cloud credentials first. See the "Developer Setup" section below.
+
+1. **Open the application**
+2. Go to **Settings** tab
+3. Click **"Configure Google Drive"**
+4. Click the big **"Sign in with Google"** button
+5. Sign in with your Google account in the browser
+6. Click "Allow" to authorize the app
+7. Copy the authorization code shown
+8. Paste it in the app prompt
+9. **Done!** ✅
+
+That's it! Now you can:
+- Click "Backup to Google Drive" for instant backup
+- Enable automatic daily/weekly backups
+- Restore data anytime
+
+---
+
+## Developer Setup (One-Time Configuration)
+
+**Important:** If you're distributing this app, you need to configure the OAuth2 credentials once in the source code.
 
 ### Step 1: Create Google Cloud Project
 
@@ -38,56 +63,84 @@ The Google Drive backup feature allows you to:
 1. Go to "APIs & Services" → "Credentials"
 2. Click "Create Credentials" → "OAuth client ID"
 3. If prompted, configure the OAuth consent screen:
-   - User Type: Choose "External" (for personal use)
+   - User Type: Choose "External" (for general use)
    - App name: "Billing Backup App"
    - User support email: Your email
    - Developer contact: Your email
    - Click "Save and Continue"
    - Skip the Scopes section (click "Save and Continue")
-   - Add your email as a test user
+   - Add test users if needed (or leave empty for production)
    - Click "Save and Continue"
 4. Back on the Credentials page:
-   - Application type: Select "Desktop app"
+   - Application type: Select **"Desktop app"**
    - Name: "Billing Desktop Client"
    - Click "Create"
-5. Click "Download JSON" to download your credentials file
-6. Save this file securely (you'll need it in the next step)
+5. You'll see your Client ID and Client Secret
 
-### Step 4: Configure Application
+### Step 4: Configure the Application
 
-1. Open the Billing & Account Management application
-2. Go to **Settings** tab
-3. In the **Google Drive Backup** section, click "Configure Google Drive"
-4. Click "Upload Credentials" and select the JSON file you downloaded
-5. Click "Authenticate with Google Drive"
-6. A browser window will open with Google's authorization page
-7. Sign in with your Google account
-8. Click "Allow" to grant permissions
-9. Copy the authorization code shown
-10. Paste the code in the application and click "Submit Code"
+Open `main.js` in your code editor and find the `DEFAULT_CREDENTIALS` section (around line 344):
 
-### Step 5: Configure Backup Settings (Optional)
+```javascript
+const DEFAULT_CREDENTIALS = {
+    installed: {
+        client_id: "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com",
+        project_id: "billing-backup",
+        auth_uri: "https://accounts.google.com/o/oauth2/auth",
+        token_uri: "https://oauth2.googleapis.com/token",
+        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+        client_secret: "YOUR_CLIENT_SECRET_HERE",
+        redirect_uris: ["http://localhost"]
+    }
+};
+```
+
+Replace:
+- `YOUR_CLIENT_ID_HERE.apps.googleusercontent.com` with your actual Client ID
+- `YOUR_CLIENT_SECRET_HERE` with your actual Client Secret
+
+Save the file and rebuild the app:
+```bash
+npm run build
+```
+
+Now your app is ready for distribution with simplified Google Drive integration!
+
+---
+
+## Using Google Drive Backup
+
+### First-Time Setup (For Users)
+
+1. Open app → **Settings** tab
+2. Click **"Configure Google Drive"**
+3. Click **"Sign in with Google"** button
+4. Authorize in your browser
+5. Copy and paste the authorization code
+6. Done!
+
+### Configure Backup Settings (Optional)
+
+After signing in, you can configure:
 
 1. **Google Drive Folder ID** (Optional):
    - Create a folder in Google Drive for your backups
    - Open the folder in your browser
    - Copy the folder ID from the URL: `https://drive.google.com/drive/folders/FOLDER_ID_HERE`
-   - Paste it in the "Google Drive Folder ID" field
+   - Paste it in the settings
 
 2. **Automatic Backup Schedule**:
    - Check "Enable Automatic Backup"
-   - Choose schedule: Daily or Weekly
+   - Choose schedule: Daily or Weekly (Sunday)
    - Set the time for automatic backup
    - Click "Save Settings"
-
-## Using Google Drive Backup
 
 ### Manual Backup
 
 1. Go to **Settings** tab
 2. Click **"Backup to Google Drive"**
 3. Wait for the success message
-4. Your backup is now stored in Google Drive!
+4. Your backup is now in Google Drive!
 
 ### Restore from Google Drive
 
@@ -104,71 +157,70 @@ The Google Drive backup feature allows you to:
 2. View backup details (name, date, size)
 3. Delete old backups using the **Delete** button
 
-## Automatic Backup Schedule
-
-### Daily Backup
-- Set schedule to "Daily"
-- Choose a time (e.g., 11:00 PM)
-- Backup will run every day at that time
-
-### Weekly Backup
-- Set schedule to "Weekly"
-- Choose a time
-- Backup will run every Sunday at that time
-
-**Note**: The application must be running for automatic backups to occur.
+---
 
 ## Troubleshooting
 
-### "Not authenticated with Google Drive"
-- Re-run the authentication process in Settings
-- Make sure you completed all authorization steps
-
-### "Invalid credentials file"
-- Download a new credentials JSON from Google Cloud Console
-- Ensure you selected "Desktop app" as the application type
+### "Not Connected"
+- Click "Sign in with Google" and complete the authorization
+- Make sure you completed all steps
 
 ### "Failed to upload backup"
 - Check your internet connection
 - Verify the folder ID is correct (if specified)
 - Make sure you have sufficient Google Drive storage space
+- Try signing in again
 
 ### "Failed to list backups"
 - Check your internet connection
 - Re-authenticate if needed
 - Verify folder permissions in Google Drive
 
+### For Developers: "Invalid credentials"
+- Make sure you replaced the placeholder values in `main.js`
+- Verify you're using a Desktop app OAuth client
+- Check that the credentials are properly formatted
+
+---
+
 ## Security Notes
 
-- **Credentials Storage**: OAuth credentials are stored locally on your computer
-- **Access Tokens**: Tokens are encrypted and stored securely
-- **Data Privacy**: Only your application can access the backup files
+- **OAuth2 Authentication**: Industry-standard secure authentication
+- **Your Data**: Stays in your own Google Drive account
+- **Privacy**: Only you can access your backups
+- **Credentials**: Embedded in the app (for distribution) or can be customized
 - **Revoke Access**: You can revoke access anytime from Google Account settings
+
+---
 
 ## Best Practices
 
 1. **Regular Backups**: Enable automatic daily backups
 2. **Test Restores**: Periodically test restoring from backup
 3. **Multiple Copies**: Keep both local and Google Drive backups
-4. **Delete Old Backups**: Remove backups you no longer need
-5. **Secure Credentials**: Keep your credentials JSON file safe
+4. **Delete Old Backups**: Remove backups you no longer need to save space
+5. **Secure Folder**: Use a dedicated folder for organized backups
 
-## Backup File Format
+---
 
-Backups are stored as JSON files with the naming format:
-```
-backup_[CompanyName]_[Date].json
-```
+## Advanced: Custom OAuth Credentials
 
-Example: `backup_MyCompany_2024-11-10.json`
+If you want to use your own OAuth credentials (instead of the embedded ones):
+
+1. Follow the "Developer Setup" steps above
+2. Download the credentials JSON file from Google Cloud Console
+3. In the app, there's an advanced option to upload custom credentials
+4. This overrides the default embedded credentials
+
+---
 
 ## Support
 
 If you encounter issues:
 1. Check this guide for troubleshooting steps
-2. Verify your Google Cloud Console settings
+2. Verify your Google Cloud Console settings (for developers)
 3. Ensure you have the latest version of the application
-4. Contact support with error details
+4. Check your internet connection
 
 ---
 
