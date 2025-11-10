@@ -5420,46 +5420,159 @@ function loadPurchases() {
 
 function showAddPurchaseModal() {
     const vendorOptions = AppState.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
     
-    const modal = createModal('New Purchase', `
-        <form id="addPurchaseForm" onsubmit="addPurchase(event)">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Purchase Number *</label>
-                    <input type="text" class="form-control" name="purchaseNo" value="PUR-${String(AppState.purchases.length + 1).padStart(3, '0')}" required>
+    if (gstEnabled) {
+        // GST-enabled purchase form with itemized entries
+        const modal = createModal('New GST Purchase Entry', `
+            <form id="addPurchaseForm" onsubmit="addGSTPurchase(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Purchase Number *</label>
+                        <input type="text" class="form-control" name="purchaseNo" value="PUR-${String(AppState.purchases.length + 1).padStart(3, '0')}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Date *</label>
-                    <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                    <label>Select Vendor *</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select class="form-control" name="vendorId" id="purchaseVendorSelect" required style="flex: 1;">
+                            <option value="">-- Select Vendor --</option>
+                            ${vendorOptions}
+                        </select>
+                        <button type="button" class="btn btn-secondary" onclick="showInlineVendorModal()" title="Create New Vendor">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Select Vendor *</label>
-                <div style="display: flex; gap: 0.5rem;">
-                    <select class="form-control" name="vendorId" id="purchaseVendorSelect" required style="flex: 1;">
-                        <option value="">-- Select Vendor --</option>
-                        ${vendorOptions}
-                    </select>
-                    <button type="button" class="btn btn-secondary" onclick="showInlineVendorModal()" title="Create New Vendor">
-                        <i class="fas fa-plus"></i> New
-                    </button>
+                
+                <h4>Purchase Items</h4>
+                <table class="items-table" id="gstPurchaseItemsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">S.No</th>
+                            <th>Description of Goods/Services</th>
+                            <th style="width: 100px;">HSN/SAC</th>
+                            <th style="width: 80px;">Qty</th>
+                            <th style="width: 100px;">Rate</th>
+                            <th style="width: 80px;">GST %</th>
+                            <th style="width: 110px;">Amount</th>
+                            <th style="width: 60px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gstPurchaseItemsBody">
+                        <tr data-serial="1">
+                            <td class="serial-no">1</td>
+                            <td>
+                                <input type="text" class="form-control gst-purchase-description-input" placeholder="Enter item description" required>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control gst-purchase-hsn-input" placeholder="HSN" maxlength="8">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control gst-purchase-qty-input" min="0.01" step="0.01" value="1" onchange="calculateGSTPurchaseItem(this)" required>
+                            </td>
+                            <td>
+                                <input type="number" class="form-control gst-purchase-rate-input" min="0" step="0.01" value="0" onchange="calculateGSTPurchaseItem(this)" required>
+                            </td>
+                            <td>
+                                <select class="form-control gst-purchase-rate-select" onchange="calculateGSTPurchaseItem(this)">
+                                    <option value="0">0%</option>
+                                    <option value="0.25">0.25%</option>
+                                    <option value="3">3%</option>
+                                    <option value="5">5%</option>
+                                    <option value="12">12%</option>
+                                    <option value="18" selected>18%</option>
+                                    <option value="28">28%</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" class="form-control gst-purchase-amount-input" step="0.01" readonly value="0">
+                            </td>
+                            <td>
+                                <button type="button" class="action-btn delete" onclick="removeGSTPurchaseItem(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-secondary" onclick="addGSTPurchaseItem()">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+                
+                <div class="form-row mt-3" style="background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+                    <div class="form-group">
+                        <label><strong>Total Taxable Value</strong></label>
+                        <input type="number" class="form-control" id="gstPurchaseTaxableValue" step="0.01" readonly value="0">
+                    </div>
+                    <div class="form-group">
+                        <label><strong>Total Input GST</strong></label>
+                        <input type="number" class="form-control" id="gstPurchaseTotalTax" step="0.01" readonly value="0">
+                    </div>
+                    <div class="form-group">
+                        <label><strong>Grand Total</strong></label>
+                        <input type="number" class="form-control" id="gstPurchaseGrandTotal" step="0.01" readonly value="0" style="font-weight: bold;">
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Amount *</label>
-                <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea class="form-control" name="description" rows="3"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Add Purchase</button>
-            </div>
-        </form>
-    `);
-    showModal(modal);
+                
+                <div class="form-group">
+                    <label>Notes/Description</label>
+                    <textarea class="form-control" name="description" rows="2" placeholder="Additional notes or terms"></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add GST Purchase</button>
+                </div>
+            </form>
+        `);
+        showModal(modal);
+    } else {
+        // Standard simple purchase form (non-GST)
+        const modal = createModal('New Purchase', `
+            <form id="addPurchaseForm" onsubmit="addPurchase(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Purchase Number *</label>
+                        <input type="text" class="form-control" name="purchaseNo" value="PUR-${String(AppState.purchases.length + 1).padStart(3, '0')}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" class="form-control" name="date" value="${new Date().toISOString().split('T')[0]}" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Select Vendor *</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select class="form-control" name="vendorId" id="purchaseVendorSelect" required style="flex: 1;">
+                            <option value="">-- Select Vendor --</option>
+                            ${vendorOptions}
+                        </select>
+                        <button type="button" class="btn btn-secondary" onclick="showInlineVendorModal()" title="Create New Vendor">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Amount *</label>
+                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="form-control" name="description" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Purchase</button>
+                </div>
+            </form>
+        `);
+        showModal(modal);
+    }
 }
 
 function addPurchase(event) {
@@ -5498,6 +5611,232 @@ function addPurchase(event) {
     loadPurchases();
     updateDashboard();
     closeModal();
+}
+
+// GST Purchase Helper Functions
+function calculateGSTPurchaseItem(inputElement) {
+    const row = inputElement.closest('tr');
+    const qty = parseFloat(row.querySelector('.gst-purchase-qty-input').value) || 0;
+    const rate = parseFloat(row.querySelector('.gst-purchase-rate-input').value) || 0;
+    
+    const amount = qty * rate;
+    row.querySelector('.gst-purchase-amount-input').value = amount.toFixed(2);
+    
+    calculateGSTPurchaseTotal();
+}
+
+function addGSTPurchaseItem() {
+    const tbody = document.getElementById('gstPurchaseItemsBody');
+    const serialNo = tbody.children.length + 1;
+    
+    const newRow = document.createElement('tr');
+    newRow.dataset.serial = serialNo;
+    newRow.innerHTML = `
+        <td class="serial-no">${serialNo}</td>
+        <td>
+            <input type="text" class="form-control gst-purchase-description-input" placeholder="Enter item description" required>
+        </td>
+        <td>
+            <input type="text" class="form-control gst-purchase-hsn-input" placeholder="HSN" maxlength="8">
+        </td>
+        <td>
+            <input type="number" class="form-control gst-purchase-qty-input" min="0.01" step="0.01" value="1" onchange="calculateGSTPurchaseItem(this)" required>
+        </td>
+        <td>
+            <input type="number" class="form-control gst-purchase-rate-input" min="0" step="0.01" value="0" onchange="calculateGSTPurchaseItem(this)" required>
+        </td>
+        <td>
+            <select class="form-control gst-purchase-rate-select" onchange="calculateGSTPurchaseItem(this)">
+                <option value="0">0%</option>
+                <option value="0.25">0.25%</option>
+                <option value="3">3%</option>
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18" selected>18%</option>
+                <option value="28">28%</option>
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control gst-purchase-amount-input" step="0.01" readonly value="0">
+        </td>
+        <td>
+            <button type="button" class="action-btn delete" onclick="removeGSTPurchaseItem(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    
+    tbody.appendChild(newRow);
+}
+
+function removeGSTPurchaseItem(button) {
+    const tbody = document.getElementById('gstPurchaseItemsBody');
+    if (tbody.children.length > 1) {
+        button.closest('tr').remove();
+        // Recalculate serial numbers
+        Array.from(tbody.children).forEach((row, index) => {
+            row.dataset.serial = index + 1;
+            const serialCell = row.querySelector('.serial-no');
+            if (serialCell) {
+                serialCell.textContent = index + 1;
+            }
+        });
+        calculateGSTPurchaseTotal();
+    }
+}
+
+function calculateGSTPurchaseTotal() {
+    const rows = document.querySelectorAll('#gstPurchaseItemsBody tr');
+    let totalTaxable = 0;
+    let totalTax = 0;
+    
+    rows.forEach(row => {
+        const amount = parseFloat(row.querySelector('.gst-purchase-amount-input').value) || 0;
+        const gstRate = parseFloat(row.querySelector('.gst-purchase-rate-select').value) || 0;
+        
+        // Calculate taxable value and tax from GST-inclusive amount
+        const taxableValue = amount / (1 + gstRate / 100);
+        const taxAmount = amount - taxableValue;
+        
+        totalTaxable += taxableValue;
+        totalTax += taxAmount;
+    });
+    
+    const grandTotal = totalTaxable + totalTax;
+    
+    document.getElementById('gstPurchaseTaxableValue').value = totalTaxable.toFixed(2);
+    document.getElementById('gstPurchaseTotalTax').value = totalTax.toFixed(2);
+    document.getElementById('gstPurchaseGrandTotal').value = grandTotal.toFixed(2);
+}
+
+function addGSTPurchase(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const vendorId = formData.get('vendorId');
+    const vendor = AppState.vendors.find(v => v.id === vendorId);
+    
+    if (!vendorId) {
+        showError('Please select a vendor for this purchase');
+        return;
+    }
+    
+    const gstEnabled = AppState.currentCompany.gstEnabled || false;
+    const isIntraState = gstEnabled && vendor ? isIntraStateTransaction(AppState.currentCompany.stateCode, vendor.stateCode) : false;
+    
+    const items = [];
+    const rows = document.querySelectorAll('#gstPurchaseItemsBody tr');
+    
+    rows.forEach((row, index) => {
+        const description = row.querySelector('.gst-purchase-description-input').value.trim();
+        const hsnCode = row.querySelector('.gst-purchase-hsn-input').value.trim();
+        const qty = parseFloat(row.querySelector('.gst-purchase-qty-input').value) || 0;
+        const rate = parseFloat(row.querySelector('.gst-purchase-rate-input').value) || 0;
+        const gstRate = parseFloat(row.querySelector('.gst-purchase-rate-select').value) || 0;
+        const amount = parseFloat(row.querySelector('.gst-purchase-amount-input').value) || 0;
+        
+        if (description && qty > 0 && rate >= 0) {
+            // Calculate GST for this item (Input Tax Credit)
+            const gstDetails = calculateGSTForItem(amount, gstRate, isIntraState);
+            
+            items.push({
+                serialNo: index + 1,
+                description: description,
+                hsnCode: hsnCode,
+                quantity: qty,
+                rate: rate,
+                gstRate: gstRate,
+                amount: amount,
+                gstDetails: gstDetails
+            });
+        }
+    });
+    
+    if (items.length === 0) {
+        showError('Please add at least one item to the purchase');
+        return;
+    }
+    
+    const total = parseFloat(document.getElementById('gstPurchaseGrandTotal').value) || 0;
+    
+    const purchase = {
+        id: generateId(),
+        purchaseNo: formData.get('purchaseNo'),
+        date: formData.get('date'),
+        vendorId: vendorId,
+        items: items,
+        total: total,
+        description: formData.get('description'),
+        status: 'Unpaid',
+        gstEnabled: true,
+        isIntraState: isIntraState,
+        isGSTDirectPurchase: true, // Flag to indicate this is a direct GST purchase
+        createdAt: new Date().toISOString()
+    };
+    
+    // Calculate and store GST summary for purchases (Input Tax Credit)
+    const gstSummary = calculatePurchaseGST(purchase, AppState.currentCompany, vendor);
+    purchase.gstSummary = gstSummary;
+    
+    AppState.purchases.push(purchase);
+    saveCompanyData();
+    loadPurchases();
+    updateDashboard();
+    closeModal();
+    showSuccess('GST Purchase entry created successfully!');
+}
+
+// Calculate GST summary for purchases (Input Tax Credit)
+function calculatePurchaseGST(purchase, company, vendor) {
+    if (!company.gstEnabled) {
+        return {
+            subtotal: purchase.total || 0,
+            totalTaxableValue: purchase.total || 0,
+            totalCGST: 0,
+            totalSGST: 0,
+            totalIGST: 0,
+            totalInputTax: 0,
+            grandTotal: purchase.total || 0,
+            isIntraState: false
+        };
+    }
+    
+    const isIntraState = isIntraStateTransaction(company.stateCode, vendor.stateCode);
+    
+    let totalTaxableValue = 0;
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+    
+    // Calculate GST for each item (Input Tax Credit)
+    if (purchase.items && purchase.items.length > 0) {
+        purchase.items.forEach(item => {
+            if (item.gstDetails) {
+                const gst = item.gstDetails;
+                totalTaxableValue += gst.taxableValue;
+                totalCGST += gst.cgst;
+                totalSGST += gst.sgst;
+                totalIGST += gst.igst;
+            } else {
+                totalTaxableValue += item.amount;
+            }
+        });
+    }
+    
+    const totalInputTax = totalCGST + totalSGST + totalIGST;
+    const grandTotal = totalTaxableValue + totalInputTax;
+    
+    return {
+        subtotal: purchase.total || 0,
+        totalTaxableValue: totalTaxableValue,
+        totalCGST: totalCGST,
+        totalSGST: totalSGST,
+        totalIGST: totalIGST,
+        totalInputTax: totalInputTax,
+        grandTotal: grandTotal,
+        isIntraState: isIntraState
+    };
 }
 
 function editPurchase(purchaseId) {
