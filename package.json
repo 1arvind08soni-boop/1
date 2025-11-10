@@ -60,5 +60,9 @@
       "installerHeaderIcon": "icon.ico",
       "license": "LICENSE.txt"
     }
+  },
+  "dependencies": {
+    "googleapis": "^165.0.0",
+    "node-cron": "^4.2.1"
   }
 }

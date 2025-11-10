@@ -378,10 +378,22 @@
                     <div class="settings-section">
                         <h3>Data Management</h3>
                         <button class="btn btn-secondary" onclick="backupData()">
-                            <i class="fas fa-download"></i> Backup Data
+                            <i class="fas fa-download"></i> Backup Data (Local)
                         </button>
                         <button class="btn btn-secondary" onclick="restoreData()">
-                            <i class="fas fa-upload"></i> Restore Data
+                            <i class="fas fa-upload"></i> Restore Data (Local)
+                        </button>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Google Drive Backup</h3>
+                        <button class="btn btn-primary" onclick="showGoogleDriveSettings()">
+                            <i class="fab fa-google-drive"></i> Configure Google Drive
+                        </button>
+                        <button class="btn btn-success" onclick="backupToGoogleDrive()">
+                            <i class="fas fa-cloud-upload-alt"></i> Backup to Google Drive
+                        </button>
+                        <button class="btn btn-info" onclick="showGoogleDriveBackups()">
+                            <i class="fas fa-cloud-download-alt"></i> Restore from Google Drive
                         </button>
                     </div>
                 </div>

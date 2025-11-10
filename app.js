@@ -7590,6 +7590,440 @@ function restoreData() {
     input.click();
 }
 
+// Google Drive Configuration and State
+let gdriveCredentials = null;
+let gdriveAuthenticated = false;
+
+// Check Google Drive authentication status on load
+async function checkGoogleDriveAuth() {
+    if (window.electronAPI && window.electronAPI.gdriveCheckAuth) {
+        const result = await window.electronAPI.gdriveCheckAuth();
+        if (result.success) {
+            gdriveAuthenticated = result.authenticated;
+        }
+    }
+}
+
+// Show Google Drive Settings Modal
+async function showGoogleDriveSettings() {
+    // Check authentication status
+    await checkGoogleDriveAuth();
+    
+    // Load current settings
+    let settings = {
+        folderId: '',
+        schedule: 'manual',
+        scheduleTime: '00:00',
+        enabled: false
+    };
+    
+    if (window.electronAPI && window.electronAPI.gdriveGetSettings) {
+        const result = await window.electronAPI.gdriveGetSettings();
+        if (result.success) {
+            settings = result.settings;
+        }
+    }
+    
+    const authStatus = gdriveAuthenticated ? 
+        '<span style="color: green;"><i class="fas fa-check-circle"></i> Authenticated</span>' : 
+        '<span style="color: red;"><i class="fas fa-times-circle"></i> Not Authenticated</span>';
+    
+    const content = `
+        <div class="form-group">
+            <label>Authentication Status:</label>
+            <p>${authStatus}</p>
+        </div>
+        
+        ${!gdriveAuthenticated ? `
+        <div class="form-group">
+            <label>Step 1: Upload OAuth2 Credentials JSON</label>
+            <p style="font-size: 0.9em; color: #666;">
+                Get your OAuth2 credentials from Google Cloud Console:
+                <br>1. Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>
+                <br>2. Create/Select a project
+                <br>3. Enable Google Drive API
+                <br>4. Create OAuth 2.0 Client ID credentials (Desktop app)
+                <br>5. Download the JSON file
+            </p>
+            <input type="file" id="credentialsFile" accept=".json" style="margin-top: 10px;">
+            <button class="btn btn-secondary" onclick="uploadGoogleCredentials()" style="margin-top: 10px;">
+                <i class="fas fa-upload"></i> Upload Credentials
+            </button>
+        </div>
+        
+        <div class="form-group" id="authSection" style="display: none;">
+            <label>Step 2: Authenticate with Google</label>
+            <button class="btn btn-primary" onclick="authenticateGoogleDrive()">
+                <i class="fab fa-google"></i> Authenticate with Google Drive
+            </button>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                A browser window will open. Sign in and authorize the app, then paste the authorization code below.
+            </p>
+            <input type="text" id="authCode" placeholder="Paste authorization code here" style="margin-top: 10px; width: 100%;">
+            <button class="btn btn-success" onclick="submitAuthCode()" style="margin-top: 10px;">
+                <i class="fas fa-check"></i> Submit Code
+            </button>
+        </div>
+        ` : ''}
+        
+        <div class="form-group">
+            <label for="gdriveFolderId">Google Drive Folder ID (Optional):</label>
+            <input type="text" id="gdriveFolderId" value="${settings.folderId}" placeholder="Leave empty for root folder">
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                To backup to a specific folder, paste the folder ID from its URL:<br>
+                https://drive.google.com/drive/folders/<strong>FOLDER_ID_HERE</strong>
+            </p>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="gdriveEnabled" ${settings.enabled ? 'checked' : ''}>
+                Enable Automatic Backup
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label for="gdriveSchedule">Backup Schedule:</label>
+            <select id="gdriveSchedule" ${!settings.enabled ? 'disabled' : ''}>
+                <option value="manual" ${settings.schedule === 'manual' ? 'selected' : ''}>Manual Only</option>
+                <option value="daily" ${settings.schedule === 'daily' ? 'selected' : ''}>Daily</option>
+                <option value="weekly" ${settings.schedule === 'weekly' ? 'selected' : ''}>Weekly</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="gdriveScheduleTime">Backup Time:</label>
+            <input type="time" id="gdriveScheduleTime" value="${settings.scheduleTime}" ${!settings.enabled ? 'disabled' : ''}>
+        </div>
+        
+        <div class="form-actions">
+            <button class="btn btn-success" onclick="saveGoogleDriveSettings()">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+            <button class="btn btn-secondary" onclick="closeModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+        
+        <script>
+            document.getElementById('gdriveEnabled').addEventListener('change', function(e) {
+                const enabled = e.target.checked;
+                document.getElementById('gdriveSchedule').disabled = !enabled;
+                document.getElementById('gdriveScheduleTime').disabled = !enabled;
+            });
+        </script>
+    `;
+    
+    const modal = createModal('Google Drive Settings', content, 'modal-large');
+    showModal(modal);
+}
+
+// Upload Google Credentials
+async function uploadGoogleCredentials() {
+    const fileInput = document.getElementById('credentialsFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showError('Please select a credentials file');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const credentials = JSON.parse(e.target.result);
+            
+            // Validate credentials structure
+            if (!credentials.installed && !credentials.web) {
+                showError('Invalid credentials file format');
+                return;
+            }
+            
+            // Save credentials
+            if (window.electronAPI && window.electronAPI.gdriveSaveCredentials) {
+                const result = await window.electronAPI.gdriveSaveCredentials(credentials);
+                if (result.success) {
+                    gdriveCredentials = credentials;
+                    showSuccess('Credentials uploaded successfully');
+                    document.getElementById('authSection').style.display = 'block';
+                } else {
+                    showError('Failed to save credentials: ' + result.error);
+                }
+            }
+        } catch (error) {
+            showError('Invalid JSON file');
+        }
+    };
+    
+    reader.readAsText(file);
+}
+
+// Authenticate with Google Drive
+async function authenticateGoogleDrive() {
+    if (!gdriveCredentials) {
+        showError('Please upload credentials first');
+        return;
+    }
+    
+    if (window.electronAPI && window.electronAPI.gdriveGetAuthUrl) {
+        const result = await window.electronAPI.gdriveGetAuthUrl(gdriveCredentials);
+        if (result.success) {
+            // Open auth URL in default browser
+            window.open(result.authUrl, '_blank');
+            showInfo('Please authorize the app in your browser and paste the code below');
+        } else {
+            showError('Failed to generate auth URL: ' + result.error);
+        }
+    }
+}
+
+// Submit Auth Code
+async function submitAuthCode() {
+    const code = document.getElementById('authCode').value.trim();
+    
+    if (!code) {
+        showError('Please enter the authorization code');
+        return;
+    }
+    
+    if (!gdriveCredentials) {
+        showError('Credentials not found');
+        return;
+    }
+    
+    if (window.electronAPI && window.electronAPI.gdriveSetToken) {
+        const result = await window.electronAPI.gdriveSetToken(gdriveCredentials, code);
+        if (result.success) {
+            gdriveAuthenticated = true;
+            showSuccess('Successfully authenticated with Google Drive!');
+            closeModal();
+            showGoogleDriveSettings();
+        } else {
+            showError('Authentication failed: ' + result.error);
+        }
+    }
+}
+
+// Save Google Drive Settings
+async function saveGoogleDriveSettings() {
+    const settings = {
+        folderId: document.getElementById('gdriveFolderId').value.trim(),
+        schedule: document.getElementById('gdriveSchedule').value,
+        scheduleTime: document.getElementById('gdriveScheduleTime').value,
+        enabled: document.getElementById('gdriveEnabled').checked
+    };
+    
+    if (window.electronAPI && window.electronAPI.gdriveSaveSettings) {
+        const result = await window.electronAPI.gdriveSaveSettings(settings);
+        if (result.success) {
+            showSuccess('Settings saved successfully');
+            closeModal();
+        } else {
+            showError('Failed to save settings: ' + result.error);
+        }
+    }
+}
+
+// Backup to Google Drive
+async function backupToGoogleDrive() {
+    await checkGoogleDriveAuth();
+    
+    if (!gdriveAuthenticated) {
+        showError('Please configure and authenticate Google Drive first');
+        return;
+    }
+    
+    const data = {
+        company: AppState.currentCompany,
+        products: AppState.products,
+        clients: AppState.clients,
+        vendors: AppState.vendors,
+        invoices: AppState.invoices,
+        purchases: AppState.purchases,
+        payments: AppState.payments,
+        financialYears: AppState.financialYears,
+        currentFinancialYear: AppState.currentFinancialYear,
+        exportDate: new Date().toISOString()
+    };
+    
+    const json = JSON.stringify(data, null, 2);
+    const filename = `backup_${AppState.currentCompany.name}_${new Date().toISOString().split('T')[0]}.json`;
+    
+    if (window.electronAPI && window.electronAPI.gdriveUploadBackup) {
+        showInfo('Uploading backup to Google Drive...');
+        const result = await window.electronAPI.gdriveUploadBackup(filename, json);
+        
+        if (result.success) {
+            showSuccess(`Backup uploaded successfully to Google Drive!<br>File: ${result.fileName}`);
+        } else {
+            showError('Failed to upload backup: ' + result.error);
+        }
+    }
+}
+
+// Show Google Drive Backups for Restore
+async function showGoogleDriveBackups() {
+    await checkGoogleDriveAuth();
+    
+    if (!gdriveAuthenticated) {
+        showError('Please configure and authenticate Google Drive first');
+        return;
+    }
+    
+    if (window.electronAPI && window.electronAPI.gdriveListBackups) {
+        showInfo('Loading backups from Google Drive...');
+        const result = await window.electronAPI.gdriveListBackups();
+        
+        if (result.success) {
+            if (result.files.length === 0) {
+                showError('No backups found in Google Drive');
+                return;
+            }
+            
+            const filesList = result.files.map(file => {
+                const date = new Date(file.createdTime).toLocaleString();
+                const size = (file.size / 1024).toFixed(2) + ' KB';
+                return `
+                    <tr>
+                        <td>${file.name}</td>
+                        <td>${date}</td>
+                        <td>${size}</td>
+                        <td>
+                            <button class="btn btn-success btn-sm" onclick="restoreFromGoogleDrive('${file.id}', '${file.name}')">
+                                <i class="fas fa-download"></i> Restore
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteGoogleDriveBackup('${file.id}', '${file.name}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const content = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>Created Date</th>
+                            <th>Size</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filesList}
+                    </tbody>
+                </table>
+            `;
+            
+            const modal = createModal('Google Drive Backups', content, 'modal-large');
+            showModal(modal);
+        } else {
+            showError('Failed to load backups: ' + result.error);
+        }
+    }
+}
+
+// Restore from Google Drive
+async function restoreFromGoogleDrive(fileId, fileName) {
+    const confirmed = await showConfirm(
+        `This will replace all current data with the backup: ${fileName}. Are you sure?`,
+        {
+            title: 'Restore from Google Drive',
+            confirmText: 'Restore',
+            confirmClass: 'btn-danger'
+        }
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    if (window.electronAPI && window.electronAPI.gdriveDownloadBackup) {
+        showInfo('Downloading backup from Google Drive...');
+        const result = await window.electronAPI.gdriveDownloadBackup(fileId);
+        
+        if (result.success) {
+            try {
+                const data = JSON.parse(result.content);
+                
+                AppState.products = data.products || [];
+                AppState.clients = data.clients || [];
+                AppState.vendors = data.vendors || [];
+                AppState.invoices = data.invoices || [];
+                AppState.purchases = data.purchases || [];
+                AppState.payments = data.payments || [];
+                
+                // Handle both old and new backup formats
+                if (data.financialYears) {
+                    AppState.financialYears = data.financialYears;
+                    AppState.currentFinancialYear = data.currentFinancialYear || AppState.financialYears.find(fy => fy.isCurrent);
+                } else if (data.financialYear) {
+                    // Old format - create FY from string
+                    const fyName = data.financialYear;
+                    const fy = createDefaultFinancialYear();
+                    fy.name = fyName;
+                    AppState.financialYears = [fy];
+                    AppState.currentFinancialYear = fy;
+                } else {
+                    // No FY data - create default
+                    const fy = createDefaultFinancialYear();
+                    AppState.financialYears = [fy];
+                    AppState.currentFinancialYear = fy;
+                }
+                
+                saveCompanyData();
+                showSuccess('Data restored successfully from Google Drive!');
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showError('Failed to parse backup file: ' + error.message);
+            }
+        } else {
+            showError('Failed to download backup: ' + result.error);
+        }
+    }
+}
+
+// Delete Google Drive Backup
+async function deleteGoogleDriveBackup(fileId, fileName) {
+    const confirmed = await showConfirm(
+        `Are you sure you want to delete the backup: ${fileName}?`,
+        {
+            title: 'Delete Backup',
+            confirmText: 'Delete',
+            confirmClass: 'btn-danger'
+        }
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    if (window.electronAPI && window.electronAPI.gdriveDeleteBackup) {
+        const result = await window.electronAPI.gdriveDeleteBackup(fileId);
+        
+        if (result.success) {
+            showSuccess('Backup deleted successfully');
+            closeModal();
+            showGoogleDriveBackups(); // Refresh list
+        } else {
+            showError('Failed to delete backup: ' + result.error);
+        }
+    }
+}
+
+// Listen for automatic backup trigger
+if (window.electronAPI && window.electronAPI.onPerformAutoBackup) {
+    window.electronAPI.onPerformAutoBackup(() => {
+        backupToGoogleDrive();
+    });
+}
+
+// Check Google Drive auth on page load
+document.addEventListener('DOMContentLoaded', () => {
+    checkGoogleDriveAuth();
+});
+
 // Modal Management
 function createModal(title, content, size = '') {
     return `
