@@ -8417,6 +8417,72 @@ function showSuccess(message) {
     }, 3000);
 }
 
+// Show Info Notification
+function showInfo(message) {
+    const notificationContainer = getOrCreateNotificationContainer();
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'info-notification';
+    notification.style.backgroundColor = '#d1ecf1';
+    notification.style.color = '#0c5460';
+    notification.style.border = '1px solid #bee5eb';
+    notification.style.padding = '15px 20px';
+    notification.style.borderRadius = '6px';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.style.display = 'flex';
+    notification.style.alignItems = 'center';
+    notification.style.justifyContent = 'space-between';
+    notification.style.gap = '10px';
+    notification.style.animation = 'slideInRight 0.3s ease-out';
+    
+    // Create content wrapper
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.display = 'flex';
+    contentWrapper.style.alignItems = 'center';
+    contentWrapper.style.gap = '10px';
+    contentWrapper.style.flex = '1';
+    
+    // Create icon
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-info-circle';
+    icon.style.fontSize = '20px';
+    
+    // Create message span (using innerHTML for formatted messages)
+    const messageSpan = document.createElement('span');
+    messageSpan.style.flex = '1';
+    messageSpan.innerHTML = message;
+    
+    contentWrapper.appendChild(icon);
+    contentWrapper.appendChild(messageSpan);
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.style.background = 'none';
+    closeButton.style.border = 'none';
+    closeButton.style.color = '#0c5460';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.fontSize = '18px';
+    closeButton.style.padding = '0';
+    closeButton.style.lineHeight = '1';
+    const closeIcon = document.createElement('i');
+    closeIcon.className = 'fas fa-times';
+    closeButton.appendChild(closeIcon);
+    closeButton.addEventListener('click', () => notification.remove());
+    
+    notification.appendChild(contentWrapper);
+    notification.appendChild(closeButton);
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 4000);
+}
+
 // Inline Modal Management (for nested modals)
 function showInlineModal(modalHTML) {
     // Check if there's already a modal open
