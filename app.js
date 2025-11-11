@@ -7716,12 +7716,8 @@ async function simpleGoogleAuth() {
         if (result.success) {
             // Check if auth URL is valid (contains oauth2/auth)
             if (!result.authUrl || !result.authUrl.includes('oauth2/auth')) {
-                showError(
-                    'Google Drive is not configured yet!<br><br>' +
-                    '<strong>For Developers:</strong><br>' +
-                    'Please configure OAuth credentials in main.js<br>' +
-                    'See DEVELOPER-SETUP-INSTRUCTIONS.md for details.'
-                );
+                // Show helpful setup guide
+                showGoogleDriveSetupGuide();
                 return;
             }
             
@@ -7742,6 +7738,175 @@ async function simpleGoogleAuth() {
             }
         } else {
             showError('Failed to start authentication: ' + result.error);
+        }
+    }
+}
+
+// Show setup guide for Google Drive
+function showGoogleDriveSetupGuide() {
+    const content = `
+        <div style="padding: 20px;">
+            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <h4 style="margin-top: 0; color: #856404;">
+                    <i class="fas fa-exclamation-triangle"></i> Google Drive Not Configured
+                </h4>
+                <p style="margin-bottom: 0; color: #856404;">
+                    The app needs to be configured with Google Drive credentials before you can use cloud backup.
+                </p>
+            </div>
+            
+            <h4>What You Need to Do:</h4>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <h5 style="margin-top: 0;">Option 1: Contact the Developer</h5>
+                <p>Ask the person who gave you this app to configure Google Drive credentials. They need to:</p>
+                <ol style="margin-bottom: 0;">
+                    <li>Get OAuth credentials from Google Cloud Console</li>
+                    <li>Update the credentials in the app</li>
+                    <li>Rebuild and redistribute the app to you</li>
+                </ol>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <h5 style="margin-top: 0;">Option 2: Set Up Your Own (Advanced)</h5>
+                <p>If you're comfortable with technical setup, you can configure your own Google Drive credentials:</p>
+                <button class="btn btn-info" onclick="showDetailedSetupSteps()">
+                    <i class="fas fa-book"></i> Show Detailed Setup Steps
+                </button>
+            </div>
+            
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 5px;">
+                <h5 style="margin-top: 0; color: #004085;">
+                    <i class="fas fa-info-circle"></i> Why is this needed?
+                </h5>
+                <p style="margin-bottom: 0; color: #004085;">
+                    Google Drive requires OAuth2 authentication for security. This app needs valid credentials
+                    to connect to your Google account. This is a one-time setup that allows secure, private
+                    access to your own Google Drive.
+                </p>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeModal()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const modal = createModal('Google Drive Setup Required', content, 'modal-large');
+    showModal(modal);
+}
+
+// Show detailed setup steps
+function showDetailedSetupSteps() {
+    const content = `
+        <div style="padding: 20px;">
+            <h4>Step-by-Step Setup Guide</h4>
+            <p>Follow these steps to configure Google Drive for this application:</p>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 5px;">
+                <h5>Step 1: Go to Google Cloud Console</h5>
+                <ol>
+                    <li>Visit <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a></li>
+                    <li>Sign in with your Google account</li>
+                    <li>Click "Select a project" → "New Project"</li>
+                    <li>Enter project name: "Billing Backup" (or any name)</li>
+                    <li>Click "Create"</li>
+                </ol>
+                
+                <h5>Step 2: Enable Google Drive API</h5>
+                <ol>
+                    <li>In your project, go to "APIs & Services" → "Library"</li>
+                    <li>Search for "Google Drive API"</li>
+                    <li>Click on it and click "Enable"</li>
+                </ol>
+                
+                <h5>Step 3: Create OAuth Credentials</h5>
+                <ol>
+                    <li>Go to "APIs & Services" → "Credentials"</li>
+                    <li>Click "Create Credentials" → "OAuth client ID"</li>
+                    <li>Configure consent screen if prompted (External, add your email)</li>
+                    <li>Application type: Select <strong>"Desktop app"</strong></li>
+                    <li>Name: "Desktop Client"</li>
+                    <li>Click "Create"</li>
+                    <li>Copy your <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                </ol>
+                
+                <h5>Step 4: Upload Credentials to App</h5>
+                <p>You can now upload your credentials:</p>
+                <div style="margin: 15px 0;">
+                    <label style="display: block; margin-bottom: 10px;">
+                        <strong>Client ID:</strong>
+                        <input type="text" id="setupClientId" placeholder="xxxxx.apps.googleusercontent.com" 
+                               style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                    </label>
+                    <label style="display: block; margin-bottom: 10px;">
+                        <strong>Client Secret:</strong>
+                        <input type="text" id="setupClientSecret" placeholder="GOCSPX-xxxxx" 
+                               style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                    </label>
+                    <button class="btn btn-success" onclick="saveUserCredentials()">
+                        <i class="fas fa-save"></i> Save and Connect
+                    </button>
+                </div>
+                
+                <div style="background: #fff3cd; padding: 10px; border-radius: 3px; margin-top: 15px;">
+                    <strong>Note:</strong> These credentials will be saved on your computer only and used to connect to your Google Drive.
+                </div>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="showGoogleDriveSetupGuide()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const modal = createModal('Detailed Setup Instructions', content, 'modal-large');
+    showModal(modal);
+}
+
+// Save user-provided credentials
+async function saveUserCredentials() {
+    const clientId = document.getElementById('setupClientId').value.trim();
+    const clientSecret = document.getElementById('setupClientSecret').value.trim();
+    
+    if (!clientId || !clientSecret) {
+        showError('Please enter both Client ID and Client Secret');
+        return;
+    }
+    
+    // Validate format
+    if (!clientId.includes('.apps.googleusercontent.com')) {
+        showError('Invalid Client ID format. Should end with .apps.googleusercontent.com');
+        return;
+    }
+    
+    // Create credentials object
+    const credentials = {
+        installed: {
+            client_id: clientId,
+            project_id: "user-configured",
+            auth_uri: "https://accounts.google.com/o/oauth2/auth",
+            token_uri: "https://oauth2.googleapis.com/token",
+            auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+            client_secret: clientSecret,
+            redirect_uris: ["http://localhost"]
+        }
+    };
+    
+    // Save credentials
+    if (window.electronAPI && window.electronAPI.gdriveSaveCredentials) {
+        const result = await window.electronAPI.gdriveSaveCredentials(credentials);
+        if (result.success) {
+            showSuccess('Credentials saved successfully! You can now sign in with Google.');
+            closeModal();
+            // Reopen settings to try authentication
+            setTimeout(() => showGoogleDriveSettings(), 500);
+        } else {
+            showError('Failed to save credentials: ' + result.error);
         }
     }
 }
