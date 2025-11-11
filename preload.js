@@ -25,5 +25,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('save-to-custom-path', { content, filename, customPath }),
     
     printInvoice: (html, pageSize, marginType) => 
-        ipcRenderer.invoke('print-invoice', { html, pageSize, marginType })
+        ipcRenderer.invoke('print-invoice', { html, pageSize, marginType }),
+    
+    autoBackupOnClose: (data, companyName) => 
+        ipcRenderer.invoke('auto-backup-on-close', { data, companyName }),
+    
+    onAppClosing: (callback) => 
+        ipcRenderer.on('app-closing', callback)
 });

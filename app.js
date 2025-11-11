@@ -16,7 +16,13 @@ const AppState = {
         invoiceTemplate: 'modern',
         printSize: 'a4',
         reportTemplate: 'modern',
-        customTemplates: {}
+        customTemplates: {},
+        autoBackup: {
+            enabled: false,
+            frequency: 'daily', // 'daily', 'weekly', or 'manual'
+            lastBackupDate: null,
+            backupOnClose: true
+        }
     }
 };
 
@@ -38,6 +44,13 @@ function getProductDisplay(item) {
 document.addEventListener('DOMContentLoaded', function() {
     loadFromStorage();
     initializeApp();
+    
+    // Setup app closing listener for auto-backup
+    if (window.electronAPI && window.electronAPI.onAppClosing) {
+        window.electronAPI.onAppClosing(() => {
+            performBackupOnClose();
+        });
+    }
 });
 
 // Storage Management
@@ -46,7 +59,21 @@ function loadFromStorage() {
     if (stored) {
         const data = JSON.parse(stored);
         AppState.companies = data.companies || [];
-        AppState.settings = data.settings || AppState.settings;
+        // Merge settings to preserve new default properties like autoBackup
+        if (data.settings) {
+            AppState.settings = {
+                ...AppState.settings,
+                ...data.settings,
+                // Ensure autoBackup has all default properties
+                autoBackup: {
+                    enabled: false,
+                    frequency: 'daily',
+                    lastBackupDate: null,
+                    backupOnClose: true,
+                    ...(data.settings.autoBackup || {})
+                }
+            };
+        }
     }
 }
 
@@ -118,6 +145,9 @@ function saveCompanyData() {
         currentFinancialYear: AppState.currentFinancialYear
     };
     localStorage.setItem(companyKey, JSON.stringify(data));
+    
+    // Check if auto-backup is needed
+    performAutoBackup();
 }
 
 function getCurrentFinancialYear() {
@@ -7504,6 +7534,84 @@ async function importCustomTemplate() {
     }
 }
 
+function showAutoBackupSettings() {
+    if (!AppState.currentCompany) {
+        showError('Please select a company first');
+        return;
+    }
+
+    const settings = AppState.settings.autoBackup;
+    
+    const modal = createModal('Auto-Backup Settings', `
+        <form id="autoBackupSettingsForm" onsubmit="updateAutoBackupSettings(event)">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enabled" ${settings.enabled ? 'checked' : ''}>
+                    Enable Auto-Backup
+                </label>
+                <small class="form-text text-muted">Automatically backup company data based on schedule</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Backup Frequency *</label>
+                <select class="form-control" name="frequency" required>
+                    <option value="daily" ${settings.frequency === 'daily' ? 'selected' : ''}>Daily</option>
+                    <option value="weekly" ${settings.frequency === 'weekly' ? 'selected' : ''}>Weekly</option>
+                    <option value="manual" ${settings.frequency === 'manual' ? 'selected' : ''}>Manual Only</option>
+                </select>
+                <small class="form-text text-muted">How often should automatic backups be performed</small>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="backupOnClose" ${settings.backupOnClose ? 'checked' : ''}>
+                    Backup on Application Close
+                </label>
+                <small class="form-text text-muted">Create a backup when closing the application</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Last Backup</label>
+                <input type="text" class="form-control" value="${settings.lastBackupDate ? new Date(settings.lastBackupDate).toLocaleString() : 'Never'}" readonly>
+            </div>
+            
+            <div class="alert alert-info" style="margin-top: 1rem; padding: 0.75rem; background: #e3f2fd; border: 1px solid #2196F3; border-radius: 4px;">
+                <i class="fas fa-info-circle"></i> <strong>Note:</strong>
+                <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                    <li>Backups are automatically saved to your Downloads folder</li>
+                    <li>Each backup is specific to the current company</li>
+                    <li>Daily backups run once per day on first data change</li>
+                    <li>Weekly backups run once per week on first data change</li>
+                </ul>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    `);
+    
+    document.getElementById('modalContainer').innerHTML = modal;
+}
+
+function updateAutoBackupSettings(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    AppState.settings.autoBackup = {
+        enabled: formData.get('enabled') === 'on',
+        frequency: formData.get('frequency'),
+        backupOnClose: formData.get('backupOnClose') === 'on',
+        lastBackupDate: AppState.settings.autoBackup.lastBackupDate
+    };
+    
+    saveToStorage();
+    showSuccess('Auto-backup settings updated successfully');
+    closeModal();
+}
+
 function backupData() {
     const data = {
         company: AppState.currentCompany,
@@ -7527,7 +7635,92 @@ function backupData() {
     a.click();
     window.URL.revokeObjectURL(url);
     
+    // Update last backup date
+    AppState.settings.autoBackup.lastBackupDate = new Date().toISOString();
+    saveToStorage();
+    
     showSuccess('Backup created successfully');
+}
+
+function shouldPerformAutoBackup() {
+    if (!AppState.currentCompany) {
+        return false;
+    }
+    
+    const settings = AppState.settings.autoBackup;
+    
+    if (!settings.enabled || settings.frequency === 'manual') {
+        return false;
+    }
+    
+    if (!settings.lastBackupDate) {
+        return true; // Never backed up before
+    }
+    
+    const lastBackup = new Date(settings.lastBackupDate);
+    const now = new Date();
+    const hoursSinceBackup = (now - lastBackup) / (1000 * 60 * 60);
+    
+    if (settings.frequency === 'daily' && hoursSinceBackup >= 24) {
+        return true;
+    }
+    
+    if (settings.frequency === 'weekly' && hoursSinceBackup >= 168) { // 7 days * 24 hours
+        return true;
+    }
+    
+    return false;
+}
+
+function performAutoBackup() {
+    if (shouldPerformAutoBackup()) {
+        console.log('Auto-backup: Creating scheduled backup...');
+        backupData();
+    }
+}
+
+async function performBackupOnClose() {
+    if (!AppState.currentCompany) {
+        return;
+    }
+    
+    const settings = AppState.settings.autoBackup;
+    
+    // Check if backup on close is enabled
+    if (!settings.enabled || !settings.backupOnClose) {
+        return;
+    }
+    
+    try {
+        console.log('Auto-backup: Creating backup on close...');
+        
+        const data = {
+            company: AppState.currentCompany,
+            products: AppState.products,
+            clients: AppState.clients,
+            vendors: AppState.vendors,
+            invoices: AppState.invoices,
+            purchases: AppState.purchases,
+            payments: AppState.payments,
+            financialYears: AppState.financialYears,
+            currentFinancialYear: AppState.currentFinancialYear,
+            exportDate: new Date().toISOString()
+        };
+        
+        if (window.electronAPI && window.electronAPI.autoBackupOnClose) {
+            const result = await window.electronAPI.autoBackupOnClose(data, AppState.currentCompany.name);
+            
+            if (result.success) {
+                console.log('Auto-backup: Backup created successfully at', result.filePath);
+                AppState.settings.autoBackup.lastBackupDate = new Date().toISOString();
+                saveToStorage();
+            } else {
+                console.error('Auto-backup: Failed to create backup:', result.error);
+            }
+        }
+    } catch (error) {
+        console.error('Auto-backup: Error during backup on close:', error);
+    }
 }
 
 function restoreData() {
