@@ -7505,6 +7505,12 @@ async function importCustomTemplate() {
 }
 
 function backupData() {
+    // Verify company is selected
+    if (!AppState.currentCompany) {
+        showError('Please select a company first');
+        return;
+    }
+    
     const data = {
         company: AppState.currentCompany,
         products: AppState.products,
@@ -7527,7 +7533,7 @@ function backupData() {
     a.click();
     window.URL.revokeObjectURL(url);
     
-    showSuccess('Backup created successfully');
+    showSuccess(`Backup created successfully for <strong>${AppState.currentCompany.name}</strong>`);
 }
 
 function restoreData() {
@@ -7708,6 +7714,17 @@ async function simpleGoogleAuth() {
         
         const result = await window.electronAPI.gdriveGetAuthUrl();
         if (result.success) {
+            // Check if auth URL is valid (contains oauth2/auth)
+            if (!result.authUrl || !result.authUrl.includes('oauth2/auth')) {
+                showError(
+                    'Google Drive is not configured yet!<br><br>' +
+                    '<strong>For Developers:</strong><br>' +
+                    'Please configure OAuth credentials in main.js<br>' +
+                    'See DEVELOPER-SETUP-INSTRUCTIONS.md for details.'
+                );
+                return;
+            }
+            
             // Open auth URL in default browser
             window.open(result.authUrl, '_blank');
             
@@ -7830,6 +7847,34 @@ async function backupToGoogleDrive() {
         return;
     }
     
+    // Verify company is selected
+    if (!AppState.currentCompany) {
+        showError('Please select a company first');
+        return;
+    }
+    
+    // Get confirmation that user wants to backup current company only
+    const companyName = AppState.currentCompany.name;
+    const confirmed = await showConfirm(
+        `This will backup data for <strong>${companyName}</strong> only.<br><br>` +
+        'The backup will include:<br>' +
+        '- Products<br>' +
+        '- Clients & Vendors<br>' +
+        '- Invoices & Purchases<br>' +
+        '- Payments<br>' +
+        '- Financial Years<br><br>' +
+        'Do you want to continue?',
+        {
+            title: 'Backup Current Company',
+            confirmText: 'Backup',
+            confirmClass: 'btn-primary'
+        }
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
     const data = {
         company: AppState.currentCompany,
         products: AppState.products,
@@ -7851,7 +7896,7 @@ async function backupToGoogleDrive() {
         const result = await window.electronAPI.gdriveUploadBackup(filename, json);
         
         if (result.success) {
-            showSuccess(`Backup uploaded successfully to Google Drive!<br>File: ${result.fileName}`);
+            showSuccess(`Backup uploaded successfully to Google Drive!<br>Company: <strong>${companyName}</strong><br>File: ${result.fileName}`);
         } else {
             showError('Failed to upload backup: ' + result.error);
         }
