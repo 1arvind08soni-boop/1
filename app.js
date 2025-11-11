@@ -2848,10 +2848,16 @@ function viewInvoice(invoiceId) {
 }
 
 function showPrintPreviewModal(invoice, client) {
+    const company = AppState.currentCompany;
+    const taxEnabled = company.taxEnabled || false;
+    
     const modal = createModal('Invoice Preview', `
         <div id="printPreviewContent" class="print-preview-container" style="max-height: 500px; overflow-y: auto; border: 1px solid #ddd; background: white;"></div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            ${taxEnabled ? `<button type="button" class="btn btn-info" onclick="generateEWayBill()">
+                <i class="fas fa-truck"></i> E-Way Bill
+            </button>` : ''}
             <button type="button" class="btn btn-success" onclick="saveInvoiceToPDF()">
                 <i class="fas fa-save"></i> Save as PDF
             </button>
@@ -4362,6 +4368,363 @@ function generateGSTProfessionalInvoice(invoice, client, size = 'a4') {
             </div>
         </div>
     `;
+}
+
+// E-Way Bill Generation Functions
+function generateEWayBill() {
+    const invoice = window.invoicePreviewData ? window.invoicePreviewData.currentInvoice : null;
+    const client = window.invoicePreviewData ? window.invoicePreviewData.currentClient : null;
+    
+    if (!invoice || !client) {
+        alert('No invoice data available for E-Way Bill generation');
+        return;
+    }
+    
+    const company = AppState.currentCompany;
+    
+    // Calculate totals
+    const gstTotals = calculateInvoiceTotalsWithGST(invoice, client);
+    
+    // Show E-Way Bill form
+    const modal = createModal('Generate E-Way Bill', `
+        <div class="alert" style="background: #d4edda; border: 1px solid #c3e6cb; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+            <h4 style="margin: 0 0 0.5rem 0; color: #155724;">
+                <i class="fas fa-info-circle"></i> E-Way Bill Information
+            </h4>
+            <p style="margin: 0; color: #155724; font-size: 0.9em;">
+                E-Way Bill is required for movement of goods worth more than ₹50,000 within or across states in India.
+                This form helps you prepare data for e-way bill generation on the official GST portal.
+            </p>
+        </div>
+        
+        <form id="eWayBillForm" onsubmit="generateEWayBillDocument(event)">
+            <h4>Invoice Details (Auto-filled)</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Invoice Number</label>
+                    <input type="text" class="form-control" value="${invoice.invoiceNo}" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Invoice Date</label>
+                    <input type="text" class="form-control" value="${formatDate(invoice.date)}" readonly>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Invoice Value</label>
+                    <input type="text" class="form-control" value="₹${gstTotals.grandTotal.toFixed(2)}" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Supply Type</label>
+                    <select class="form-control" name="supplyType" required>
+                        <option value="O" ${gstTotals.isInterState ? '' : 'selected'}>Outward - Intra State</option>
+                        <option value="O" ${gstTotals.isInterState ? 'selected' : ''}>Outward - Inter State</option>
+                    </select>
+                </div>
+            </div>
+            
+            <h4 style="margin-top: 1.5rem;">Transport Details</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Transport Mode *</label>
+                    <select class="form-control" name="transportMode" required>
+                        <option value="1">Road</option>
+                        <option value="2">Rail</option>
+                        <option value="3">Air</option>
+                        <option value="4">Ship</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Approx. Distance (KM) *</label>
+                    <input type="number" class="form-control" name="distance" min="1" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Vehicle Number</label>
+                    <input type="text" class="form-control" name="vehicleNumber" placeholder="DL01AB1234">
+                    <small class="form-text text-muted">For road transport (if known)</small>
+                </div>
+                <div class="form-group">
+                    <label>Transporter ID (GSTIN)</label>
+                    <input type="text" class="form-control" name="transporterId" placeholder="29AABCT1332L1Z1">
+                    <small class="form-text text-muted">Optional</small>
+                </div>
+            </div>
+            
+            <h4 style="margin-top: 1.5rem;">Additional Details</h4>
+            <div class="form-group">
+                <label>Transaction Type *</label>
+                <select class="form-control" name="transactionType" required>
+                    <option value="1" selected>Regular</option>
+                    <option value="2">Bill To - Ship To</option>
+                    <option value="3">Bill From - Dispatch From</option>
+                    <option value="4">Combination of 2 and 3</option>
+                </select>
+            </div>
+            
+            <div class="alert" style="background: #fff3cd; border: 1px solid #ffc107; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #856404;">
+                    <i class="fas fa-exclamation-triangle"></i> Important Notes
+                </h4>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #856404; font-size: 0.9em;">
+                    <li>This generates an E-Way Bill summary document for your records</li>
+                    <li>You must still file the E-Way Bill on the official GST portal (ewaybillgst.gov.in)</li>
+                    <li>E-Way Bill is mandatory for goods movement above ₹50,000</li>
+                    <li>Ensure vehicle number is correct as it cannot be changed after generation</li>
+                </ul>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-file-alt"></i> Generate E-Way Bill Document
+                </button>
+            </div>
+        </form>
+    `, 'modal-lg');
+    
+    showModal(modal);
+}
+
+function generateEWayBillDocument(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const invoice = window.invoicePreviewData.currentInvoice;
+    const client = window.invoicePreviewData.currentClient;
+    const company = AppState.currentCompany;
+    const gstTotals = calculateInvoiceTotalsWithGST(invoice, client);
+    
+    // Create E-Way Bill document HTML
+    const eWayBillHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <title>E-Way Bill - ${invoice.invoiceNo}</title>
+    <meta charset="UTF-8">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 2rem;
+            font-size: 0.9em;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #333;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        .section {
+            margin-bottom: 1.5rem;
+            border: 1px solid #333;
+            padding: 1rem;
+        }
+        .section h3 {
+            margin-top: 0;
+            background: #2c3e50;
+            color: white;
+            padding: 0.5rem;
+            margin: -1rem -1rem 1rem -1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+        table td:first-child {
+            font-weight: bold;
+            width: 40%;
+        }
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #333;
+            text-align: center;
+            color: #666;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>E-WAY BILL DATA SHEET</h1>
+        <p style="color: #666; margin: 0.5rem 0 0 0;">For submission to GST Portal (ewaybillgst.gov.in)</p>
+    </div>
+    
+    <div class="section">
+        <h3>1. Invoice Details</h3>
+        <table>
+            <tr>
+                <td>Invoice Number:</td>
+                <td>${invoice.invoiceNo}</td>
+            </tr>
+            <tr>
+                <td>Invoice Date:</td>
+                <td>${formatDate(invoice.date)}</td>
+            </tr>
+            <tr>
+                <td>Invoice Value:</td>
+                <td>₹${gstTotals.grandTotal.toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td>Taxable Amount:</td>
+                <td>₹${gstTotals.subtotal.toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td>Total GST:</td>
+                <td>₹${gstTotals.taxAmount.toFixed(2)}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h3>2. Supplier Details (From)</h3>
+        <table>
+            <tr>
+                <td>Business Name:</td>
+                <td>${company.name}</td>
+            </tr>
+            <tr>
+                <td>GSTIN:</td>
+                <td>${company.gstin || 'N/A'}</td>
+            </tr>
+            <tr>
+                <td>Address:</td>
+                <td>${company.address || ''}</td>
+            </tr>
+            <tr>
+                <td>State:</td>
+                <td>${company.stateName || ''} (Code: ${company.stateCode || 'N/A'})</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h3>3. Recipient Details (To)</h3>
+        <table>
+            <tr>
+                <td>Business Name:</td>
+                <td>${client.name}</td>
+            </tr>
+            <tr>
+                <td>GSTIN:</td>
+                <td>${client.gstin || 'N/A'}</td>
+            </tr>
+            <tr>
+                <td>Address:</td>
+                <td>${client.address || ''}</td>
+            </tr>
+            <tr>
+                <td>State:</td>
+                <td>${client.stateName || ''} (Code: ${client.stateCode || 'N/A'})</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h3>4. Transport Details</h3>
+        <table>
+            <tr>
+                <td>Transport Mode:</td>
+                <td>${['', 'Road', 'Rail', 'Air', 'Ship'][formData.get('transportMode')]}</td>
+            </tr>
+            <tr>
+                <td>Approx. Distance:</td>
+                <td>${formData.get('distance')} KM</td>
+            </tr>
+            <tr>
+                <td>Vehicle Number:</td>
+                <td>${formData.get('vehicleNumber') || 'To be updated'}</td>
+            </tr>
+            <tr>
+                <td>Transporter ID:</td>
+                <td>${formData.get('transporterId') || 'N/A'}</td>
+            </tr>
+            <tr>
+                <td>Transaction Type:</td>
+                <td>${['', 'Regular', 'Bill To - Ship To', 'Bill From - Dispatch From', 'Combination'][formData.get('transactionType')]}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h3>5. Items</h3>
+        <table>
+            <tr style="background: #f5f5f5; font-weight: bold;">
+                <td style="width: 15%;">HSN Code</td>
+                <td style="width: 40%;">Product Description</td>
+                <td style="width: 15%;">Quantity</td>
+                <td style="width: 30%;">Taxable Value</td>
+            </tr>
+            ${invoice.items.map(item => {
+                const product = AppState.products.find(p => p.id === item.productId);
+                const quantity = item.quantity || (item.boxes * item.unitPerBox);
+                const itemTotal = quantity * item.pricePerUnit;
+                return `
+                <tr>
+                    <td>${product && product.hsnCode ? product.hsnCode : 'N/A'}</td>
+                    <td>${getProductDisplay(item)}</td>
+                    <td>${quantity}</td>
+                    <td>₹${itemTotal.toFixed(2)}</td>
+                </tr>
+                `;
+            }).join('')}
+        </table>
+    </div>
+    
+    <div class="section">
+        <h3>6. Tax Breakdown</h3>
+        <table>
+            ${gstTotals.taxBreakdown.map(breakdown => `
+                <tr>
+                    <td>GST @ ${breakdown.rate}%:</td>
+                    <td>
+                        ${!gstTotals.isInterState 
+                            ? `CGST: ₹${breakdown.cgst.toFixed(2)}, SGST: ₹${breakdown.sgst.toFixed(2)}` 
+                            : `IGST: ₹${breakdown.igst.toFixed(2)}`}
+                    </td>
+                </tr>
+            `).join('')}
+            <tr style="font-weight: bold; background: #f5f5f5;">
+                <td>Total Tax Amount:</td>
+                <td>₹${gstTotals.taxAmount.toFixed(2)}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="footer">
+        <p><strong>IMPORTANT:</strong> This is a reference document only.</p>
+        <p>Please visit <strong>ewaybillgst.gov.in</strong> to officially generate and file the E-Way Bill.</p>
+        <p>Generated on: ${new Date().toLocaleString()}</p>
+    </div>
+</body>
+</html>`;
+    
+    // Save the E-Way Bill document
+    const filename = `EWayBill_${invoice.invoiceNo}_${new Date().toISOString().split('T')[0]}.html`;
+    
+    if (typeof window.electronAPI !== 'undefined' && window.electronAPI.savePDF) {
+        window.electronAPI.savePDF(eWayBillHTML, filename, 'eway-bill')
+            .then(result => {
+                if (result.success) {
+                    alert(`E-Way Bill document saved successfully!\nLocation: ${result.filePath || result.path}\n\nPlease visit ewaybillgst.gov.in to officially file the E-Way Bill.`);
+                    closeModal();
+                } else {
+                    alert('Failed to save E-Way Bill document: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error saving E-Way Bill:', error);
+                alert('Failed to save E-Way Bill document');
+            });
+    } else {
+        alert('E-Way Bill generation is only available in the desktop application');
+    }
 }
 
 function printInvoiceWithDialog() {
