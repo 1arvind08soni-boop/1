@@ -80,8 +80,39 @@ function isIntraStateTransaction(companyStateCode, clientStateCode) {
     return companyStateCode === clientStateCode;
 }
 
+// Convert number to Indian English words
+function numberToWords(num) {
+    if (num === 0) return 'Zero';
+    
+    const units = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    function convertLessThanThousand(n) {
+        if (n === 0) return '';
+        if (n < 10) return units[n];
+        if (n < 20) return teens[n - 10];
+        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + units[n % 10] : '');
+        return units[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanThousand(n % 100) : '');
+    }
+    
+    const crore = Math.floor(num / 10000000);
+    const lakh = Math.floor((num % 10000000) / 100000);
+    const thousand = Math.floor((num % 100000) / 1000);
+    const hundred = num % 1000;
+    
+    let result = '';
+    if (crore > 0) result += convertLessThanThousand(crore) + ' Crore ';
+    if (lakh > 0) result += convertLessThanThousand(lakh) + ' Lakh ';
+    if (thousand > 0) result += convertLessThanThousand(thousand) + ' Thousand ';
+    if (hundred > 0) result += convertLessThanThousand(hundred);
+    
+    return result.trim();
+}
+
 function calculateGSTForItem(itemAmount, gstRate, isIntraState) {
     // Calculate GST breakdown for an item
+    // Using GST-exclusive pricing (standard for Indian GST)
     if (!gstRate || gstRate === 0) {
         return {
             taxableValue: itemAmount,
@@ -93,9 +124,10 @@ function calculateGSTForItem(itemAmount, gstRate, isIntraState) {
         };
     }
     
-    // Assuming prices are GST-inclusive, extract the taxable value
-    const taxableValue = itemAmount / (1 + gstRate / 100);
-    const totalTax = itemAmount - taxableValue;
+    // GST-exclusive calculation: Tax = Amount × (Rate / 100)
+    const taxableValue = itemAmount;
+    const totalTax = itemAmount * (gstRate / 100);
+    const totalWithTax = itemAmount + totalTax;
     
     if (isIntraState) {
         // Intra-state: Split tax into CGST and SGST (50-50)
@@ -107,7 +139,7 @@ function calculateGSTForItem(itemAmount, gstRate, isIntraState) {
             sgst: sgst,
             igst: 0,
             totalTax: totalTax,
-            totalWithTax: itemAmount,
+            totalWithTax: totalWithTax,
             gstRate: gstRate
         };
     } else {
@@ -118,7 +150,7 @@ function calculateGSTForItem(itemAmount, gstRate, isIntraState) {
             sgst: 0,
             igst: totalTax,
             totalTax: totalTax,
-            totalWithTax: itemAmount,
+            totalWithTax: totalWithTax,
             gstRate: gstRate
         };
     }
@@ -2762,9 +2794,16 @@ function calculateGSTInvoiceItem(inputElement) {
     const row = inputElement.closest('tr');
     const qty = parseFloat(row.querySelector('.gst-qty-input').value) || 0;
     const rate = parseFloat(row.querySelector('.gst-rate-input').value) || 0;
+    const gstRate = parseFloat(row.querySelector('.gst-rate-select').value) || 0;
     
-    const amount = qty * rate;
-    row.querySelector('.gst-amount-input').value = amount.toFixed(2);
+    // Calculate base amount (GST-exclusive)
+    const baseAmount = qty * rate;
+    // Calculate GST
+    const gstAmount = baseAmount * (gstRate / 100);
+    // Total amount including GST
+    const totalAmount = baseAmount + gstAmount;
+    
+    row.querySelector('.gst-amount-input').value = totalAmount.toFixed(2);
     
     calculateGSTInvoiceTotal();
 }
@@ -2835,12 +2874,13 @@ function calculateGSTInvoiceTotal() {
     let totalTax = 0;
     
     rows.forEach(row => {
-        const amount = parseFloat(row.querySelector('.gst-amount-input').value) || 0;
+        const qty = parseFloat(row.querySelector('.gst-qty-input').value) || 0;
+        const rate = parseFloat(row.querySelector('.gst-rate-input').value) || 0;
         const gstRate = parseFloat(row.querySelector('.gst-rate-select').value) || 0;
         
-        // Calculate taxable value and tax from GST-inclusive amount
-        const taxableValue = amount / (1 + gstRate / 100);
-        const taxAmount = amount - taxableValue;
+        // Calculate taxable value (GST-exclusive)
+        const taxableValue = qty * rate;
+        const taxAmount = taxableValue * (gstRate / 100);
         
         totalTaxable += taxableValue;
         totalTax += taxAmount;
@@ -4695,6 +4735,14 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
                         <div style="font-weight: 700; margin-bottom: 0.3rem; border-bottom: 1px solid #000; padding-bottom: 0.2rem;">Invoice Total</div>
                         <div style="font-size: 1.5em; font-weight: 700; margin-top: 0.5rem;">₹${grandTotal.toFixed(2)}</div>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Amount in Words -->
+            <div style="border: 2px solid #000; padding: ${padding}; margin-bottom: 0.4rem; background: #f9f9f9;">
+                <div style="font-weight: 600; margin-bottom: 0.2rem;">Amount in Words:</div>
+                <div style="font-size: 0.95em; font-style: italic;">
+                    <strong>Rupees ${numberToWords(Math.floor(grandTotal))} Only</strong>
                 </div>
             </div>
             ` : ''}
