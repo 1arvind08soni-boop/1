@@ -7878,9 +7878,15 @@ async function saveUserCredentials() {
         return;
     }
     
-    // Validate format
-    if (!clientId.includes('.apps.googleusercontent.com')) {
-        showError('Invalid Client ID format. Should end with .apps.googleusercontent.com');
+    // Validate format - must end with .apps.googleusercontent.com
+    if (!clientId.endsWith('.apps.googleusercontent.com')) {
+        showError('Invalid Client ID format. Must end with .apps.googleusercontent.com');
+        return;
+    }
+    
+    // Validate client secret format (starts with GOCSPX- for new format, or other valid formats)
+    if (clientSecret.length < 10) {
+        showError('Client Secret appears to be too short. Please check and try again.');
         return;
     }
     
