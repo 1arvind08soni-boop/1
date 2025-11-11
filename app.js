@@ -59,7 +59,21 @@ function loadFromStorage() {
     if (stored) {
         const data = JSON.parse(stored);
         AppState.companies = data.companies || [];
-        AppState.settings = data.settings || AppState.settings;
+        // Merge settings to preserve new default properties like autoBackup
+        if (data.settings) {
+            AppState.settings = {
+                ...AppState.settings,
+                ...data.settings,
+                // Ensure autoBackup has all default properties
+                autoBackup: {
+                    enabled: false,
+                    frequency: 'daily',
+                    lastBackupDate: null,
+                    backupOnClose: true,
+                    ...(data.settings.autoBackup || {})
+                }
+            };
+        }
     }
 }
 
