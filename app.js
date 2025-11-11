@@ -4514,12 +4514,13 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
     const gstEnabled = company.gstEnabled && invoice.gstEnabled;
     const isIntraState = invoice.isIntraState || false;
     
-    // Calculate totals (same logic as color version)
+    // Calculate totals
     let totalQty = 0;
     let totalTaxableValue = 0;
     let totalCGST = 0;
     let totalSGST = 0;
     let totalIGST = 0;
+    let subtotal = 0;
     
     const itemsHTML = invoice.items.map((item, index) => {
         const quantity = item.quantity || 1;
@@ -4545,6 +4546,7 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
             totalTaxableValue += item.amount;
         }
         
+        subtotal += item.amount;
         const description = item.description || getProductDisplay(item);
         
         return `
@@ -4552,33 +4554,27 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
             <td style="padding: ${smallPadding}; text-align: center; border: 1px solid #000;">${index + 1}</td>
             <td style="padding: ${smallPadding}; border: 1px solid #000;">
                 <div style="font-weight: 500;">${description}</div>
-                ${item.hsnCode ? `<div style="font-size: 0.85em;">HSN: ${item.hsnCode}</div>` : ''}
+                ${item.hsnCode ? `<div style="font-size: 0.85em; color: #666;">HSN: ${item.hsnCode}</div>` : ''}
             </td>
             <td style="padding: ${smallPadding}; text-align: center; border: 1px solid #000;">${quantity}</td>
             <td style="padding: ${smallPadding}; text-align: right; border: 1px solid #000;">₹${item.rate.toFixed(2)}</td>
-            <td style="padding: ${smallPadding}; text-align: right; border: 1px solid #000;">₹${taxableValue.toFixed(2)}</td>
             <td style="padding: ${smallPadding}; text-align: center; border: 1px solid #000;">${item.gstRate || 0}%</td>
-            ${isIntraState ? `
-                <td style="padding: ${smallPadding}; text-align: right; border: 1px solid #000;">₹${itemCGST.toFixed(2)}</td>
-                <td style="padding: ${smallPadding}; text-align: right; border: 1px solid #000;">₹${itemSGST.toFixed(2)}</td>
-            ` : `
-                <td style="padding: ${smallPadding}; text-align: right; border: 1px solid #000;" colspan="2">₹${itemIGST.toFixed(2)}</td>
-            `}
             <td style="padding: ${smallPadding}; text-align: right; border: 1px solid #000; font-weight: 600;">₹${item.amount.toFixed(2)}</td>
         </tr>
         `;
     }).join('');
     
-    const grandTotal = totalTaxableValue + totalCGST + totalSGST + totalIGST;
+    const grandTotal = subtotal;
+    const totalTax = totalCGST + totalSGST + totalIGST;
     const transactionType = isIntraState ? 'Intra-State' : 'Inter-State';
     
     return `
         <div class="invoice-template" style="font-family: Arial, sans-serif; font-size: ${fontSize}; width: ${pageWidth}; min-height: ${pageHeight}; margin: 0 auto; padding: ${size === 'a5' ? '6mm' : '10mm'}; box-sizing: border-box; border: 3px solid #000;">
             
-            <!-- Header - B&W -->
-            <div style="text-align: center; border: 2px solid #000; background: #000; color: white; padding: ${padding}; margin-bottom: 0.5rem;">
-                <h1 style="margin: 0; font-size: ${size === 'a5' ? '1.3em' : '1.7em'}; font-weight: 700; letter-spacing: 1px;">TAX INVOICE</h1>
-                <div style="margin-top: 0.2rem; font-size: ${size === 'a5' ? '0.8em' : '0.9em'};">Original for Recipient</div>
+            <!-- Header - White with Black Text -->
+            <div style="text-align: center; border: 2px solid #000; background: #f5f5f5; padding: ${padding}; margin-bottom: 0.5rem;">
+                <h1 style="margin: 0; font-size: ${size === 'a5' ? '1.3em' : '1.7em'}; font-weight: 700; letter-spacing: 1px; color: #000;">TAX INVOICE</h1>
+                <div style="margin-top: 0.2rem; font-size: ${size === 'a5' ? '0.8em' : '0.9em'}; color: #000;">Original for Recipient</div>
             </div>
             
             <!-- Company and Client Details -->
@@ -4586,7 +4582,7 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr;">
                     <!-- Company Details -->
                     <div style="border-right: 1px solid #000; padding: ${padding};">
-                        <div style="background: #000; color: white; padding: 0.2rem ${padding}; font-weight: 700; border-bottom: 1px solid #000;">Supplier Details</div>
+                        <div style="background: #f5f5f5; padding: 0.2rem ${padding}; font-weight: 700; border-bottom: 1px solid #000; color: #000;">Supplier Details</div>
                         <div style="padding: ${smallPadding} 0;">
                             <div style="font-weight: 600; font-size: 1.05em; margin-bottom: 0.2rem;">${company.name}</div>
                             <div style="margin-bottom: 0.15rem;">${company.address || ''}</div>
@@ -4603,7 +4599,7 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
                     
                     <!-- Client Details -->
                     <div style="padding: ${padding};">
-                        <div style="background: #000; color: white; padding: 0.2rem ${padding}; font-weight: 700; border-bottom: 1px solid #000;">Buyer Details</div>
+                        <div style="background: #f5f5f5; padding: 0.2rem ${padding}; font-weight: 700; border-bottom: 1px solid #000; color: #000;">Buyer Details</div>
                         <div style="padding: ${smallPadding} 0;">
                             <div style="font-weight: 600; font-size: 1.05em; margin-bottom: 0.2rem;">${client.name}</div>
                             <div style="margin-bottom: 0.15rem;">${client.address || ''}</div>
@@ -4638,72 +4634,69 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
                 </div>
             </div>
             
-            <!-- Items Table -->
+            <!-- Items Table - Simplified -->
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 0.4rem; border: 2px solid #000;">
                 <thead>
-                    <tr style="background: #000; color: white;">
-                        <th style="padding: ${padding}; text-align: center; border: 1px solid #000; font-weight: 600;">S.No</th>
-                        <th style="padding: ${padding}; text-align: left; border: 1px solid #000; font-weight: 600;">Description of Goods</th>
-                        <th style="padding: ${padding}; text-align: center; border: 1px solid #000; font-weight: 600;">Qty</th>
-                        <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600;">Rate</th>
-                        <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600;">Taxable Value</th>
-                        <th style="padding: ${padding}; text-align: center; border: 1px solid #000; font-weight: 600;">GST %</th>
-                        ${isIntraState ? `
-                            <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600;">CGST</th>
-                            <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600;">SGST</th>
-                        ` : `
-                            <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600;" colspan="2">IGST</th>
-                        `}
-                        <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600;">Amount</th>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: ${padding}; text-align: center; border: 1px solid #000; font-weight: 600; color: #000;">S.No</th>
+                        <th style="padding: ${padding}; text-align: left; border: 1px solid #000; font-weight: 600; color: #000;">Description of Goods</th>
+                        <th style="padding: ${padding}; text-align: center; border: 1px solid #000; font-weight: 600; color: #000;">Qty</th>
+                        <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600; color: #000;">Rate</th>
+                        <th style="padding: ${padding}; text-align: center; border: 1px solid #000; font-weight: 600; color: #000;">GST %</th>
+                        <th style="padding: ${padding}; text-align: right; border: 1px solid #000; font-weight: 600; color: #000;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${itemsHTML}
                 </tbody>
                 <tfoot>
-                    <tr style="background: #e5e5e5; font-weight: 600;">
-                        <td colspan="2" style="padding: ${padding}; text-align: right; border: 1px solid #000;">Total:</td>
+                    <tr style="background: #f5f5f5; font-weight: 600;">
+                        <td colspan="2" style="padding: ${padding}; text-align: right; border: 1px solid #000;">Subtotal:</td>
                         <td style="padding: ${padding}; text-align: center; border: 1px solid #000;">${totalQty}</td>
-                        <td style="padding: ${padding}; border: 1px solid #000;"></td>
-                        <td style="padding: ${padding}; text-align: right; border: 1px solid #000;">₹${totalTaxableValue.toFixed(2)}</td>
-                        <td style="padding: ${padding}; border: 1px solid #000;"></td>
-                        ${isIntraState ? `
-                            <td style="padding: ${padding}; text-align: right; border: 1px solid #000;">₹${totalCGST.toFixed(2)}</td>
-                            <td style="padding: ${padding}; text-align: right; border: 1px solid #000;">₹${totalSGST.toFixed(2)}</td>
-                        ` : `
-                            <td style="padding: ${padding}; text-align: right; border: 1px solid #000;" colspan="2">₹${totalIGST.toFixed(2)}</td>
-                        `}
-                        <td style="padding: ${padding}; text-align: right; border: 1px solid #000; font-size: 1.1em;">₹${grandTotal.toFixed(2)}</td>
+                        <td colspan="2" style="padding: ${padding}; border: 1px solid #000;"></td>
+                        <td style="padding: ${padding}; text-align: right; border: 1px solid #000; font-size: 1.1em;">₹${subtotal.toFixed(2)}</td>
                     </tr>
                 </tfoot>
             </table>
             
-            <!-- Tax Summary Box -->
+            <!-- Tax Breakdown Below Table -->
             ${gstEnabled ? `
             <div style="border: 2px solid #000; padding: ${padding}; margin-bottom: 0.4rem;">
                 <div style="display: grid; grid-template-columns: 2fr 1fr;">
                     <div>
-                        <div style="font-weight: 700; margin-bottom: 0.3rem;">Tax Summary</div>
-                        <div style="font-size: 0.95em;">
-                            <div>Total Taxable Amount: <strong>₹${totalTaxableValue.toFixed(2)}</strong></div>
+                        <div style="font-weight: 700; margin-bottom: 0.3rem; border-bottom: 1px solid #000; padding-bottom: 0.2rem;">Tax Breakdown</div>
+                        <div style="font-size: 0.95em; line-height: 1.6;">
+                            <div style="display: grid; grid-template-columns: 1fr auto; padding: 0.15rem 0;">
+                                <span>Taxable Value:</span>
+                                <strong>₹${totalTaxableValue.toFixed(2)}</strong>
+                            </div>
                             ${isIntraState ? `
-                                <div>Total CGST: <strong>₹${totalCGST.toFixed(2)}</strong></div>
-                                <div>Total SGST: <strong>₹${totalSGST.toFixed(2)}</strong></div>
+                                <div style="display: grid; grid-template-columns: 1fr auto; padding: 0.15rem 0;">
+                                    <span>CGST @ ${totalCGST > 0 ? (totalCGST / totalTaxableValue * 100).toFixed(2) : '0'}%:</span>
+                                    <strong>₹${totalCGST.toFixed(2)}</strong>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr auto; padding: 0.15rem 0;">
+                                    <span>SGST @ ${totalSGST > 0 ? (totalSGST / totalTaxableValue * 100).toFixed(2) : '0'}%:</span>
+                                    <strong>₹${totalSGST.toFixed(2)}</strong>
+                                </div>
                             ` : `
-                                <div>Total IGST: <strong>₹${totalIGST.toFixed(2)}</strong></div>
+                                <div style="display: grid; grid-template-columns: 1fr auto; padding: 0.15rem 0;">
+                                    <span>IGST @ ${totalIGST > 0 ? (totalIGST / totalTaxableValue * 100).toFixed(2) : '0'}%:</span>
+                                    <strong>₹${totalIGST.toFixed(2)}</strong>
+                                </div>
                             `}
-                            <div style="margin-top: 0.2rem; padding-top: 0.2rem; border-top: 1px solid #000;">
-                                Total Tax Amount: <strong>₹${(totalCGST + totalSGST + totalIGST).toFixed(2)}</strong>
+                            <div style="display: grid; grid-template-columns: 1fr auto; padding: 0.15rem 0; margin-top: 0.2rem; padding-top: 0.2rem; border-top: 1px solid #000; font-weight: 600;">
+                                <span>Total Tax:</span>
+                                <strong>₹${totalTax.toFixed(2)}</strong>
                             </div>
                         </div>
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 700; margin-bottom: 0.3rem;">Invoice Total</div>
-                        <div style="font-size: 1.5em; font-weight: 700;">₹${grandTotal.toFixed(2)}</div>
+                    <div style="text-align: right; border-left: 1px solid #000; padding-left: ${padding};">
+                        <div style="font-weight: 700; margin-bottom: 0.3rem; border-bottom: 1px solid #000; padding-bottom: 0.2rem;">Invoice Total</div>
+                        <div style="font-size: 1.5em; font-weight: 700; margin-top: 0.5rem;">₹${grandTotal.toFixed(2)}</div>
                     </div>
                 </div>
             </div>
-            ` : ''}
             
             <!-- Terms & Signature -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; border: 2px solid #000; margin-top: auto;">
