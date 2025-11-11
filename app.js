@@ -4697,6 +4697,7 @@ function generateGSTProfessionalBWInvoice(invoice, client, size) {
                     </div>
                 </div>
             </div>
+            ` : ''}
             
             <!-- Terms & Signature -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; border: 2px solid #000; margin-top: auto;">
