@@ -336,3 +336,40 @@ ipcMain.handle('print-invoice', async (event, { html, pageSize, marginType }) =>
         return { success: false, error: error.message };
     }
 });
+
+// Auto-backup on close handler
+ipcMain.handle('auto-backup-on-close', async (event, { data, companyName }) => {
+    try {
+        // Get downloads directory
+        const downloadsPath = app.getPath('downloads');
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `backup_${companyName}_${timestamp}.json`;
+        const filePath = path.join(downloadsPath, filename);
+        
+        // Write backup file
+        const json = JSON.stringify(data, null, 2);
+        fs.writeFileSync(filePath, json, 'utf-8');
+        
+        return { success: true, filePath };
+    } catch (error) {
+        console.error('Error creating auto-backup:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Before quit - give renderer a chance to backup
+let isQuitting = false;
+app.on('before-quit', (event) => {
+    if (!isQuitting && mainWindow && !mainWindow.isDestroyed()) {
+        event.preventDefault();
+        isQuitting = true;
+        
+        // Send message to renderer to perform backup if needed
+        mainWindow.webContents.send('app-closing');
+        
+        // Wait a bit for backup to complete, then quit
+        setTimeout(() => {
+            app.quit();
+        }, 2000);
+    }
+});
