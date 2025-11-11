@@ -431,6 +431,11 @@ function addCompany(event) {
         gstEnabled: gstEnabled,
         gstin: gstEnabled ? formData.get('gstin') : '',
         detailedInvoicing: formData.get('detailedInvoicing') === 'on',
+        settings: {
+            invoiceTemplate: 'modern',
+            printSize: 'a4',
+            reportTemplate: 'modern'
+        },
         createdAt: new Date().toISOString()
     };
     
@@ -485,6 +490,16 @@ async function deleteCompany(companyId) {
 function selectCompany(companyId) {
     const company = AppState.companies.find(c => c.id === companyId);
     if (!company) return;
+    
+    // Migrate old companies to have settings if they don't
+    if (!company.settings) {
+        company.settings = {
+            invoiceTemplate: 'modern',
+            printSize: 'a4',
+            reportTemplate: 'modern'
+        };
+        saveToStorage();
+    }
     
     AppState.currentCompany = company;
     loadCompanyData();
@@ -4016,9 +4031,10 @@ function showPrintPreviewModal(invoice, client) {
 }
 
 function updatePrintPreview() {
-    // Use template and size from settings (no dropdowns in view mode)
-    const template = AppState.settings.invoiceTemplate || 'modern';
-    const size = AppState.settings.printSize || 'a5';
+    // Use template and size from company settings (per-company)
+    const companySettings = AppState.currentCompany?.settings || { invoiceTemplate: 'modern', printSize: 'a5' };
+    const template = companySettings.invoiceTemplate || 'modern';
+    const size = companySettings.printSize || 'a5';
     const preview = document.getElementById('printPreviewContent');
     
     // Get invoice data from controlled namespace
@@ -6283,9 +6299,10 @@ function printInvoiceWithDialog() {
         return;
     }
     
-    // Use template and size from settings
-    const template = AppState.settings.invoiceTemplate || 'modern';
-    const size = AppState.settings.printSize || 'a5';
+    // Use template and size from company settings
+    const companySettings = AppState.currentCompany?.settings || { invoiceTemplate: 'modern', printSize: 'a5' };
+    const template = companySettings.invoiceTemplate || 'modern';
+    const size = companySettings.printSize || 'a5';
     
     // Generate invoice HTML for single copy
     let invoiceHTML = '';
@@ -6457,9 +6474,10 @@ async function saveInvoiceToPDF() {
         return;
     }
     
-    // Use template and size from settings
-    const template = AppState.settings.invoiceTemplate || 'modern';
-    const size = AppState.settings.printSize || 'a5';
+    // Use template and size from company settings
+    const companySettings = AppState.currentCompany?.settings || { invoiceTemplate: 'modern', printSize: 'a5' };
+    const template = companySettings.invoiceTemplate || 'modern';
+    const size = companySettings.printSize || 'a5';
     
     // Generate invoice HTML
     let invoiceHTML = '';
@@ -9907,40 +9925,57 @@ function processYearEnd(event) {
 }
 
 function showTemplateSettings() {
+    // Ensure current company has settings
+    if (!AppState.currentCompany.settings) {
+        AppState.currentCompany.settings = {
+            invoiceTemplate: 'modern',
+            printSize: 'a4',
+            reportTemplate: 'modern'
+        };
+    }
+    
+    const companySettings = AppState.currentCompany.settings;
+    const isGSTEnabled = AppState.currentCompany.gstEnabled || false;
+    
+    // Build GST templates optgroup only if GST is enabled
+    const gstTemplatesGroup = isGSTEnabled ? `
+        <optgroup label="GST Templates">
+            <option value="gst_compliant" ${companySettings.invoiceTemplate === 'gst_compliant' ? 'selected' : ''}>GST Compliant - Standard (Recommended)</option>
+            <option value="gst_modern_pro" ${companySettings.invoiceTemplate === 'gst_modern_pro' ? 'selected' : ''}>GST Modern Professional (Gradient)</option>
+            <option value="gst_compact" ${companySettings.invoiceTemplate === 'gst_compact' ? 'selected' : ''}>GST Compact (Space Saving)</option>
+            <option value="gst_elegant" ${companySettings.invoiceTemplate === 'gst_elegant' ? 'selected' : ''}>GST Elegant (Double Borders)</option>
+            <option value="gst_minimalist" ${companySettings.invoiceTemplate === 'gst_minimalist' ? 'selected' : ''}>GST Minimalist (Clean Design)</option>
+        </optgroup>
+    ` : '';
+    
     const modal = createModal('Template Settings', `
         <form id="templateSettingsForm" onsubmit="updateTemplateSettings(event)">
             <h4>Invoice Settings</h4>
             <div class="form-group">
                 <label>Invoice Template *</label>
                 <select class="form-control" name="invoiceTemplate" required>
-                    <optgroup label="GST Templates">
-                        <option value="gst_compliant" ${AppState.settings.invoiceTemplate === 'gst_compliant' ? 'selected' : ''}>GST Compliant - Standard (Recommended)</option>
-                        <option value="gst_modern_pro" ${AppState.settings.invoiceTemplate === 'gst_modern_pro' ? 'selected' : ''}>GST Modern Professional (Gradient)</option>
-                        <option value="gst_compact" ${AppState.settings.invoiceTemplate === 'gst_compact' ? 'selected' : ''}>GST Compact (Space Saving)</option>
-                        <option value="gst_elegant" ${AppState.settings.invoiceTemplate === 'gst_elegant' ? 'selected' : ''}>GST Elegant (Double Borders)</option>
-                        <option value="gst_minimalist" ${AppState.settings.invoiceTemplate === 'gst_minimalist' ? 'selected' : ''}>GST Minimalist (Clean Design)</option>
-                    </optgroup>
+                    ${gstTemplatesGroup}
                     <optgroup label="Classic Templates">
-                        <option value="modern" ${AppState.settings.invoiceTemplate === 'modern' ? 'selected' : ''}>Modern Template</option>
-                        <option value="classic" ${AppState.settings.invoiceTemplate === 'classic' ? 'selected' : ''}>Classic Template</option>
-                        <option value="professional" ${AppState.settings.invoiceTemplate === 'professional' ? 'selected' : ''}>Professional Template</option>
-                        <option value="minimal" ${AppState.settings.invoiceTemplate === 'minimal' ? 'selected' : ''}>Minimal Template (New A5)</option>
-                        <option value="compact" ${AppState.settings.invoiceTemplate === 'compact' ? 'selected' : ''}>Compact Template</option>
-                        <option value="delivery_challan" ${AppState.settings.invoiceTemplate === 'delivery_challan' ? 'selected' : ''}>Delivery Challan</option>
+                        <option value="modern" ${companySettings.invoiceTemplate === 'modern' ? 'selected' : ''}>Modern Template</option>
+                        <option value="classic" ${companySettings.invoiceTemplate === 'classic' ? 'selected' : ''}>Classic Template</option>
+                        <option value="professional" ${companySettings.invoiceTemplate === 'professional' ? 'selected' : ''}>Professional Template</option>
+                        <option value="minimal" ${companySettings.invoiceTemplate === 'minimal' ? 'selected' : ''}>Minimal Template (New A5)</option>
+                        <option value="compact" ${companySettings.invoiceTemplate === 'compact' ? 'selected' : ''}>Compact Template</option>
+                        <option value="delivery_challan" ${companySettings.invoiceTemplate === 'delivery_challan' ? 'selected' : ''}>Delivery Challan</option>
                     </optgroup>
                     <optgroup label="New A5 Templates">
-                        <option value="a5_bordered_color" ${AppState.settings.invoiceTemplate === 'a5_bordered_color' ? 'selected' : ''}>A5 Bordered (Color)</option>
-                        <option value="a5_bordered_bw" ${AppState.settings.invoiceTemplate === 'a5_bordered_bw' ? 'selected' : ''}>A5 Bordered (B&W)</option>
-                        <option value="a5_simple_color" ${AppState.settings.invoiceTemplate === 'a5_simple_color' ? 'selected' : ''}>A5 Simple (Color)</option>
-                        <option value="a5_simple_bw" ${AppState.settings.invoiceTemplate === 'a5_simple_bw' ? 'selected' : ''}>A5 Simple (B&W)</option>
+                        <option value="a5_bordered_color" ${companySettings.invoiceTemplate === 'a5_bordered_color' ? 'selected' : ''}>A5 Bordered (Color)</option>
+                        <option value="a5_bordered_bw" ${companySettings.invoiceTemplate === 'a5_bordered_bw' ? 'selected' : ''}>A5 Bordered (B&W)</option>
+                        <option value="a5_simple_color" ${companySettings.invoiceTemplate === 'a5_simple_color' ? 'selected' : ''}>A5 Simple (Color)</option>
+                        <option value="a5_simple_bw" ${companySettings.invoiceTemplate === 'a5_simple_bw' ? 'selected' : ''}>A5 Simple (B&W)</option>
                     </optgroup>
                 </select>
             </div>
             <div class="form-group">
                 <label>Print Size *</label>
                 <select class="form-control" name="printSize" required>
-                    <option value="a4" ${AppState.settings.printSize === 'a4' ? 'selected' : ''}>A4 Size</option>
-                    <option value="a5" ${AppState.settings.printSize === 'a5' ? 'selected' : ''}>A5 Size (Recommended)</option>
+                    <option value="a4" ${companySettings.printSize === 'a4' ? 'selected' : ''}>A4 Size</option>
+                    <option value="a5" ${companySettings.printSize === 'a5' ? 'selected' : ''}>A5 Size (Recommended)</option>
                 </select>
             </div>
             
@@ -10031,9 +10066,15 @@ function updateTemplateSettings(event) {
     const form = event.target;
     const formData = new FormData(form);
     
-    AppState.settings.invoiceTemplate = formData.get('invoiceTemplate');
-    AppState.settings.printSize = formData.get('printSize');
-    AppState.settings.reportTemplate = formData.get('reportTemplate');
+    // Save template settings to current company (per-company settings)
+    if (!AppState.currentCompany.settings) {
+        AppState.currentCompany.settings = {};
+    }
+    AppState.currentCompany.settings.invoiceTemplate = formData.get('invoiceTemplate');
+    AppState.currentCompany.settings.printSize = formData.get('printSize');
+    AppState.currentCompany.settings.reportTemplate = formData.get('reportTemplate');
+    
+    // Save global settings (save locations remain global)
     AppState.settings.invoiceCustomSaveLocation = formData.get('invoiceCustomSaveLocation') === 'on';
     AppState.settings.reportCustomSaveLocation = formData.get('reportCustomSaveLocation') === 'on';
     
@@ -10049,7 +10090,7 @@ function updateTemplateSettings(event) {
     
     saveToStorage();
     closeModal();
-    alert('Template settings updated successfully! PDF files will be saved to your configured locations.');
+    alert('Template settings updated successfully for this company!');
 }
 
 // Toggle functions for save location settings
