@@ -16,7 +16,14 @@ const AppState = {
         invoiceTemplate: 'modern',
         printSize: 'a4',
         reportTemplate: 'modern',
-        customTemplates: {}
+        customTemplates: {},
+        // Tax/GST Configuration
+        taxEnabled: false,
+        gstRates: {
+            cgst: 9,  // Central GST
+            sgst: 9,  // State GST
+            igst: 18  // Integrated GST (for inter-state)
+        }
     }
 };
 
@@ -501,6 +508,18 @@ function showAddProductModal() {
                     <input type="number" class="form-control" name="pricePerUnit" step="0.01" min="0" required>
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>HSN Code</label>
+                    <input type="text" class="form-control" name="hsnCode" placeholder="e.g., 7113">
+                    <small class="form-text text-muted">Harmonized System of Nomenclature code for GST</small>
+                </div>
+                <div class="form-group">
+                    <label>GST Rate (%)</label>
+                    <input type="number" class="form-control" name="gstRate" step="0.01" min="0" placeholder="e.g., 18">
+                    <small class="form-text text-muted">Leave empty to use default GST rates</small>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Opening Stock (Units)</label>
                 <input type="number" class="form-control" name="openingStock" step="1" min="0" value="0">
@@ -579,6 +598,8 @@ function addProduct(event) {
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
+        hsnCode: formData.get('hsnCode') || '',
+        gstRate: formData.get('gstRate') ? parseFloat(formData.get('gstRate')) : null,
         openingStock: parseFloat(formData.get('openingStock')) || 0,
         clientPrices: clientPrices,
         description: formData.get('description'),
@@ -740,6 +761,18 @@ function editProduct(productId) {
                     <input type="number" class="form-control" name="pricePerUnit" value="${product.pricePerUnit}" step="0.01" min="0" required>
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>HSN Code</label>
+                    <input type="text" class="form-control" name="hsnCode" value="${product.hsnCode || ''}" placeholder="e.g., 7113">
+                    <small class="form-text text-muted">Harmonized System of Nomenclature code for GST</small>
+                </div>
+                <div class="form-group">
+                    <label>GST Rate (%)</label>
+                    <input type="number" class="form-control" name="gstRate" value="${product.gstRate || ''}" step="0.01" min="0" placeholder="e.g., 18">
+                    <small class="form-text text-muted">Leave empty to use default GST rates</small>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Opening Stock (Units)</label>
                 <input type="number" class="form-control" name="openingStock" step="1" min="0" value="${product.openingStock || 0}">
@@ -824,6 +857,8 @@ function updateProduct(event, productId) {
         category: category,
         unitPerBox: parseInt(formData.get('unitPerBox')),
         pricePerUnit: parseFloat(formData.get('pricePerUnit')),
+        hsnCode: formData.get('hsnCode') || '',
+        gstRate: formData.get('gstRate') ? parseFloat(formData.get('gstRate')) : null,
         openingStock: parseFloat(formData.get('openingStock')) || 0,
         clientPrices: clientPrices,
         description: formData.get('description'),
@@ -1249,11 +1284,22 @@ function showAddClientModal() {
             <div class="form-row">
                 <div class="form-group">
                     <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin">
+                    <input type="text" class="form-control" name="gstin" placeholder="22AAAAA0000A1Z5">
                 </div>
                 <div class="form-group">
                     <label>PAN</label>
-                    <input type="text" class="form-control" name="pan">
+                    <input type="text" class="form-control" name="pan" placeholder="AAAAA0000A">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>State Code (for GST)</label>
+                    <input type="text" class="form-control" name="stateCode" placeholder="07">
+                    <small class="form-text text-muted">Required for GST inter-state calculations</small>
+                </div>
+                <div class="form-group">
+                    <label>State Name</label>
+                    <input type="text" class="form-control" name="stateName" placeholder="Delhi">
                 </div>
             </div>
             <div class="form-group">
@@ -1289,6 +1335,8 @@ function addClient(event) {
         address: formData.get('address'),
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
+        stateCode: formData.get('stateCode'),
+        stateName: formData.get('stateName'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
         createdAt: new Date().toISOString()
@@ -1427,11 +1475,22 @@ function editClient(clientId) {
             <div class="form-row">
                 <div class="form-group">
                     <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin" value="${client.gstin || ''}">
+                    <input type="text" class="form-control" name="gstin" value="${client.gstin || ''}" placeholder="22AAAAA0000A1Z5">
                 </div>
                 <div class="form-group">
                     <label>PAN</label>
-                    <input type="text" class="form-control" name="pan" value="${client.pan || ''}">
+                    <input type="text" class="form-control" name="pan" value="${client.pan || ''}" placeholder="AAAAA0000A">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>State Code (for GST)</label>
+                    <input type="text" class="form-control" name="stateCode" value="${client.stateCode || ''}" placeholder="07">
+                    <small class="form-text text-muted">Required for GST inter-state calculations</small>
+                </div>
+                <div class="form-group">
+                    <label>State Name</label>
+                    <input type="text" class="form-control" name="stateName" value="${client.stateName || ''}" placeholder="Delhi">
                 </div>
             </div>
             <div class="form-group">
@@ -1470,6 +1529,8 @@ function updateClient(event, clientId) {
         address: formData.get('address'),
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
+        stateCode: formData.get('stateCode'),
+        stateName: formData.get('stateName'),
         openingBalance: parseFloat(formData.get('openingBalance')) || 0,
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
         updatedAt: new Date().toISOString()
@@ -2857,11 +2918,115 @@ function updatePrintPreview() {
         case 'a5_simple_bw':
             html = generateA5SimpleBWInvoice(invoice, client, 'a5');
             break;
+        case 'gst_professional':
+            html = generateGSTProfessionalInvoice(invoice, client, size);
+            break;
         default:
             html = generateModernInvoice(invoice, client, size);
     }
     
     preview.innerHTML = html;
+}
+
+// GST/Tax Calculation Helper Functions
+function calculateGST(amount, gstRate, isInterState = false) {
+    const rate = gstRate || AppState.settings.gstRates.igst;
+    const gstAmount = (amount * rate) / 100;
+    
+    if (isInterState) {
+        return {
+            igst: gstAmount,
+            cgst: 0,
+            sgst: 0,
+            total: gstAmount
+        };
+    } else {
+        const cgst = gstAmount / 2;
+        const sgst = gstAmount / 2;
+        return {
+            igst: 0,
+            cgst: cgst,
+            sgst: sgst,
+            total: gstAmount
+        };
+    }
+}
+
+function calculateInvoiceTotalsWithGST(invoice, client) {
+    const company = AppState.currentCompany;
+    const taxEnabled = company.taxEnabled || false;
+    
+    if (!taxEnabled) {
+        // Return simple totals without tax
+        return {
+            subtotal: invoice.totalAmount,
+            taxAmount: 0,
+            grandTotal: invoice.totalAmount,
+            cgst: 0,
+            sgst: 0,
+            igst: 0,
+            taxBreakdown: []
+        };
+    }
+    
+    // Determine if inter-state transaction
+    const companyStateCode = company.stateCode || '';
+    const clientStateCode = client.stateCode || '';
+    const isInterState = companyStateCode && clientStateCode && companyStateCode !== clientStateCode;
+    
+    let subtotal = 0;
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+    const taxBreakdown = [];
+    
+    // Calculate tax for each item
+    invoice.items.forEach(item => {
+        const product = AppState.products.find(p => p.id === item.productId);
+        const itemTotal = item.quantity * item.pricePerUnit;
+        subtotal += itemTotal;
+        
+        // Get GST rate for this product
+        const gstRate = product && product.gstRate ? product.gstRate : AppState.settings.gstRates.igst;
+        
+        const gst = calculateGST(itemTotal, gstRate, isInterState);
+        totalCGST += gst.cgst;
+        totalSGST += gst.sgst;
+        totalIGST += gst.igst;
+        
+        // Add to breakdown
+        const existingBreakdown = taxBreakdown.find(b => b.rate === gstRate);
+        if (existingBreakdown) {
+            existingBreakdown.taxableValue += itemTotal;
+            existingBreakdown.cgst += gst.cgst;
+            existingBreakdown.sgst += gst.sgst;
+            existingBreakdown.igst += gst.igst;
+            existingBreakdown.total += gst.total;
+        } else {
+            taxBreakdown.push({
+                rate: gstRate,
+                taxableValue: itemTotal,
+                cgst: gst.cgst,
+                sgst: gst.sgst,
+                igst: gst.igst,
+                total: gst.total
+            });
+        }
+    });
+    
+    const totalTax = totalCGST + totalSGST + totalIGST;
+    const grandTotal = subtotal + totalTax;
+    
+    return {
+        subtotal,
+        taxAmount: totalTax,
+        grandTotal,
+        cgst: totalCGST,
+        sgst: totalSGST,
+        igst: totalIGST,
+        taxBreakdown,
+        isInterState
+    };
 }
 
 function generateModernInvoice(invoice, client, size) {
@@ -4016,6 +4181,189 @@ function generateA5SimpleBWInvoice(invoice, client, size) {
     `;
 }
 
+// GST Professional Invoice Template
+function generateGSTProfessionalInvoice(invoice, client, size = 'a4') {
+    const company = AppState.currentCompany;
+    const fontSize = size === 'a5' ? '0.7em' : '0.85em';
+    const padding = size === 'a5' ? '0.3rem' : '0.5rem';
+    
+    // Calculate GST totals
+    const gstTotals = calculateInvoiceTotalsWithGST(invoice, client);
+    
+    // Generate items with GST
+    const itemsHTML = invoice.items.map((item, index) => {
+        const product = AppState.products.find(p => p.id === item.productId);
+        const quantity = item.quantity || (item.boxes * item.unitPerBox);
+        const itemTotal = quantity * item.pricePerUnit;
+        const gstRate = product && product.gstRate ? product.gstRate : AppState.settings.gstRates.igst;
+        const gst = calculateGST(itemTotal, gstRate, gstTotals.isInterState);
+        
+        return `
+        <tr>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: center;">${index + 1}</td>
+            <td style="padding: ${padding}; border: 1px solid #333;">
+                ${getProductDisplay(item)}
+                ${product && product.hsnCode ? `<br><small>HSN: ${product.hsnCode}</small>` : ''}
+            </td>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: center;">${quantity}</td>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${item.pricePerUnit.toFixed(2)}</td>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${itemTotal.toFixed(2)}</td>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: center;">${gstRate}%</td>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gst.total.toFixed(2)}</td>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: right; font-weight: bold;">₹${(itemTotal + gst.total).toFixed(2)}</td>
+        </tr>
+        `;
+    }).join('');
+    
+    // GST Breakdown
+    const gstBreakdownHTML = gstTotals.taxBreakdown.map(breakdown => `
+        <tr>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: center;">${breakdown.rate}%</td>
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${breakdown.taxableValue.toFixed(2)}</td>
+            ${!gstTotals.isInterState ? `
+                <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${breakdown.cgst.toFixed(2)}</td>
+                <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${breakdown.sgst.toFixed(2)}</td>
+            ` : `
+                <td colspan="2" style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${breakdown.igst.toFixed(2)}</td>
+            `}
+            <td style="padding: ${padding}; border: 1px solid #333; text-align: right; font-weight: bold;">₹${breakdown.total.toFixed(2)}</td>
+        </tr>
+    `).join('');
+    
+    return `
+        <div class="invoice-template" style="font-family: Arial, sans-serif; font-size: ${fontSize}; max-width: 210mm; margin: 0 auto; padding: 1rem; background: white; border: 2px solid #333;">
+            <!-- Header -->
+            <div style="text-align: center; border-bottom: 3px double #333; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <h1 style="margin: 0; font-size: 2em; color: #2c3e50;">${company.name}</h1>
+                <div style="margin-top: 0.3rem; font-size: 0.9em; line-height: 1.4;">
+                    ${company.address || ''}<br>
+                    ${company.phone ? `Phone: ${company.phone}` : ''} ${company.email ? `| Email: ${company.email}` : ''}<br>
+                    ${company.gstin ? `<strong>GSTIN: ${company.gstin}</strong>` : ''} ${company.pan ? `| PAN: ${company.pan}` : ''}
+                </div>
+            </div>
+            
+            <!-- Tax Invoice Title -->
+            <div style="text-align: center; background: #2c3e50; color: white; padding: 0.5rem; margin-bottom: 0.5rem; font-size: 1.3em; font-weight: bold;">
+                TAX INVOICE
+            </div>
+            
+            <!-- Invoice Details -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="border: 1px solid #333; padding: 0.5rem;">
+                    <div style="font-weight: bold; margin-bottom: 0.3rem; border-bottom: 1px solid #ddd; padding-bottom: 0.2rem;">Bill To:</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">${client.name}</div>
+                    <div style="margin-top: 0.2rem; line-height: 1.4;">
+                        ${client.address || ''}<br>
+                        ${client.contact || ''}<br>
+                        ${client.gstin ? `<strong>GSTIN:</strong> ${client.gstin}` : ''}<br>
+                        ${client.stateCode ? `<strong>State Code:</strong> ${client.stateCode}` : ''}
+                    </div>
+                </div>
+                <div style="border: 1px solid #333; padding: 0.5rem;">
+                    <table style="width: 100%; font-size: 0.95em;">
+                        <tr>
+                            <td style="padding: 0.2rem;"><strong>Invoice No:</strong></td>
+                            <td style="text-align: right; padding: 0.2rem;">${invoice.invoiceNo}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.2rem;"><strong>Invoice Date:</strong></td>
+                            <td style="text-align: right; padding: 0.2rem;">${formatDate(invoice.date)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.2rem;"><strong>Place of Supply:</strong></td>
+                            <td style="text-align: right; padding: 0.2rem;">${client.stateName || company.stateName || ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.2rem;"><strong>Transaction Type:</strong></td>
+                            <td style="text-align: right; padding: 0.2rem;">${gstTotals.isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Items Table -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 0.5rem;">
+                <thead>
+                    <tr style="background: #34495e; color: white;">
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: center; width: 5%;">S.No</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: left; width: 30%;">Description of Goods</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: center; width: 8%;">Qty</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: right; width: 12%;">Rate</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: right; width: 12%;">Taxable Value</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: center; width: 8%;">GST%</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: right; width: 12%;">GST Amount</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: right; width: 13%;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHTML}
+                    <tr style="background: #ecf0f1; font-weight: bold;">
+                        <td colspan="4" style="padding: ${padding}; border: 1px solid #333; text-align: right;">Subtotal:</td>
+                        <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.subtotal.toFixed(2)}</td>
+                        <td style="padding: ${padding}; border: 1px solid #333;"></td>
+                        <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.taxAmount.toFixed(2)}</td>
+                        <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.grandTotal.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- GST Breakdown -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 0.5rem;">
+                <thead>
+                    <tr style="background: #2c3e50; color: white;">
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: center;">GST Rate</th>
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: right;">Taxable Value</th>
+                        ${!gstTotals.isInterState ? `
+                            <th style="padding: ${padding}; border: 1px solid #333; text-align: right;">CGST Amount</th>
+                            <th style="padding: ${padding}; border: 1px solid #333; text-align: right;">SGST Amount</th>
+                        ` : `
+                            <th colspan="2" style="padding: ${padding}; border: 1px solid #333; text-align: right;">IGST Amount</th>
+                        `}
+                        <th style="padding: ${padding}; border: 1px solid #333; text-align: right;">Total Tax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${gstBreakdownHTML}
+                    <tr style="background: #95a5a6; color: white; font-weight: bold;">
+                        <td style="padding: ${padding}; border: 1px solid #333; text-align: center;">Total</td>
+                        <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.subtotal.toFixed(2)}</td>
+                        ${!gstTotals.isInterState ? `
+                            <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.cgst.toFixed(2)}</td>
+                            <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.sgst.toFixed(2)}</td>
+                        ` : `
+                            <td colspan="2" style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.igst.toFixed(2)}</td>
+                        `}
+                        <td style="padding: ${padding}; border: 1px solid #333; text-align: right;">₹${gstTotals.taxAmount.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- Grand Total -->
+            <div style="background: #2c3e50; color: white; padding: 0.7rem; text-align: right; font-size: 1.3em; font-weight: bold;">
+                Grand Total (Incl. of all taxes): ₹${gstTotals.grandTotal.toFixed(2)}
+            </div>
+            
+            <!-- Footer -->
+            <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="border-top: 1px solid #333; padding-top: 0.5rem;">
+                    <p style="margin: 0; font-size: 0.9em;"><strong>Terms & Conditions:</strong></p>
+                    <p style="margin: 0.2rem 0; font-size: 0.85em;">1. Goods once sold will not be taken back.</p>
+                    <p style="margin: 0.2rem 0; font-size: 0.85em;">2. Subject to jurisdiction only.</p>
+                </div>
+                <div style="border-top: 1px solid #333; padding-top: 0.5rem; text-align: right;">
+                    <p style="margin: 0; font-size: 0.9em;"><strong>For ${company.name}</strong></p>
+                    <div style="height: 2rem;"></div>
+                    <p style="margin: 0; font-size: 0.9em; border-top: 1px solid #333; display: inline-block; padding-top: 0.2rem;">Authorized Signatory</p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem; padding-top: 0.5rem; border-top: 1px dashed #333; font-size: 0.85em; color: #666;">
+                This is a computer-generated invoice and does not require a physical signature
+            </div>
+        </div>
+    `;
+}
+
 function printInvoiceWithDialog() {
     // Get invoice data from controlled namespace
     const invoice = window.invoicePreviewData ? window.invoicePreviewData.currentInvoice : null;
@@ -4063,6 +4411,9 @@ function printInvoiceWithDialog() {
             break;
         case 'a5_simple_bw':
             invoiceHTML = generateA5SimpleBWInvoice(invoice, client, 'a5');
+            break;
+        case 'gst_professional':
+            invoiceHTML = generateGSTProfessionalInvoice(invoice, client, size);
             break;
         default:
             invoiceHTML = generateModernInvoice(invoice, client, size);
@@ -4237,6 +4588,9 @@ async function saveInvoiceToPDF() {
             break;
         case 'delivery_challan':
             invoiceHTML = generateDeliveryChallanInvoice(invoice, client, size);
+            break;
+        case 'gst_professional':
+            invoiceHTML = generateGSTProfessionalInvoice(invoice, client, size);
             break;
         default:
             invoiceHTML = generateModernInvoice(invoice, client, size);
@@ -6842,6 +7196,7 @@ async function saveAccountLedgerReportToPDF() {
 function editCompanySettings() {
     const company = AppState.currentCompany;
     const detailedInvoicingEnabled = company.detailedInvoicing !== false; // Default to true if not set
+    const taxEnabled = company.taxEnabled || false;
     
     const modal = createModal('Edit Company Settings', `
         <form id="editCompanyForm" onsubmit="updateCompanySettings(event)">
@@ -6866,11 +7221,21 @@ function editCompanySettings() {
             <div class="form-row">
                 <div class="form-group">
                     <label>GSTIN</label>
-                    <input type="text" class="form-control" name="gstin" value="${company.gstin || ''}">
+                    <input type="text" class="form-control" name="gstin" value="${company.gstin || ''}" placeholder="22AAAAA0000A1Z5">
                 </div>
                 <div class="form-group">
                     <label>PAN</label>
-                    <input type="text" class="form-control" name="pan" value="${company.pan || ''}">
+                    <input type="text" class="form-control" name="pan" value="${company.pan || ''}" placeholder="AAAAA0000A">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>State Code (for GST)</label>
+                    <input type="text" class="form-control" name="stateCode" value="${company.stateCode || ''}" placeholder="07">
+                </div>
+                <div class="form-group">
+                    <label>State Name</label>
+                    <input type="text" class="form-control" name="stateName" value="${company.stateName || ''}" placeholder="Delhi">
                 </div>
             </div>
             <div class="form-group">
@@ -6882,6 +7247,28 @@ function editCompanySettings() {
                     When enabled: Create invoices with products, quantities, and rates.<br>
                     When disabled: Create simplified invoices with only client, date, amount, and description.
                 </small>
+            </div>
+            <div class="form-group" style="border-top: 1px solid #ddd; padding-top: 1rem; margin-top: 1rem;">
+                <label style="font-weight: bold; font-size: 1.1rem;">
+                    <input type="checkbox" name="taxEnabled" id="taxEnabledCheckbox" ${taxEnabled ? 'checked' : ''} onchange="toggleTaxSettings(this)">
+                    Enable Tax/GST System
+                </label>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">
+                    When enabled: Invoices will include GST calculations as per Indian tax rules.<br>
+                    When disabled: Invoices will work as before without tax calculations.
+                </small>
+            </div>
+            <div id="taxSettingsSection" style="display: ${taxEnabled ? 'block' : 'none'}; background: #f9f9f9; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                <h4 style="margin-top: 0;">Tax Configuration</h4>
+                <div class="form-group">
+                    <label>Preferred Invoice Template for Tax Invoices</label>
+                    <select class="form-control" name="taxInvoiceTemplate">
+                        <option value="gst_professional" ${(company.taxInvoiceTemplate || 'gst_professional') === 'gst_professional' ? 'selected' : ''}>GST Professional Template</option>
+                        <option value="gst_detailed" ${company.taxInvoiceTemplate === 'gst_detailed' ? 'selected' : ''}>GST Detailed Template</option>
+                        <option value="gst_compact" ${company.taxInvoiceTemplate === 'gst_compact' ? 'selected' : ''}>GST Compact Template</option>
+                    </select>
+                    <small class="form-text text-muted">This template will be used when generating tax invoices</small>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -6908,7 +7295,11 @@ function updateCompanySettings(event) {
         email: formData.get('email'),
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
+        stateCode: formData.get('stateCode'),
+        stateName: formData.get('stateName'),
         detailedInvoicing: formData.get('detailedInvoicing') === 'on',
+        taxEnabled: formData.get('taxEnabled') === 'on',
+        taxInvoiceTemplate: formData.get('taxInvoiceTemplate') || 'gst_professional',
         updatedAt: new Date().toISOString()
     };
     
@@ -7416,6 +7807,86 @@ function toggleReportSaveLocation(checkbox) {
         locationGroup.style.display = checkbox.checked ? 'block' : 'none';
     }
 }
+
+function toggleTaxSettings(checkbox) {
+    const taxSection = document.getElementById('taxSettingsSection');
+    if (taxSection) {
+        taxSection.style.display = checkbox.checked ? 'block' : 'none';
+    }
+}
+
+// GST Settings Function
+function showGSTSettings() {
+    const settings = AppState.settings;
+    
+    const modal = createModal('Tax & GST Configuration', `
+        <form id="gstSettingsForm" onsubmit="updateGSTSettings(event)">
+            <div class="alert" style="background: #fff3cd; border: 1px solid #ffc107; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #856404;">
+                    <i class="fas fa-info-circle"></i> About Tax Configuration
+                </h4>
+                <p style="margin: 0; color: #856404;">
+                    These are default GST rates used across the application. Individual products can have different tax rates.
+                    Enable tax in Company Settings to use GST calculations in invoices.
+                </p>
+            </div>
+            
+            <h4>Default GST Rates (%)</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>CGST Rate (Central GST) *</label>
+                    <input type="number" step="0.01" class="form-control" name="cgst" value="${settings.gstRates.cgst}" required>
+                    <small class="form-text text-muted">Default: 9%</small>
+                </div>
+                <div class="form-group">
+                    <label>SGST Rate (State GST) *</label>
+                    <input type="number" step="0.01" class="form-control" name="sgst" value="${settings.gstRates.sgst}" required>
+                    <small class="form-text text-muted">Default: 9%</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>IGST Rate (Integrated GST) *</label>
+                <input type="number" step="0.01" class="form-control" name="igst" value="${settings.gstRates.igst}" required>
+                <small class="form-text text-muted">Default: 18% (used for inter-state transactions)</small>
+            </div>
+            
+            <div class="alert" style="background: #d4edda; border: 1px solid #c3e6cb; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #155724;">
+                    <i class="fas fa-lightbulb"></i> GST Guidelines
+                </h4>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #155724;">
+                    <li><strong>CGST + SGST</strong>: Used for intra-state (within state) transactions</li>
+                    <li><strong>IGST</strong>: Used for inter-state (between states) transactions</li>
+                    <li>Total CGST + SGST should equal IGST (e.g., 9% + 9% = 18%)</li>
+                    <li>Common GST rates: 5%, 12%, 18%, 28%</li>
+                </ul>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save GST Settings</button>
+            </div>
+        </form>
+    `);
+    showModal(modal);
+}
+
+function updateGSTSettings(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    AppState.settings.gstRates = {
+        cgst: parseFloat(formData.get('cgst')),
+        sgst: parseFloat(formData.get('sgst')),
+        igst: parseFloat(formData.get('igst'))
+    };
+    
+    saveToStorage();
+    closeModal();
+    alert('GST settings updated successfully!');
+}
+
 
 // Select save location functions
 async function selectInvoiceSaveLocation() {
