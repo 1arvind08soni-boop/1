@@ -15,10 +15,23 @@ A comprehensive desktop application for Windows that helps manage billing, invoi
 - **Year-End Process**: Automated closing of financial years with balance carry forward
 - **Data Export**: Export data to CSV/Excel format
 - **Backup & Restore**: Backup and restore company data with full financial year support
+- **🆕 Auto-Backup**: Automatic backups with configurable schedules (daily/weekly) and backup-on-close option
 
-## New: Financial Year Management
+## New: Auto-Backup Feature
 
-The application now supports comprehensive financial year management:
+The application now includes intelligent automatic backup capabilities:
+
+- **Company-Specific Backups**: Each backup contains only the selected company's data
+- **Flexible Scheduling**: Choose daily, weekly, or manual backup frequency
+- **Backup on Close**: Automatically create backups when closing the application
+- **Automatic Storage**: Backups saved directly to your Downloads folder
+- **Smart Timing**: Backups trigger based on your schedule when data changes
+
+📖 **Documentation**: See [Auto-Backup Guide](AUTO-BACKUP-GUIDE.md) for complete setup and usage instructions
+
+## Financial Year Management
+
+The application supports comprehensive financial year management:
 
 - **Create Multiple Financial Years**: Define custom start and end dates for each financial year
 - **Year-End Processing**: Automated closing with balance carry forward for clients and vendors
