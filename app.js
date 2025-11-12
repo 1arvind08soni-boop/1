@@ -42,8 +42,23 @@ function getProductDisplay(item) {
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
-    loadFromStorage();
-    initializeApp();
+    // Initialize license system first
+    if (window.LicenseUIManager) {
+        LicenseUIManager.initialize().then(() => {
+            // Load app data and initialize after license check
+            loadFromStorage();
+            initializeApp();
+        }).catch(err => {
+            console.error('License initialization error:', err);
+            // Still load the app even if license check fails
+            loadFromStorage();
+            initializeApp();
+        });
+    } else {
+        // No license system available, proceed normally
+        loadFromStorage();
+        initializeApp();
+    }
     
     // Setup app closing listener for auto-backup
     if (window.electronAPI && window.electronAPI.onAppClosing) {

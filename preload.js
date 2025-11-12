@@ -31,5 +31,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('auto-backup-on-close', { data, companyName }),
     
     onAppClosing: (callback) => 
-        ipcRenderer.on('app-closing', callback)
+        ipcRenderer.on('app-closing', callback),
+    
+    // License System API
+    license: {
+        validateOnStartup: (options) => 
+            ipcRenderer.invoke('license:validate-on-startup', options),
+        
+        activate: (productKey, bindingData) => 
+            ipcRenderer.invoke('license:activate', productKey, bindingData),
+        
+        deactivate: () => 
+            ipcRenderer.invoke('license:deactivate'),
+        
+        getStatus: () => 
+            ipcRenderer.invoke('license:get-status'),
+        
+        getLogs: (lines) => 
+            ipcRenderer.invoke('license:get-logs', lines),
+        
+        addUser: (userId) => 
+            ipcRenderer.invoke('license:add-user', userId),
+        
+        removeUser: (userId) => 
+            ipcRenderer.invoke('license:remove-user', userId),
+        
+        toggleLock: () => 
+            ipcRenderer.invoke('license:toggle-lock'),
+        
+        exportLicense: () => 
+            ipcRenderer.invoke('license:export'),
+        
+        importLicense: (importData) => 
+            ipcRenderer.invoke('license:import', importData)
+    }
 });

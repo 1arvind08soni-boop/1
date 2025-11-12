@@ -35,7 +35,8 @@
       "app.js",
       "styles.css",
       "icon.png",
-      "icon.ico"
+      "icon.ico",
+      "licensing/"
     ],
     "win": {
       "target": [
