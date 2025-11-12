@@ -254,6 +254,48 @@ function showAddCompanyModal() {
                 </div>
             </div>
             <div class="form-group">
+                <label>State/UT *</label>
+                <select class="form-control" name="state" required>
+                    <option value="">-- Select State --</option>
+                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                    <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Bihar">Bihar</option>
+                    <option value="Chhattisgarh">Chhattisgarh</option>
+                    <option value="Goa">Goa</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="Himachal Pradesh">Himachal Pradesh</option>
+                    <option value="Jharkhand">Jharkhand</option>
+                    <option value="Karnataka">Karnataka</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Manipur">Manipur</option>
+                    <option value="Meghalaya">Meghalaya</option>
+                    <option value="Mizoram">Mizoram</option>
+                    <option value="Nagaland">Nagaland</option>
+                    <option value="Odisha">Odisha</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Sikkim">Sikkim</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Telangana">Telangana</option>
+                    <option value="Tripura">Tripura</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
+                    <option value="West Bengal">West Bengal</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                    <option value="Ladakh">Ladakh</option>
+                    <option value="Puducherry">Puducherry</option>
+                    <option value="Chandigarh">Chandigarh</option>
+                    <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                    <option value="Lakshadweep">Lakshadweep</option>
+                    <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label>
                     <input type="checkbox" name="detailedInvoicing" checked>
                     Enable Detailed Invoicing
@@ -263,6 +305,32 @@ function showAddCompanyModal() {
                     When disabled: Create simplified invoices with only client, date, amount, and description.
                 </small>
             </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enableTax" id="enableTaxCheckbox" onchange="toggleTaxSettings()">
+                    Enable Tax/GST Features
+                </label>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">
+                    When enabled: Full GST support with CGST, SGST, IGST breakdown, HSN codes, and GST reports.<br>
+                    When disabled: Simple tax percentage field (current behavior).
+                </small>
+            </div>
+            <div id="taxSettings" style="display: none; margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 4px;">
+                <h4 style="margin-top: 0;">Tax/GST Settings</h4>
+                <div class="form-group">
+                    <label>Default Invoice Template for Tax</label>
+                    <select class="form-control" name="taxInvoiceTemplate">
+                        <option value="gst-standard">GST Standard (with HSN codes)</option>
+                        <option value="gst-detailed">GST Detailed (itemized breakdown)</option>
+                        <option value="gst-compact">GST Compact</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Default GST Rate (%)</label>
+                    <input type="number" class="form-control" name="defaultGstRate" step="0.01" min="0" max="100" value="18" placeholder="18">
+                    <small style="color: #666;">This will be pre-filled when creating invoices (can be changed per invoice)</small>
+                </div>
+            </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Add Company</button>
@@ -270,6 +338,12 @@ function showAddCompanyModal() {
         </form>
     `);
     showModal(modal);
+}
+
+function toggleTaxSettings() {
+    const checkbox = document.getElementById('enableTaxCheckbox');
+    const taxSettings = document.getElementById('taxSettings');
+    taxSettings.style.display = checkbox.checked ? 'block' : 'none';
 }
 
 function addCompany(event) {
@@ -285,7 +359,11 @@ function addCompany(event) {
         email: formData.get('email'),
         gstin: formData.get('gstin'),
         pan: formData.get('pan'),
+        state: formData.get('state'),
         detailedInvoicing: formData.get('detailedInvoicing') === 'on',
+        enableTax: formData.get('enableTax') === 'on',
+        taxInvoiceTemplate: formData.get('taxInvoiceTemplate') || 'gst-standard',
+        defaultGstRate: parseFloat(formData.get('defaultGstRate')) || 18,
         createdAt: new Date().toISOString()
     };
     
@@ -497,6 +575,8 @@ function showAddProductModal() {
         `<option value="${c.id}">${c.name}</option>`
     ).join('');
     
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
+    
     const modal = createModal('Add New Product', `
         <form id="addProductForm" onsubmit="addProduct(event)">
             <div class="form-row">
@@ -521,6 +601,20 @@ function showAddProductModal() {
                     </select>
                 </div>
             </div>
+            ${isTaxEnabled ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>HSN/SAC Code</label>
+                    <input type="text" class="form-control" name="hsnCode" placeholder="e.g., 7113">
+                    <small style="color: #666;">HSN code for GST compliance</small>
+                </div>
+                <div class="form-group">
+                    <label>GST Rate (%)</label>
+                    <input type="number" class="form-control" name="gstRate" step="0.01" min="0" max="100" value="${AppState.currentCompany.defaultGstRate || 18}">
+                    <small style="color: #666;">GST percentage for this product</small>
+                </div>
+            </div>
+            ` : ''}
             <div class="form-row">
                 <div class="form-group">
                     <label>Unit Per Box *</label>
@@ -614,6 +708,12 @@ function addProduct(event) {
         description: formData.get('description'),
         createdAt: new Date().toISOString()
     };
+    
+    // Add tax-specific fields if tax is enabled
+    if (AppState.currentCompany && AppState.currentCompany.enableTax) {
+        product.hsnCode = formData.get('hsnCode') || '';
+        product.gstRate = parseFloat(formData.get('gstRate')) || 0;
+    }
     
     AppState.products.push(product);
     saveCompanyData();
@@ -1250,6 +1350,8 @@ function calculateClientBalance(clientId) {
 }
 
 function showAddClientModal() {
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
+    
     const modal = createModal('Add New Client', `
         <form id="addClientForm" onsubmit="addClient(event)">
             <div class="form-row">
@@ -1276,6 +1378,51 @@ function showAddClientModal() {
                 <label>Address</label>
                 <textarea class="form-control" name="address" rows="3"></textarea>
             </div>
+            ${isTaxEnabled ? `
+            <div class="form-group">
+                <label>State/UT *</label>
+                <select class="form-control" name="state" required>
+                    <option value="">-- Select State --</option>
+                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                    <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Bihar">Bihar</option>
+                    <option value="Chhattisgarh">Chhattisgarh</option>
+                    <option value="Goa">Goa</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="Himachal Pradesh">Himachal Pradesh</option>
+                    <option value="Jharkhand">Jharkhand</option>
+                    <option value="Karnataka">Karnataka</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Manipur">Manipur</option>
+                    <option value="Meghalaya">Meghalaya</option>
+                    <option value="Mizoram">Mizoram</option>
+                    <option value="Nagaland">Nagaland</option>
+                    <option value="Odisha">Odisha</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Sikkim">Sikkim</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Telangana">Telangana</option>
+                    <option value="Tripura">Tripura</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
+                    <option value="West Bengal">West Bengal</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                    <option value="Ladakh">Ladakh</option>
+                    <option value="Puducherry">Puducherry</option>
+                    <option value="Chandigarh">Chandigarh</option>
+                    <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                    <option value="Lakshadweep">Lakshadweep</option>
+                    <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                </select>
+                <small style="color: #666;">Used to determine if GST is intra-state (CGST+SGST) or inter-state (IGST)</small>
+            </div>
+            ` : ''}
             <div class="form-row">
                 <div class="form-group">
                     <label>GSTIN</label>
@@ -1323,6 +1470,11 @@ function addClient(event) {
         discountPercentage: parseFloat(formData.get('discountPercentage')) || 0,
         createdAt: new Date().toISOString()
     };
+    
+    // Add state if tax is enabled
+    if (AppState.currentCompany && AppState.currentCompany.enableTax) {
+        client.state = formData.get('state') || '';
+    }
     
     AppState.clients.push(client);
     saveCompanyData();
@@ -1943,6 +2095,7 @@ function getNextInvoiceNumber() {
 function showAddInvoiceModal() {
     const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     const detailedInvoicing = AppState.currentCompany.detailedInvoicing !== false; // Default to true
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
     
     if (detailedInvoicing) {
         // Show detailed invoice form with products
@@ -1964,7 +2117,7 @@ function showAddInvoiceModal() {
                 <div class="form-group">
                     <label>Select Client *</label>
                     <div style="display: flex; gap: 0.5rem;">
-                        <select class="form-control" name="clientId" id="invoiceClientSelect" required style="flex: 1;">
+                        <select class="form-control" name="clientId" id="invoiceClientSelect" ${isTaxEnabled ? 'onchange="updateGstType()"' : ''} required style="flex: 1;">
                             <option value="">-- Select Client --</option>
                             ${clientOptions}
                         </select>
@@ -1988,6 +2141,7 @@ function showAddInvoiceModal() {
                         <tr>
                             <th>S.No</th>
                             <th>Product/Design No</th>
+                            ${isTaxEnabled ? '<th>HSN Code</th>' : ''}
                             <th>No of Box</th>
                             <th>Unit Per Box</th>
                             <th>Quantity</th>
@@ -2010,10 +2164,11 @@ function showAddInvoiceModal() {
                                     </button>
                                 </div>
                             </td>
+                            ${isTaxEnabled ? '<td><input type="text" class="form-control hsn-input" readonly></td>' : ''}
                             <td><input type="number" class="form-control boxes-input" min="0" step="0.01" value="0" onchange="calculateInvoiceItem(this)"></td>
                             <td><input type="number" class="form-control unit-per-box-input" min="1" value="0" readonly></td>
                             <td><input type="number" class="form-control quantity-input" min="0" value="0" readonly></td>
-                            <td><input type="number" class="form-control rate-input" step="0.01" min="0" value="0" readonly></td>
+                            <td><input type="number" class="form-control rate-input" step="0.01" min="0" value="0" onchange="calculateInvoiceItem(this)"></td>
                             <td><input type="number" class="form-control amount-input" step="0.01" min="0" value="0" readonly></td>
                             <td><button type="button" class="action-btn delete" onclick="removeInvoiceItem(this)"><i class="fas fa-trash"></i></button></td>
                         </tr>
@@ -2025,20 +2180,61 @@ function showAddInvoiceModal() {
                 
                 <div class="form-row mt-3">
                     <div class="form-group">
-                        <label>Subtotal</label>
+                        <label>Taxable Amount</label>
                         <input type="number" class="form-control" id="invoiceSubtotal" step="0.01" readonly value="0">
                     </div>
+                    ${isTaxEnabled ? `
+                    <div class="form-group">
+                        <label>GST Type</label>
+                        <select class="form-control" id="invoiceGstType" onchange="calculateInvoiceTotal()">
+                            <option value="intra">Intra-State (CGST+SGST)</option>
+                            <option value="inter">Inter-State (IGST)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>GST Rate %</label>
+                        <div style="display: flex; gap: 0.25rem;">
+                            <input type="number" class="form-control" id="invoiceGstRate" step="0.01" min="0" value="${AppState.currentCompany.defaultGstRate || 18}" onchange="calculateInvoiceTotal()">
+                            <button type="button" class="btn btn-secondary" onclick="setGstRate(5)" style="padding: 0.375rem 0.5rem;">5%</button>
+                            <button type="button" class="btn btn-secondary" onclick="setGstRate(12)" style="padding: 0.375rem 0.5rem;">12%</button>
+                            <button type="button" class="btn btn-secondary" onclick="setGstRate(18)" style="padding: 0.375rem 0.5rem;">18%</button>
+                            <button type="button" class="btn btn-secondary" onclick="setGstRate(28)" style="padding: 0.375rem 0.5rem;">28%</button>
+                        </div>
+                    </div>
+                    ` : `
                     <div class="form-group">
                         <label>Tax %</label>
                         <input type="number" class="form-control" id="invoiceTax" step="0.01" min="0" value="0" onchange="calculateInvoiceTotal()">
                     </div>
-                    <div class="form-group">
-                        <label>Total</label>
-                        <input type="number" class="form-control" id="invoiceTotal" step="0.01" readonly value="0">
-                    </div>
+                    `}
                 </div>
                 
+                ${isTaxEnabled ? `
+                <div class="form-row" id="gstBreakdownRow">
+                    <div class="form-group">
+                        <label id="cgstLabel">CGST %</label>
+                        <input type="number" class="form-control" id="invoiceCgstPercent" step="0.01" readonly value="0">
+                    </div>
+                    <div class="form-group">
+                        <label id="cgstAmountLabel">CGST Amount</label>
+                        <input type="number" class="form-control" id="invoiceCgstAmount" step="0.01" readonly value="0">
+                    </div>
+                    <div class="form-group">
+                        <label id="sgstLabel">SGST %</label>
+                        <input type="number" class="form-control" id="invoiceSgstPercent" step="0.01" readonly value="0">
+                    </div>
+                    <div class="form-group">
+                        <label id="sgstAmountLabel">SGST Amount</label>
+                        <input type="number" class="form-control" id="invoiceSgstAmount" step="0.01" readonly value="0">
+                    </div>
+                </div>
+                ` : ''}
+                
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Amount</label>
+                        <input type="number" class="form-control" id="invoiceTotal" step="0.01" readonly value="0">
+                    </div>
                     <div class="form-group">
                         <label>Total Boxes (Rounded Up)</label>
                         <input type="number" class="form-control" id="invoiceTotalBoxes" readonly value="0">
@@ -2115,6 +2311,7 @@ function showAddInvoiceModal() {
 function updateInvoiceItem(selectElement) {
     const row = selectElement.closest('tr');
     const productId = selectElement.value;
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
     
     if (!productId) {
         row.querySelector('.rate-input').value = 0;
@@ -2122,6 +2319,10 @@ function updateInvoiceItem(selectElement) {
         row.querySelector('.unit-per-box-input').value = 0;
         row.querySelector('.quantity-input').value = 0;
         row.querySelector('.amount-input').value = 0;
+        if (isTaxEnabled) {
+            const hsnInput = row.querySelector('.hsn-input');
+            if (hsnInput) hsnInput.value = '';
+        }
         calculateInvoiceTotal();
         return;
     }
@@ -2142,6 +2343,15 @@ function updateInvoiceItem(selectElement) {
         row.querySelector('.unit-per-box-input').value = product.unitPerBox;
         row.dataset.unitPerBox = product.unitPerBox;
         row.dataset.productId = productId;
+        
+        // Set HSN code if tax is enabled
+        if (isTaxEnabled) {
+            const hsnInput = row.querySelector('.hsn-input');
+            if (hsnInput) {
+                hsnInput.value = product.hsnCode || '';
+            }
+        }
+        
         // Reset boxes to trigger recalculation
         calculateInvoiceItem(row.querySelector('.boxes-input'));
     }
@@ -2182,11 +2392,58 @@ function calculateInvoiceTotal() {
         }
     });
     
-    const taxPercent = parseFloat(document.getElementById('invoiceTax').value) || 0;
-    const taxAmount = (subtotal * taxPercent) / 100;
-    const total = subtotal + taxAmount;
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
     
     document.getElementById('invoiceSubtotal').value = subtotal.toFixed(2);
+    
+    let total = subtotal;
+    
+    if (isTaxEnabled) {
+        // GST calculation
+        const gstType = document.getElementById('invoiceGstType').value;
+        const gstRate = parseFloat(document.getElementById('invoiceGstRate').value) || 0;
+        
+        if (gstType === 'intra') {
+            // Intra-state: CGST + SGST (split GST rate in half for each)
+            const cgstPercent = gstRate / 2;
+            const sgstPercent = gstRate / 2;
+            const cgstAmount = (subtotal * cgstPercent) / 100;
+            const sgstAmount = (subtotal * sgstPercent) / 100;
+            
+            document.getElementById('cgstLabel').textContent = 'CGST %';
+            document.getElementById('cgstAmountLabel').textContent = 'CGST Amount';
+            document.getElementById('sgstLabel').textContent = 'SGST %';
+            document.getElementById('sgstAmountLabel').textContent = 'SGST Amount';
+            
+            document.getElementById('invoiceCgstPercent').value = cgstPercent.toFixed(2);
+            document.getElementById('invoiceCgstAmount').value = cgstAmount.toFixed(2);
+            document.getElementById('invoiceSgstPercent').value = sgstPercent.toFixed(2);
+            document.getElementById('invoiceSgstAmount').value = sgstAmount.toFixed(2);
+            
+            total = subtotal + cgstAmount + sgstAmount;
+        } else {
+            // Inter-state: IGST
+            const igstAmount = (subtotal * gstRate) / 100;
+            
+            document.getElementById('cgstLabel').textContent = 'IGST %';
+            document.getElementById('cgstAmountLabel').textContent = 'IGST Amount';
+            document.getElementById('sgstLabel').textContent = '';
+            document.getElementById('sgstAmountLabel').textContent = '';
+            
+            document.getElementById('invoiceCgstPercent').value = gstRate.toFixed(2);
+            document.getElementById('invoiceCgstAmount').value = igstAmount.toFixed(2);
+            document.getElementById('invoiceSgstPercent').value = '';
+            document.getElementById('invoiceSgstAmount').value = '';
+            
+            total = subtotal + igstAmount;
+        }
+    } else {
+        // Simple tax calculation
+        const taxPercent = parseFloat(document.getElementById('invoiceTax').value) || 0;
+        const taxAmount = (subtotal * taxPercent) / 100;
+        total = subtotal + taxAmount;
+    }
+    
     document.getElementById('invoiceTotal').value = total.toFixed(2);
     
     // Update total boxes field if it exists
@@ -2196,10 +2453,47 @@ function calculateInvoiceTotal() {
     }
 }
 
+// Helper function to set GST rate quickly
+function setGstRate(rate) {
+    const gstRateInput = document.getElementById('invoiceGstRate');
+    if (gstRateInput) {
+        gstRateInput.value = rate;
+        calculateInvoiceTotal();
+    }
+}
+
+// Helper function to update GST type based on client state
+function updateGstType() {
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
+    if (!isTaxEnabled) return;
+    
+    const clientSelect = document.getElementById('invoiceClientSelect');
+    const gstTypeSelect = document.getElementById('invoiceGstType');
+    
+    if (!clientSelect || !gstTypeSelect) return;
+    
+    const clientId = clientSelect.value;
+    if (!clientId) return;
+    
+    const client = AppState.clients.find(c => c.id === clientId);
+    const companyState = AppState.currentCompany.state;
+    
+    if (client && client.state && companyState) {
+        // Auto-determine GST type based on state match
+        if (client.state === companyState) {
+            gstTypeSelect.value = 'intra'; // Same state: CGST+SGST
+        } else {
+            gstTypeSelect.value = 'inter'; // Different state: IGST
+        }
+        calculateInvoiceTotal();
+    }
+}
+
 function addInvoiceItem() {
     const productOptions = AppState.products.map(p => `<option value="${p.id}">${p.code} - ${p.category}</option>`).join('');
     const tbody = document.getElementById('invoiceItemsBody');
     const serialNo = tbody.children.length + 1;
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
     
     const row = document.createElement('tr');
     row.dataset.serial = serialNo;
@@ -2216,10 +2510,11 @@ function addInvoiceItem() {
                 </button>
             </div>
         </td>
+        ${isTaxEnabled ? '<td><input type="text" class="form-control hsn-input" readonly></td>' : ''}
         <td><input type="number" class="form-control boxes-input" min="0" step="0.01" value="0" onchange="calculateInvoiceItem(this)"></td>
         <td><input type="number" class="form-control unit-per-box-input" min="1" value="0" readonly></td>
         <td><input type="number" class="form-control quantity-input" min="0" value="0" readonly></td>
-        <td><input type="number" class="form-control rate-input" step="0.01" min="0" value="0" readonly></td>
+        <td><input type="number" class="form-control rate-input" step="0.01" min="0" value="0" onchange="calculateInvoiceItem(this)"></td>
         <td><input type="number" class="form-control amount-input" step="0.01" min="0" value="0" readonly></td>
         <td><button type="button" class="action-btn delete" onclick="removeInvoiceItem(this)"><i class="fas fa-trash"></i></button></td>
     `;
@@ -2260,6 +2555,7 @@ function addInvoice(event) {
         return;
     }
     
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
     const items = [];
     const rows = document.querySelectorAll('#invoiceItemsBody tr');
     
@@ -2275,7 +2571,7 @@ function addInvoice(event) {
             const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
             const amount = parseFloat(row.querySelector('.amount-input').value) || 0;
             
-            items.push({
+            const item = {
                 serialNo: index + 1,
                 productId,
                 productCode: product.code,
@@ -2285,7 +2581,15 @@ function addInvoice(event) {
                 quantity,
                 rate,
                 amount
-            });
+            };
+            
+            // Add HSN code if tax is enabled
+            if (isTaxEnabled) {
+                const hsnInput = row.querySelector('.hsn-input');
+                item.hsnCode = hsnInput ? hsnInput.value : (product.hsnCode || '');
+            }
+            
+            items.push(item);
         }
     });
     
@@ -2310,13 +2614,33 @@ function addInvoice(event) {
         category: formData.get('category') || 'LESS',
         items: items,
         subtotal: parseFloat(document.getElementById('invoiceSubtotal').value),
-        tax: parseFloat(document.getElementById('invoiceTax').value),
         total: parseFloat(document.getElementById('invoiceTotal').value),
         totalBoxes: totalBoxes,
         notes: formData.get('notes'),
         status: 'Unpaid',
         createdAt: new Date().toISOString()
     };
+    
+    // Add tax/GST fields based on company settings
+    if (isTaxEnabled) {
+        const gstType = document.getElementById('invoiceGstType').value;
+        const gstRate = parseFloat(document.getElementById('invoiceGstRate').value) || 0;
+        
+        invoice.gstType = gstType;
+        invoice.gstRate = gstRate;
+        
+        if (gstType === 'intra') {
+            invoice.cgstPercent = gstRate / 2;
+            invoice.sgstPercent = gstRate / 2;
+            invoice.cgstAmount = parseFloat(document.getElementById('invoiceCgstAmount').value);
+            invoice.sgstAmount = parseFloat(document.getElementById('invoiceSgstAmount').value);
+        } else {
+            invoice.igstPercent = gstRate;
+            invoice.igstAmount = parseFloat(document.getElementById('invoiceCgstAmount').value); // Using same field for IGST
+        }
+    } else {
+        invoice.tax = parseFloat(document.getElementById('invoiceTax').value);
+    }
     
     AppState.invoices.push(invoice);
     saveCompanyData();
