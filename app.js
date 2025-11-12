@@ -411,6 +411,13 @@ function selectCompany(companyId) {
     
     document.getElementById('currentCompanyName').textContent = company.name;
     updateFinancialYearDisplay();
+    
+    // Show/hide GST report card based on tax enablement
+    const gstReportCard = document.getElementById('gstReportCard');
+    if (gstReportCard) {
+        gstReportCard.style.display = company.enableTax ? '' : 'none';
+    }
+    
     showScreen('main');
     showContentScreen('dashboard');
     updateDashboard();
@@ -4771,6 +4778,7 @@ function loadPurchases() {
 
 function showAddPurchaseModal() {
     const vendorOptions = AppState.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
     
     const modal = createModal('New Purchase', `
         <form id="addPurchaseForm" onsubmit="addPurchase(event)">
@@ -4796,10 +4804,51 @@ function showAddPurchaseModal() {
                     </button>
                 </div>
             </div>
+            
+            ${isTaxEnabled ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Taxable Amount *</label>
+                    <input type="number" class="form-control" id="purchaseAmount" name="amount" step="0.01" min="0" required onchange="calculatePurchaseGst()">
+                </div>
+                <div class="form-group">
+                    <label>GST Rate %</label>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <input type="number" class="form-control" id="purchaseGstRate" name="gstRate" step="0.01" min="0" value="${AppState.currentCompany.defaultGstRate || 18}" onchange="calculatePurchaseGst()">
+                        <button type="button" class="btn btn-secondary" onclick="setPurchaseGstRate(5)" style="padding: 0.375rem 0.5rem;">5%</button>
+                        <button type="button" class="btn btn-secondary" onclick="setPurchaseGstRate(12)" style="padding: 0.375rem 0.5rem;">12%</button>
+                        <button type="button" class="btn btn-secondary" onclick="setPurchaseGstRate(18)" style="padding: 0.375rem 0.5rem;">18%</button>
+                        <button type="button" class="btn btn-secondary" onclick="setPurchaseGstRate(28)" style="padding: 0.375rem 0.5rem;">28%</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>CGST Amount</label>
+                    <input type="number" class="form-control" id="purchaseCgstAmount" step="0.01" readonly value="0">
+                </div>
+                <div class="form-group">
+                    <label>SGST Amount</label>
+                    <input type="number" class="form-control" id="purchaseSgstAmount" step="0.01" readonly value="0">
+                </div>
+                <div class="form-group">
+                    <label>Total Amount</label>
+                    <input type="number" class="form-control" id="purchaseTotal" step="0.01" readonly value="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="purchaseIsInterState" onchange="calculatePurchaseGst()">
+                    Inter-State Purchase (Use IGST instead of CGST+SGST)
+                </label>
+            </div>
+            ` : `
             <div class="form-group">
                 <label>Amount *</label>
                 <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
             </div>
+            `}
+            
             <div class="form-group">
                 <label>Description</label>
                 <textarea class="form-control" name="description" rows="3"></textarea>
@@ -4811,6 +4860,11 @@ function showAddPurchaseModal() {
         </form>
     `);
     showModal(modal);
+    
+    // Initialize GST calculation for tax-enabled companies
+    if (isTaxEnabled) {
+        calculatePurchaseGst();
+    }
 }
 
 function addPurchase(event) {
@@ -4819,7 +4873,7 @@ function addPurchase(event) {
     const formData = new FormData(form);
     
     const vendorId = formData.get('vendorId');
-    const amount = parseFloat(formData.get('amount'));
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
     
     // Validate vendor selection
     if (!vendorId) {
@@ -4827,28 +4881,109 @@ function addPurchase(event) {
         return;
     }
     
-    // Validate amount
-    if (!amount || amount <= 0) {
-        showError('Please enter a positive amount greater than 0');
-        return;
-    }
-    
+    let amount, total;
     const purchase = {
         id: generateId(),
         purchaseNo: formData.get('purchaseNo'),
         date: formData.get('date'),
         vendorId: vendorId,
-        total: amount,
         description: formData.get('description'),
         status: 'Unpaid',
         createdAt: new Date().toISOString()
     };
+    
+    if (isTaxEnabled) {
+        amount = parseFloat(formData.get('amount'));
+        const gstRate = parseFloat(formData.get('gstRate')) || 0;
+        const isInterState = document.getElementById('purchaseIsInterState').checked;
+        
+        if (!amount || amount <= 0) {
+            showError('Please enter a positive taxable amount greater than 0');
+            return;
+        }
+        
+        // Calculate GST
+        if (isInterState) {
+            const igstAmount = (amount * gstRate) / 100;
+            purchase.amount = amount;
+            purchase.gstType = 'inter';
+            purchase.gstRate = gstRate;
+            purchase.igstPercent = gstRate;
+            purchase.igstAmount = igstAmount;
+            purchase.total = amount + igstAmount;
+        } else {
+            const cgstPercent = gstRate / 2;
+            const sgstPercent = gstRate / 2;
+            const cgstAmount = (amount * cgstPercent) / 100;
+            const sgstAmount = (amount * sgstPercent) / 100;
+            
+            purchase.amount = amount;
+            purchase.gstType = 'intra';
+            purchase.gstRate = gstRate;
+            purchase.cgstPercent = cgstPercent;
+            purchase.cgstAmount = cgstAmount;
+            purchase.sgstPercent = sgstPercent;
+            purchase.sgstAmount = sgstAmount;
+            purchase.total = amount + cgstAmount + sgstAmount;
+        }
+    } else {
+        total = parseFloat(formData.get('amount'));
+        if (!total || total <= 0) {
+            showError('Please enter a positive amount greater than 0');
+            return;
+        }
+        purchase.total = total;
+    }
     
     AppState.purchases.push(purchase);
     saveCompanyData();
     loadPurchases();
     updateDashboard();
     closeModal();
+}
+
+// Helper functions for purchase GST calculation
+function calculatePurchaseGst() {
+    const amountInput = document.getElementById('purchaseAmount');
+    const gstRateInput = document.getElementById('purchaseGstRate');
+    const cgstAmountInput = document.getElementById('purchaseCgstAmount');
+    const sgstAmountInput = document.getElementById('purchaseSgstAmount');
+    const totalInput = document.getElementById('purchaseTotal');
+    const isInterState = document.getElementById('purchaseIsInterState').checked;
+    
+    if (!amountInput || !gstRateInput) return;
+    
+    const amount = parseFloat(amountInput.value) || 0;
+    const gstRate = parseFloat(gstRateInput.value) || 0;
+    
+    if (isInterState) {
+        // Inter-state: IGST
+        const igstAmount = (amount * gstRate) / 100;
+        cgstAmountInput.parentElement.querySelector('label').textContent = 'IGST Amount';
+        cgstAmountInput.value = igstAmount.toFixed(2);
+        sgstAmountInput.parentElement.style.display = 'none';
+        totalInput.value = (amount + igstAmount).toFixed(2);
+    } else {
+        // Intra-state: CGST + SGST
+        const cgstPercent = gstRate / 2;
+        const sgstPercent = gstRate / 2;
+        const cgstAmount = (amount * cgstPercent) / 100;
+        const sgstAmount = (amount * sgstPercent) / 100;
+        
+        cgstAmountInput.parentElement.querySelector('label').textContent = 'CGST Amount';
+        cgstAmountInput.value = cgstAmount.toFixed(2);
+        sgstAmountInput.parentElement.style.display = '';
+        sgstAmountInput.value = sgstAmount.toFixed(2);
+        totalInput.value = (amount + cgstAmount + sgstAmount).toFixed(2);
+    }
+}
+
+function setPurchaseGstRate(rate) {
+    const gstRateInput = document.getElementById('purchaseGstRate');
+    if (gstRateInput) {
+        gstRateInput.value = rate;
+        calculatePurchaseGst();
+    }
 }
 
 function editPurchase(purchaseId) {
@@ -8893,4 +9028,209 @@ function exportTrialBalanceToPDF() {
     printWindow.document.write('window.onafterprint = function() { setTimeout(function() { window.close(); }, 100); };');
     printWindow.document.write('</script></body></html>');
     printWindow.document.close();
+}
+
+// GST Reports
+function showGstReport() {
+    const isTaxEnabled = AppState.currentCompany && AppState.currentCompany.enableTax;
+    if (!isTaxEnabled) {
+        showError('GST Reports are only available for tax-enabled companies');
+        return;
+    }
+    
+    const currentFY = AppState.currentFinancialYear;
+    const startDate = currentFY ? currentFY.startDate : '';
+    const endDate = currentFY ? currentFY.endDate : '';
+    
+    const modal = createModal('GST Report', `
+        <div class="report-filters">
+            <h3>Generate GST Summary Report</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>From Date</label>
+                    <input type="date" class="form-control" id="gstFromDate" value="${startDate}">
+                </div>
+                <div class="form-group">
+                    <label>To Date</label>
+                    <input type="date" class="form-control" id="gstToDate" value="${endDate}">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="generateGstReport()">
+                <i class="fas fa-file-alt"></i> Generate Report
+            </button>
+            <button class="btn btn-secondary" onclick="exportGstReportToCSV()">
+                <i class="fas fa-file-csv"></i> Export to CSV
+            </button>
+        </div>
+        <div id="gstReportContent" style="margin-top: 2rem;">
+            <p class="text-center">Click "Generate Report" to view GST summary</p>
+        </div>
+    `, 'modal-xl');
+    showModal(modal);
+}
+
+function generateGstReport() {
+    const fromDate = document.getElementById('gstFromDate').value;
+    const toDate = document.getElementById('gstToDate').value;
+    
+    if (!fromDate || !toDate) {
+        showError('Please select both from and to dates');
+        return;
+    }
+    
+    // Filter invoices by date range
+    const filteredInvoices = AppState.invoices.filter(inv => {
+        return inv.date >= fromDate && inv.date <= toDate;
+    });
+    
+    // Filter purchases by date range
+    const filteredPurchases = AppState.purchases.filter(pur => {
+        return pur.date >= fromDate && pur.date <= toDate;
+    });
+    
+    // Calculate Output GST (Sales)
+    let outputCgst = 0, outputSgst = 0, outputIgst = 0;
+    filteredInvoices.forEach(inv => {
+        if (inv.gstType === 'intra') {
+            outputCgst += inv.cgstAmount || 0;
+            outputSgst += inv.sgstAmount || 0;
+        } else if (inv.gstType === 'inter') {
+            outputIgst += inv.igstAmount || 0;
+        }
+    });
+    
+    // Calculate Input GST (Purchases)
+    let inputCgst = 0, inputSgst = 0, inputIgst = 0;
+    filteredPurchases.forEach(pur => {
+        if (pur.gstType === 'intra') {
+            inputCgst += pur.cgstAmount || 0;
+            inputSgst += pur.sgstAmount || 0;
+        } else if (pur.gstType === 'inter') {
+            inputIgst += pur.igstAmount || 0;
+        }
+    });
+    
+    // Calculate Net GST Liability
+    const netCgst = outputCgst - inputCgst;
+    const netSgst = outputSgst - inputSgst;
+    const netIgst = outputIgst - inputIgst;
+    const totalNetGst = netCgst + netSgst + netIgst;
+    
+    let reportHTML = '<div class="report-container">';
+    reportHTML += `<h3 style="text-align: center;">GST Summary Report</h3>`;
+    reportHTML += `<p style="text-align: center;">Period: ${formatDate(fromDate)} to ${formatDate(toDate)}</p>`;
+    reportHTML += `<p style="text-align: center;"><strong>Company:</strong> ${AppState.currentCompany.name}</p>`;
+    reportHTML += `<p style="text-align: center;"><strong>GSTIN:</strong> ${AppState.currentCompany.gstin || 'N/A'}</p>`;
+    
+    // Output GST (Sales)
+    reportHTML += '<div style="margin-top: 2rem;">';
+    reportHTML += '<h4>Output GST (Sales)</h4>';
+    reportHTML += '<table class="table">';
+    reportHTML += '<thead><tr><th>Type</th><th>Tax</th><th class="text-right">Amount (₹)</th></tr></thead>';
+    reportHTML += '<tbody>';
+    reportHTML += `<tr><td>Intra-State</td><td>CGST</td><td class="text-right">${outputCgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr><td>Intra-State</td><td>SGST</td><td class="text-right">${outputSgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr><td>Inter-State</td><td>IGST</td><td class="text-right">${outputIgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr style="background: #f0f0f0; font-weight: bold;"><td colspan="2">Total Output GST</td><td class="text-right">${(outputCgst + outputSgst + outputIgst).toFixed(2)}</td></tr>`;
+    reportHTML += '</tbody></table>';
+    reportHTML += '</div>';
+    
+    // Input GST (Purchases)
+    reportHTML += '<div style="margin-top: 2rem;">';
+    reportHTML += '<h4>Input GST (Purchases - Tax Credit)</h4>';
+    reportHTML += '<table class="table">';
+    reportHTML += '<thead><tr><th>Type</th><th>Tax</th><th class="text-right">Amount (₹)</th></tr></thead>';
+    reportHTML += '<tbody>';
+    reportHTML += `<tr><td>Intra-State</td><td>CGST</td><td class="text-right">${inputCgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr><td>Intra-State</td><td>SGST</td><td class="text-right">${inputSgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr><td>Inter-State</td><td>IGST</td><td class="text-right">${inputIgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr style="background: #f0f0f0; font-weight: bold;"><td colspan="2">Total Input GST</td><td class="text-right">${(inputCgst + inputSgst + inputIgst).toFixed(2)}</td></tr>`;
+    reportHTML += '</tbody></table>';
+    reportHTML += '</div>';
+    
+    // Net GST Liability
+    reportHTML += '<div style="margin-top: 2rem;">';
+    reportHTML += '<h4>Net GST Liability</h4>';
+    reportHTML += '<table class="table">';
+    reportHTML += '<thead><tr><th>Type</th><th>Tax</th><th class="text-right">Payable (₹)</th></tr></thead>';
+    reportHTML += '<tbody>';
+    reportHTML += `<tr><td>Intra-State</td><td>CGST</td><td class="text-right" style="color: ${netCgst >= 0 ? 'red' : 'green'};">${netCgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr><td>Intra-State</td><td>SGST</td><td class="text-right" style="color: ${netSgst >= 0 ? 'red' : 'green'};">${netSgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr><td>Inter-State</td><td>IGST</td><td class="text-right" style="color: ${netIgst >= 0 ? 'red' : 'green'};">${netIgst.toFixed(2)}</td></tr>`;
+    reportHTML += `<tr style="background: ${totalNetGst >= 0 ? '#ffe6e6' : '#e6ffe6'}; font-weight: bold;"><td colspan="2">Total Net GST ${totalNetGst >= 0 ? 'Payable' : 'Refundable'}</td><td class="text-right">${Math.abs(totalNetGst).toFixed(2)}</td></tr>`;
+    reportHTML += '</tbody></table>';
+    reportHTML += '</div>';
+    
+    // Summary Stats
+    reportHTML += '<div style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">';
+    reportHTML += '<h4>Summary</h4>';
+    reportHTML += `<p><strong>Total Sales Invoices:</strong> ${filteredInvoices.length}</p>`;
+    reportHTML += `<p><strong>Total Purchases:</strong> ${filteredPurchases.length}</p>`;
+    reportHTML += `<p><strong>Total Taxable Sales:</strong> ₹${filteredInvoices.reduce((sum, inv) => sum + (inv.subtotal || 0), 0).toFixed(2)}</p>`;
+    reportHTML += `<p><strong>Total Taxable Purchases:</strong> ₹${filteredPurchases.reduce((sum, pur) => sum + (pur.amount || 0), 0).toFixed(2)}</p>`;
+    reportHTML += '</div>';
+    
+    reportHTML += '<div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 6px;">';
+    reportHTML += '<p style="margin: 0;"><strong>Note:</strong> This report is for reference only. Please consult your tax advisor for official GST filing.</p>';
+    reportHTML += '</div>';
+    
+    reportHTML += '</div>';
+    
+    document.getElementById('gstReportContent').innerHTML = reportHTML;
+}
+
+function exportGstReportToCSV() {
+    const reportContent = document.getElementById('gstReportContent').innerHTML;
+    if (!reportContent || reportContent.includes('Click "Generate Report"')) {
+        showError('Please generate the report first before exporting');
+        return;
+    }
+    
+    const fromDate = document.getElementById('gstFromDate').value;
+    const toDate = document.getElementById('gstToDate').value;
+    
+    // Filter invoices and purchases
+    const filteredInvoices = AppState.invoices.filter(inv => inv.date >= fromDate && inv.date <= toDate);
+    const filteredPurchases = AppState.purchases.filter(pur => pur.date >= fromDate && pur.date <= toDate);
+    
+    let csv = 'GST Summary Report\n';
+    csv += `Company,${AppState.currentCompany.name}\n`;
+    csv += `GSTIN,${AppState.currentCompany.gstin || 'N/A'}\n`;
+    csv += `Period,${formatDate(fromDate)} to ${formatDate(toDate)}\n\n`;
+    
+    // Output GST
+    csv += 'OUTPUT GST (SALES)\n';
+    csv += 'Invoice No,Date,Client,Taxable Amount,CGST,SGST,IGST,Total\n';
+    filteredInvoices.forEach(inv => {
+        const client = AppState.clients.find(c => c.id === inv.clientId);
+        csv += `${inv.invoiceNo},${formatDate(inv.date)},${client ? client.name : 'N/A'},`;
+        csv += `${(inv.subtotal || 0).toFixed(2)},`;
+        csv += `${(inv.cgstAmount || 0).toFixed(2)},`;
+        csv += `${(inv.sgstAmount || 0).toFixed(2)},`;
+        csv += `${(inv.igstAmount || 0).toFixed(2)},`;
+        csv += `${(inv.total || 0).toFixed(2)}\n`;
+    });
+    
+    csv += '\nINPUT GST (PURCHASES)\n';
+    csv += 'Purchase No,Date,Vendor,Taxable Amount,CGST,SGST,IGST,Total\n';
+    filteredPurchases.forEach(pur => {
+        const vendor = AppState.vendors.find(v => v.id === pur.vendorId);
+        csv += `${pur.purchaseNo},${formatDate(pur.date)},${vendor ? vendor.name : 'N/A'},`;
+        csv += `${(pur.amount || 0).toFixed(2)},`;
+        csv += `${(pur.cgstAmount || 0).toFixed(2)},`;
+        csv += `${(pur.sgstAmount || 0).toFixed(2)},`;
+        csv += `${(pur.igstAmount || 0).toFixed(2)},`;
+        csv += `${(pur.total || 0).toFixed(2)}\n`;
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `GST_Report_${fromDate}_to_${toDate}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 }
