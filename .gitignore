@@ -34,3 +34,6 @@ test_license_data/
 license.dat
 demo.dat
 license.log
+
+# Product keys file (contains sensitive license keys)
+# PRODUCT-KEYS.txt
