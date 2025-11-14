@@ -9,11 +9,13 @@
 
 const LicenseManager = require('./licenseManager');
 const LicenseStorage = require('./licenseStorage');
+const SimpleLicenseKeyGenerator = require('./simpleLicenseKeyGenerator');
 
 class LicenseValidator {
     constructor(appDataPath) {
         this.licenseManager = new LicenseManager();
         this.licenseStorage = new LicenseStorage(appDataPath);
+        this.simpleKeyGenerator = new SimpleLicenseKeyGenerator();
     }
     
     /**
@@ -219,27 +221,16 @@ class LicenseValidator {
      */
     activateLicense(productKey, bindingData = {}) {
         try {
-            // Create activation record
-            const activationRecord = this.licenseManager.createActivationRecord(
-                productKey,
-                bindingData
-            );
+            // Check if it's a simple key format (25 chars + dashes)
+            const cleanKey = productKey.replace(/-/g, '');
             
-            // Save license
-            const saved = this.licenseStorage.saveLicense(activationRecord);
-            
-            if (!saved) {
-                throw new Error('Failed to save license data');
+            if (cleanKey.length === 25) {
+                // Simple key format
+                return this.activateSimpleKey(productKey, bindingData);
+            } else {
+                // Original complex key format
+                return this.activateComplexKey(productKey, bindingData);
             }
-            
-            this.licenseStorage.logEvent('license_activated', 
-                `License activated for type: ${activationRecord.licenseData.type}`);
-            
-            return {
-                success: true,
-                message: 'License activated successfully!',
-                licenseData: activationRecord
-            };
         } catch (error) {
             console.error('Error activating license:', error);
             this.licenseStorage.logEvent('activation_failed', error.message);
@@ -249,6 +240,108 @@ class LicenseValidator {
                 message: error.message
             };
         }
+    }
+    
+    /**
+     * Activate a simple license key
+     * @param {string} productKey - Simple product key
+     * @param {Object} bindingData - Binding data
+     * @returns {Object} Activation result
+     */
+    activateSimpleKey(productKey, bindingData = {}) {
+        // Validate simple key
+        const validation = this.simpleKeyGenerator.validateSimpleKey(productKey);
+        
+        if (!validation.valid) {
+            throw new Error(validation.message);
+        }
+        
+        // Get license details
+        const details = this.simpleKeyGenerator.getLicenseDetails(validation.licenseType);
+        
+        if (!details) {
+            throw new Error('Invalid license type');
+        }
+        
+        // Calculate expiration date for yearly licenses
+        let expirationDate = null;
+        if (details.type === 'yearly' && details.durationDays) {
+            const expDate = new Date();
+            expDate.setDate(expDate.getDate() + details.durationDays);
+            expirationDate = expDate.toISOString();
+        }
+        
+        // Create activation record
+        const deviceFingerprint = this.licenseManager.generateDeviceFingerprint();
+        
+        const activationRecord = {
+            productKey,
+            licenseData: {
+                type: details.type,
+                userId: bindingData.userId || '',
+                companyId: bindingData.companyId || '',
+                userLimit: details.userLimit,
+                expirationDate: expirationDate,
+                generatedAt: new Date().toISOString(),
+                keyNumber: validation.keyNumber,
+                isSimpleKey: true
+            },
+            bindingData: {
+                userId: bindingData.userId || '',
+                companyId: bindingData.companyId || '',
+                deviceId: deviceFingerprint
+            },
+            activatedAt: new Date().toISOString(),
+            lastValidated: new Date().toISOString(),
+            users: [],
+            locked: false
+        };
+        
+        // Save license
+        const saved = this.licenseStorage.saveLicense(activationRecord);
+        
+        if (!saved) {
+            throw new Error('Failed to save license data');
+        }
+        
+        this.licenseStorage.logEvent('license_activated', 
+            `Simple key activated: ${details.description}`);
+        
+        return {
+            success: true,
+            message: 'License activated successfully!',
+            licenseData: activationRecord
+        };
+    }
+    
+    /**
+     * Activate a complex license key (original format)
+     * @param {string} productKey - Complex product key
+     * @param {Object} bindingData - Binding data
+     * @returns {Object} Activation result
+     */
+    activateComplexKey(productKey, bindingData = {}) {
+        // Create activation record
+        const activationRecord = this.licenseManager.createActivationRecord(
+            productKey,
+            bindingData
+        );
+        
+        // Save license
+        const saved = this.licenseStorage.saveLicense(activationRecord);
+        
+        if (!saved) {
+            throw new Error('Failed to save license data');
+        }
+        
+        this.licenseStorage.logEvent('license_activated', 
+            `License activated for type: ${activationRecord.licenseData.type}`);
+        
+        return {
+            success: true,
+            message: 'License activated successfully!',
+            licenseData: activationRecord
+        };
     }
     
     /**

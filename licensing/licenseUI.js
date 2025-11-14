@@ -66,9 +66,9 @@ const LicenseUIManager = {
                     <p class="license-error-message">${validation.message}</p>
                     <div class="license-activation-form">
                         <label for="productKey">Enter Product Key:</label>
-                        <input type="text" id="productKey" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" 
-                               class="license-input" maxlength="29">
-                        <small>Format: XXXXX-XXXXX-XXXXX-XXXXX</small>
+                        <input type="text" id="productKey" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" 
+                               class="license-input">
+                        <small>Format: XXXXX-XXXXX-XXXXX-XXXXX-XXXXX (25 characters)</small>
                         <div class="license-binding-options" style="margin-top: 15px;">
                             <label>
                                 <input type="checkbox" id="bindToCompany"> Bind to current company
