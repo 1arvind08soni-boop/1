@@ -41,9 +41,39 @@ function getProductDisplay(item) {
 }
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', function() {
-    loadFromStorage();
-    initializeApp();
+document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize authentication system first
+    let isAuthenticated = false;
+    if (window.AuthUIManager) {
+        isAuthenticated = await AuthUIManager.initialize();
+    } else {
+        // No auth system, proceed normally
+        isAuthenticated = true;
+    }
+    
+    // Only continue if authenticated
+    if (!isAuthenticated) {
+        console.log('Waiting for user authentication...');
+        return; // Stop here, login screen is showing
+    }
+    
+    // Initialize license system after authentication
+    if (window.LicenseUIManager) {
+        await LicenseUIManager.initialize().then(() => {
+            // Load app data and initialize after license check
+            loadFromStorage();
+            initializeApp();
+        }).catch(err => {
+            console.error('License initialization error:', err);
+            // Still load the app even if license check fails
+            loadFromStorage();
+            initializeApp();
+        });
+    } else {
+        // No license system available, proceed normally
+        loadFromStorage();
+        initializeApp();
+    }
     
     // Setup app closing listener for auto-backup
     if (window.electronAPI && window.electronAPI.onAppClosing) {

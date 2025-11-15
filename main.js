@@ -2,7 +2,15 @@ const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+// Import License System
+const LicenseValidator = require('./licensing/licenseValidator');
+const LicenseStorage = require('./licensing/licenseStorage');
+const UserAuth = require('./licensing/userAuth');
+
 let mainWindow;
+let licenseValidator;
+let licenseStorage;
+let userAuth;
 
 function createWindow() {
     // Create the browser window
@@ -111,6 +119,12 @@ function createWindow() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows
 app.whenReady().then(() => {
+    // Initialize license system and user authentication
+    const userDataPath = app.getPath('userData');
+    licenseValidator = new LicenseValidator(userDataPath);
+    licenseStorage = new LicenseStorage(userDataPath);
+    userAuth = new UserAuth(userDataPath);
+    
     createWindow();
 
     app.on('activate', () => {
@@ -354,6 +368,209 @@ ipcMain.handle('auto-backup-on-close', async (event, { data, companyName }) => {
     } catch (error) {
         console.error('Error creating auto-backup:', error);
         return { success: false, error: error.message };
+    }
+});
+
+// License System IPC Handlers
+ipcMain.handle('license:validate-on-startup', async (event, options) => {
+    try {
+        return licenseValidator.validateOnStartup(options);
+    } catch (error) {
+        console.error('Error validating license:', error);
+        return {
+            hasLicense: false,
+            isValid: false,
+            status: 'error',
+            message: error.message,
+            canUseApp: false
+        };
+    }
+});
+
+ipcMain.handle('license:activate', async (event, productKey, bindingData) => {
+    try {
+        return licenseValidator.activateLicense(productKey, bindingData);
+    } catch (error) {
+        console.error('Error activating license:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('license:deactivate', async (event) => {
+    try {
+        return licenseValidator.deactivateLicense();
+    } catch (error) {
+        console.error('Error deactivating license:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('license:get-status', async (event) => {
+    try {
+        return licenseValidator.getLicenseStatus();
+    } catch (error) {
+        console.error('Error getting license status:', error);
+        return {
+            hasLicense: false,
+            isValid: false,
+            status: 'error'
+        };
+    }
+});
+
+ipcMain.handle('license:get-logs', async (event, lines) => {
+    try {
+        return licenseStorage.getLogs(lines || 100);
+    } catch (error) {
+        console.error('Error getting logs:', error);
+        return [];
+    }
+});
+
+ipcMain.handle('license:add-user', async (event, userId) => {
+    try {
+        const licenseData = licenseStorage.loadLicense();
+        if (!licenseData) {
+            throw new Error('No license found');
+        }
+        
+        const licenseManager = licenseValidator.licenseManager;
+        const updated = licenseManager.addUserToLicense(licenseData, userId);
+        
+        if (licenseStorage.saveLicense(updated)) {
+            return { success: true };
+        } else {
+            throw new Error('Failed to save updated license');
+        }
+    } catch (error) {
+        console.error('Error adding user:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('license:remove-user', async (event, userId) => {
+    try {
+        const licenseData = licenseStorage.loadLicense();
+        if (!licenseData) {
+            throw new Error('No license found');
+        }
+        
+        const licenseManager = licenseValidator.licenseManager;
+        const updated = licenseManager.removeUserFromLicense(licenseData, userId);
+        
+        if (licenseStorage.saveLicense(updated)) {
+            return { success: true };
+        } else {
+            throw new Error('Failed to save updated license');
+        }
+    } catch (error) {
+        console.error('Error removing user:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('license:toggle-lock', async (event) => {
+    try {
+        const licenseData = licenseStorage.loadLicense();
+        if (!licenseData) {
+            throw new Error('No license found');
+        }
+        
+        licenseData.locked = !licenseData.locked;
+        
+        if (licenseStorage.saveLicense(licenseData)) {
+            return { success: true, locked: licenseData.locked };
+        } else {
+            throw new Error('Failed to save updated license');
+        }
+    } catch (error) {
+        console.error('Error toggling lock:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('license:export', async (event) => {
+    try {
+        return licenseStorage.exportLicense();
+    } catch (error) {
+        console.error('Error exporting license:', error);
+        return null;
+    }
+});
+
+ipcMain.handle('license:import', async (event, importData) => {
+    try {
+        const success = licenseStorage.importLicense(importData);
+        return { success };
+    } catch (error) {
+        console.error('Error importing license:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+// User Authentication IPC Handlers
+ipcMain.handle('auth:create-user', async (event, username, password, fullName) => {
+    try {
+        return userAuth.createUser(username, password, fullName);
+    } catch (error) {
+        console.error('Error creating user:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:login', async (event, username, password) => {
+    try {
+        return userAuth.login(username, password);
+    } catch (error) {
+        console.error('Error logging in:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:logout', async (event) => {
+    try {
+        userAuth.logout();
+        return { success: true };
+    } catch (error) {
+        console.error('Error logging out:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:get-current-user', async (event) => {
+    try {
+        const user = userAuth.getCurrentUser();
+        return user;
+    } catch (error) {
+        console.error('Error getting current user:', error);
+        return null;
+    }
+});
+
+ipcMain.handle('auth:change-password', async (event, username, oldPassword, newPassword) => {
+    try {
+        return userAuth.changePassword(username, oldPassword, newPassword);
+    } catch (error) {
+        console.error('Error changing password:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:get-all-users', async (event) => {
+    try {
+        return userAuth.getAllUsers();
+    } catch (error) {
+        console.error('Error getting users:', error);
+        return [];
+    }
+});
+
+ipcMain.handle('auth:delete-user', async (event, username) => {
+    try {
+        return userAuth.deleteUser(username);
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        return { success: false, message: error.message };
     }
 });
 

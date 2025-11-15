@@ -28,3 +28,12 @@ tmp/
 temp/
 test-*.html
 *-example.html
+test_license_data/
+
+# License test files (don't commit license data)
+license.dat
+demo.dat
+license.log
+
+# Product keys file (contains sensitive license keys)
+# PRODUCT-KEYS.txt

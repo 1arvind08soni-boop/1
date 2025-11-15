@@ -31,5 +31,62 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('auto-backup-on-close', { data, companyName }),
     
     onAppClosing: (callback) => 
-        ipcRenderer.on('app-closing', callback)
+        ipcRenderer.on('app-closing', callback),
+    
+    // License System API
+    license: {
+        validateOnStartup: (options) => 
+            ipcRenderer.invoke('license:validate-on-startup', options),
+        
+        activate: (productKey, bindingData) => 
+            ipcRenderer.invoke('license:activate', productKey, bindingData),
+        
+        deactivate: () => 
+            ipcRenderer.invoke('license:deactivate'),
+        
+        getStatus: () => 
+            ipcRenderer.invoke('license:get-status'),
+        
+        getLogs: (lines) => 
+            ipcRenderer.invoke('license:get-logs', lines),
+        
+        addUser: (userId) => 
+            ipcRenderer.invoke('license:add-user', userId),
+        
+        removeUser: (userId) => 
+            ipcRenderer.invoke('license:remove-user', userId),
+        
+        toggleLock: () => 
+            ipcRenderer.invoke('license:toggle-lock'),
+        
+        exportLicense: () => 
+            ipcRenderer.invoke('license:export'),
+        
+        importLicense: (importData) => 
+            ipcRenderer.invoke('license:import', importData)
+    },
+    
+    // User Authentication API
+    auth: {
+        createUser: (username, password, fullName) =>
+            ipcRenderer.invoke('auth:create-user', username, password, fullName),
+        
+        login: (username, password) =>
+            ipcRenderer.invoke('auth:login', username, password),
+        
+        logout: () =>
+            ipcRenderer.invoke('auth:logout'),
+        
+        getCurrentUser: () =>
+            ipcRenderer.invoke('auth:get-current-user'),
+        
+        changePassword: (username, oldPassword, newPassword) =>
+            ipcRenderer.invoke('auth:change-password', username, oldPassword, newPassword),
+        
+        getAllUsers: () =>
+            ipcRenderer.invoke('auth:get-all-users'),
+        
+        deleteUser: (username) =>
+            ipcRenderer.invoke('auth:delete-user', username)
+    }
 });
