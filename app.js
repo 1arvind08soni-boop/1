@@ -2,8 +2,10 @@
 const AppState = {
     currentCompany: null,
     currentFinancialYear: null,
+    currentUser: null,
     financialYears: [],
     companies: [],
+    users: [],
     products: [],
     clients: [],
     vendors: [],
@@ -26,6 +28,42 @@ const AppState = {
     }
 };
 
+// User Roles and Permissions
+const USER_ROLES = {
+    ADMIN: 'admin',
+    MANAGER: 'manager',
+    STAFF: 'staff'
+};
+
+const PERMISSIONS = {
+    // Admin and Manager have full access
+    FULL_ACCESS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    
+    // Staff permissions (limited)
+    VIEW_DASHBOARD: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    VIEW_PRODUCTS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    VIEW_CLIENTS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    VIEW_VENDORS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    VIEW_REPORTS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    
+    // Billing operations for staff
+    CREATE_INVOICE: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    VIEW_INVOICE: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    
+    // Admin/Manager only operations
+    MANAGE_PRODUCTS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_CLIENTS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_VENDORS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_PURCHASES: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_PAYMENTS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_GOODS_RETURN: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    EDIT_INVOICE: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    DELETE_INVOICE: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_SETTINGS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_USERS: [USER_ROLES.ADMIN, USER_ROLES.MANAGER],
+    MANAGE_FINANCIAL_YEAR: [USER_ROLES.ADMIN, USER_ROLES.MANAGER]
+};
+
 // UI Messages and Constants
 const UI_MESSAGES = {
     DELETE_COMPANY_CONFIRM: (companyName) => 
@@ -38,6 +76,59 @@ function getProductDisplay(item) {
     // Returns "Product Code - Category" format
     const category = item.productCategory || item.productName || 'N/A';
     return `${item.productCode} - ${category}`;
+}
+
+// Authentication and User Management Functions
+function hashPassword(password) {
+    // Simple hash function for password encryption
+    // In production, use a proper crypto library
+    let hash = 0;
+    const salt = 'BillingAppSecretSalt2024';
+    const combined = salt + password;
+    for (let i = 0; i < combined.length; i++) {
+        const char = combined.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+}
+
+function checkPermission(permission) {
+    if (!AppState.currentUser) return false;
+    const allowedRoles = PERMISSIONS[permission];
+    return allowedRoles && allowedRoles.includes(AppState.currentUser.role);
+}
+
+function authenticateUser(username, password) {
+    const users = AppState.users;
+    const user = users.find(u => u.username === username && !u.disabled);
+    
+    if (!user) {
+        return { success: false, message: 'Invalid username or user is disabled' };
+    }
+    
+    const hashedPassword = hashPassword(password);
+    if (user.password !== hashedPassword) {
+        return { success: false, message: 'Invalid password' };
+    }
+    
+    return { success: true, user: user };
+}
+
+function createDefaultAdminUser(companyId) {
+    // Create default admin user when a new company is created
+    return {
+        id: generateId(),
+        username: 'admin',
+        password: hashPassword('admin123'), // Default password
+        role: USER_ROLES.ADMIN,
+        companyId: companyId,
+        fullName: 'Administrator',
+        email: '',
+        disabled: false,
+        createdAt: new Date().toISOString(),
+        isDefault: true
+    };
 }
 
 // Initialize App
@@ -59,6 +150,7 @@ function loadFromStorage() {
     if (stored) {
         const data = JSON.parse(stored);
         AppState.companies = data.companies || [];
+        AppState.users = data.users || [];
         // Merge settings to preserve new default properties like autoBackup
         if (data.settings) {
             AppState.settings = {
@@ -80,6 +172,7 @@ function loadFromStorage() {
 function saveToStorage() {
     const data = {
         companies: AppState.companies,
+        users: AppState.users,
         settings: AppState.settings
     };
     localStorage.setItem('billingAppData', JSON.stringify(data));
@@ -188,12 +281,8 @@ function createDefaultFinancialYear() {
 
 // Initialize App
 function initializeApp() {
-    if (AppState.companies.length === 0) {
-        showScreen('companySelection');
-    } else {
-        displayCompanyList();
-        showScreen('companySelection');
-    }
+    // Always show login screen first
+    showScreen('loginScreen');
 }
 
 // Company Management
@@ -290,9 +379,17 @@ function addCompany(event) {
     };
     
     AppState.companies.push(company);
+    
+    // Create default admin user for this company
+    const defaultAdmin = createDefaultAdminUser(company.id);
+    AppState.users.push(defaultAdmin);
+    
     saveToStorage();
     displayCompanyList();
     closeModal();
+    
+    // Show info about default admin credentials
+    alert(`Company created successfully!\n\nDefault admin credentials:\nUsername: admin\nPassword: admin123\n\nPlease change the password after first login.`);
 }
 
 async function deleteCompany(companyId) {
@@ -325,7 +422,7 @@ async function deleteCompany(companyId) {
 }
 
 function selectCompany(companyId) {
-    const company = AppState.companies.find(c => c.id === companyId);
+    const company = typeof companyId === 'object' ? companyId : AppState.companies.find(c => c.id === companyId);
     if (!company) return;
     
     AppState.currentCompany = company;
@@ -333,9 +430,35 @@ function selectCompany(companyId) {
     
     document.getElementById('currentCompanyName').textContent = company.name;
     updateFinancialYearDisplay();
+    updateUIForUserRole();
     showScreen('main');
     showContentScreen('dashboard');
     updateDashboard();
+}
+
+function updateUIForUserRole() {
+    if (!AppState.currentUser) return;
+    
+    const role = AppState.currentUser.role;
+    const isStaff = role === USER_ROLES.STAFF;
+    
+    // Hide/show sidebar items based on permissions
+    const navItems = {
+        'purchase': !isStaff,
+        'payments': !isStaff,
+        'goodsReturn': !isStaff,
+        'settings': !isStaff
+    };
+    
+    Object.keys(navItems).forEach(key => {
+        const shouldShow = navItems[key];
+        const navItem = Array.from(document.querySelectorAll('.nav-item')).find(item => 
+            item.getAttribute('onclick') && item.getAttribute('onclick').includes(key)
+        );
+        if (navItem) {
+            navItem.style.display = shouldShow ? '' : 'none';
+        }
+    });
 }
 
 function updateFinancialYearDisplay() {
@@ -351,7 +474,316 @@ function showCompanySwitch() {
 
 function logoutCompany() {
     AppState.currentCompany = null;
-    showScreen('companySelection');
+    AppState.currentUser = null;
+    showScreen('loginScreen');
+}
+
+// Login and User Management Functions
+function handleLogin(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    const errorDiv = document.getElementById('loginError');
+    
+    if (!username || !password) {
+        errorDiv.textContent = 'Please enter username and password';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    const result = authenticateUser(username, password);
+    
+    if (result.success) {
+        AppState.currentUser = result.user;
+        errorDiv.style.display = 'none';
+        
+        // Show company selection or main app
+        const userCompany = AppState.companies.find(c => c.id === result.user.companyId);
+        if (userCompany) {
+            selectCompany(userCompany);
+        } else {
+            errorDiv.textContent = 'Company not found';
+            errorDiv.style.display = 'block';
+        }
+    } else {
+        errorDiv.textContent = result.message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+function showUserManagement() {
+    if (!checkPermission('MANAGE_USERS')) {
+        alert('You do not have permission to manage users');
+        return;
+    }
+    
+    const modal = createModal('User Management');
+    
+    const content = `
+        <div style="margin-bottom: 1rem;">
+            <button class="btn btn-primary" onclick="showAddUserModal()">
+                <i class="fas fa-plus"></i> Add User
+            </button>
+        </div>
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Role</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody"></tbody>
+            </table>
+        </div>
+    `;
+    
+    modal.querySelector('.modal-body').innerHTML = content;
+    displayUsersTable();
+}
+
+function displayUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
+    
+    const companyUsers = AppState.users.filter(u => u.companyId === AppState.currentCompany.id);
+    
+    if (companyUsers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No users found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = companyUsers.map(user => `
+        <tr>
+            <td>${user.username}</td>
+            <td>${user.fullName}</td>
+            <td><span class="badge badge-${user.role === USER_ROLES.ADMIN ? 'primary' : user.role === USER_ROLES.MANAGER ? 'success' : 'info'}">${user.role.toUpperCase()}</span></td>
+            <td>${user.email || '-'}</td>
+            <td><span class="badge badge-${user.disabled ? 'danger' : 'success'}">${user.disabled ? 'Disabled' : 'Active'}</span></td>
+            <td>
+                ${!user.isDefault ? `
+                    <button class="btn-icon" onclick="editUser('${user.id}')" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon" onclick="toggleUserStatus('${user.id}')" title="${user.disabled ? 'Enable' : 'Disable'}">
+                        <i class="fas fa-${user.disabled ? 'check' : 'ban'}"></i>
+                    </button>
+                ` : '<span class="text-muted">Default Admin</span>'}
+                <button class="btn-icon" onclick="showChangePasswordModal('${user.id}')" title="Change Password">
+                    <i class="fas fa-key"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showAddUserModal() {
+    const modal = createModal('Add User');
+    
+    const content = `
+        <form onsubmit="handleAddUser(event)">
+            <div class="form-group">
+                <label>Username *</label>
+                <input type="text" id="newUsername" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="newFullName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="newEmail" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Role *</label>
+                <select id="newRole" class="form-control" required>
+                    <option value="${USER_ROLES.STAFF}">Staff</option>
+                    <option value="${USER_ROLES.MANAGER}">Manager</option>
+                    <option value="${USER_ROLES.ADMIN}">Admin</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Password *</label>
+                <input type="password" id="newPassword" class="form-control" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label>Confirm Password *</label>
+                <input type="password" id="confirmPassword" class="form-control" required minlength="6">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add User</button>
+            </div>
+        </form>
+    `;
+    
+    modal.querySelector('.modal-body').innerHTML = content;
+}
+
+function handleAddUser(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('newUsername').value;
+    const fullName = document.getElementById('newFullName').value;
+    const email = document.getElementById('newEmail').value;
+    const role = document.getElementById('newRole').value;
+    const password = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // Validate
+    if (password !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
+    }
+    
+    // Check if username already exists
+    if (AppState.users.find(u => u.username === username)) {
+        alert('Username already exists');
+        return;
+    }
+    
+    // Create new user
+    const newUser = {
+        id: generateId(),
+        username: username,
+        password: hashPassword(password),
+        role: role,
+        companyId: AppState.currentCompany.id,
+        fullName: fullName,
+        email: email,
+        disabled: false,
+        createdAt: new Date().toISOString(),
+        isDefault: false
+    };
+    
+    AppState.users.push(newUser);
+    saveToStorage();
+    
+    closeModal();
+    showUserManagement();
+    alert('User added successfully');
+}
+
+function toggleUserStatus(userId) {
+    const user = AppState.users.find(u => u.id === userId);
+    if (!user) return;
+    
+    if (user.isDefault) {
+        alert('Cannot disable default admin user');
+        return;
+    }
+    
+    user.disabled = !user.disabled;
+    saveToStorage();
+    displayUsersTable();
+}
+
+function showChangePasswordModal(userId) {
+    const user = AppState.users.find(u => u.id === userId);
+    if (!user) return;
+    
+    const modal = createModal('Change Password');
+    
+    const content = `
+        <form onsubmit="handleChangePassword(event, '${userId}')">
+            <p><strong>User:</strong> ${user.username}</p>
+            <div class="form-group">
+                <label>New Password *</label>
+                <input type="password" id="newPasswordChange" class="form-control" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label>Confirm New Password *</label>
+                <input type="password" id="confirmPasswordChange" class="form-control" required minlength="6">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Change Password</button>
+            </div>
+        </form>
+    `;
+    
+    modal.querySelector('.modal-body').innerHTML = content;
+}
+
+function handleChangePassword(event, userId) {
+    event.preventDefault();
+    
+    const newPassword = document.getElementById('newPasswordChange').value;
+    const confirmPassword = document.getElementById('confirmPasswordChange').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
+    }
+    
+    const user = AppState.users.find(u => u.id === userId);
+    if (!user) return;
+    
+    user.password = hashPassword(newPassword);
+    saveToStorage();
+    
+    closeModal();
+    alert('Password changed successfully');
+}
+
+function editUser(userId) {
+    const user = AppState.users.find(u => u.id === userId);
+    if (!user) return;
+    
+    const modal = createModal('Edit User');
+    
+    const content = `
+        <form onsubmit="handleEditUser(event, '${userId}')">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" class="form-control" value="${user.username}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="editFullName" class="form-control" value="${user.fullName}" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="editEmail" class="form-control" value="${user.email || ''}">
+            </div>
+            <div class="form-group">
+                <label>Role *</label>
+                <select id="editRole" class="form-control" required>
+                    <option value="${USER_ROLES.STAFF}" ${user.role === USER_ROLES.STAFF ? 'selected' : ''}>Staff</option>
+                    <option value="${USER_ROLES.MANAGER}" ${user.role === USER_ROLES.MANAGER ? 'selected' : ''}>Manager</option>
+                    <option value="${USER_ROLES.ADMIN}" ${user.role === USER_ROLES.ADMIN ? 'selected' : ''}>Admin</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    `;
+    
+    modal.querySelector('.modal-body').innerHTML = content;
+}
+
+function handleEditUser(event, userId) {
+    event.preventDefault();
+    
+    const user = AppState.users.find(u => u.id === userId);
+    if (!user) return;
+    
+    user.fullName = document.getElementById('editFullName').value;
+    user.email = document.getElementById('editEmail').value;
+    user.role = document.getElementById('editRole').value;
+    
+    saveToStorage();
+    
+    closeModal();
+    showUserManagement();
+    alert('User updated successfully');
 }
 
 // Screen Management
@@ -364,6 +796,11 @@ function showScreen(screenName) {
         document.getElementById('companySelectionScreen').classList.add('active');
     } else if (screenName === 'main') {
         document.getElementById('mainApp').classList.add('active');
+    } else if (screenName === 'loginScreen') {
+        const loginScreen = document.getElementById('loginScreen');
+        if (loginScreen) {
+            loginScreen.classList.add('active');
+        }
     }
 }
 
@@ -472,6 +909,7 @@ function loadProducts() {
     }
     
     const sortedProducts = sortByCreatedAtDesc(AppState.products);
+    const canManage = checkPermission('MANAGE_PRODUCTS');
     
     tbody.innerHTML = sortedProducts.map(product => `
         <tr>
@@ -481,18 +919,25 @@ function loadProducts() {
             <td>₹${product.pricePerUnit.toFixed(2)}</td>
             <td>₹${(product.unitPerBox * product.pricePerUnit).toFixed(2)}</td>
             <td>
-                <button class="action-btn edit" onclick="editProduct('${product.id}')">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="action-btn delete" onclick="deleteProduct('${product.id}')">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
+                ${canManage ? `
+                    <button class="action-btn edit" onclick="editProduct('${product.id}')">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="action-btn delete" onclick="deleteProduct('${product.id}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                ` : '<span class="text-muted">View Only</span>'}
             </td>
         </tr>
     `).join('');
 }
 
 function showAddProductModal() {
+    if (!checkPermission('MANAGE_PRODUCTS')) {
+        alert('You do not have permission to add products. Only Admins and Managers can manage products.');
+        return;
+    }
+    
     const clientOptions = AppState.clients.map(c => 
         `<option value="${c.id}">${c.name}</option>`
     ).join('');
@@ -733,6 +1178,11 @@ function addInlineProduct(event) {
 
 
 function editProduct(productId) {
+    if (!checkPermission('MANAGE_PRODUCTS')) {
+        alert('You do not have permission to edit products. Only Admins and Managers can manage products.');
+        return;
+    }
+    
     const product = AppState.products.find(p => p.id === productId);
     if (!product) return;
     
@@ -866,6 +1316,11 @@ function updateProduct(event, productId) {
 }
 
 async function deleteProduct(productId) {
+    if (!checkPermission('MANAGE_PRODUCTS')) {
+        alert('You do not have permission to delete products. Only Admins and Managers can manage products.');
+        return;
+    }
+    
     // Check if product is used in any invoices
     const usedInInvoices = AppState.invoices.filter(inv => {
         if (inv.items && Array.isArray(inv.items)) {
@@ -1209,6 +1664,8 @@ function loadClients() {
         return;
     }
     
+    const canManage = checkPermission('MANAGE_CLIENTS');
+    
     tbody.innerHTML = AppState.clients.map(client => {
         const balance = calculateClientBalance(client.id);
         return `
@@ -1222,12 +1679,14 @@ function loadClients() {
                     <button class="action-btn view" onclick="viewClientLedger('${client.id}')">
                         <i class="fas fa-book"></i> Ledger
                     </button>
-                    <button class="action-btn edit" onclick="editClient('${client.id}')">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="action-btn delete" onclick="deleteClient('${client.id}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    ${canManage ? `
+                        <button class="action-btn edit" onclick="editClient('${client.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="action-btn delete" onclick="deleteClient('${client.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    ` : ''}
                 </td>
             </tr>
         `;
@@ -1250,6 +1709,11 @@ function calculateClientBalance(clientId) {
 }
 
 function showAddClientModal() {
+    if (!checkPermission('MANAGE_CLIENTS')) {
+        alert('You do not have permission to add clients. Only Admins and Managers can manage clients.');
+        return;
+    }
+    
     const modal = createModal('Add New Client', `
         <form id="addClientForm" onsubmit="addClient(event)">
             <div class="form-row">
@@ -1425,6 +1889,11 @@ function addInlineClient(event) {
 
 
 function editClient(clientId) {
+    if (!checkPermission('MANAGE_CLIENTS')) {
+        alert('You do not have permission to edit clients. Only Admins and Managers can manage clients.');
+        return;
+    }
+    
     const client = AppState.clients.find(c => c.id === clientId);
     if (!client) return;
     
@@ -1511,6 +1980,11 @@ function updateClient(event, clientId) {
 }
 
 async function deleteClient(clientId) {
+    if (!checkPermission('MANAGE_CLIENTS')) {
+        alert('You do not have permission to delete clients. Only Admins and Managers can manage clients.');
+        return;
+    }
+    
     // Check if client has any related records
     const clientInvoices = AppState.invoices.filter(inv => inv.clientId === clientId);
     const clientPayments = AppState.payments.filter(pay => pay.clientId === clientId);
@@ -1562,6 +2036,8 @@ function loadVendors() {
         return;
     }
     
+    const canManage = checkPermission('MANAGE_VENDORS');
+    
     tbody.innerHTML = AppState.vendors.map(vendor => {
         const balance = calculateVendorBalance(vendor.id);
         return `
@@ -1575,12 +2051,14 @@ function loadVendors() {
                     <button class="action-btn view" onclick="viewVendorLedger('${vendor.id}')">
                         <i class="fas fa-book"></i> Ledger
                     </button>
-                    <button class="action-btn edit" onclick="editVendor('${vendor.id}')">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="action-btn delete" onclick="deleteVendor('${vendor.id}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    ${canManage ? `
+                        <button class="action-btn edit" onclick="editVendor('${vendor.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="action-btn delete" onclick="deleteVendor('${vendor.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    ` : ''}
                 </td>
             </tr>
         `;
@@ -1601,6 +2079,11 @@ function calculateVendorBalance(vendorId) {
 }
 
 function showAddVendorModal() {
+    if (!checkPermission('MANAGE_VENDORS')) {
+        alert('You do not have permission to add vendors. Only Admins and Managers can manage vendors.');
+        return;
+    }
+    
     const modal = createModal('Add New Vendor', `
         <form id="addVendorForm" onsubmit="addVendor(event)">
             <div class="form-row">
@@ -1763,6 +2246,11 @@ function addInlineVendor(event) {
 
 
 function editVendor(vendorId) {
+    if (!checkPermission('MANAGE_VENDORS')) {
+        alert('You do not have permission to edit vendors. Only Admins and Managers can manage vendors.');
+        return;
+    }
+    
     const vendor = AppState.vendors.find(v => v.id === vendorId);
     if (!vendor) return;
     
@@ -1843,6 +2331,11 @@ function updateVendor(event, vendorId) {
 }
 
 async function deleteVendor(vendorId) {
+    if (!checkPermission('MANAGE_VENDORS')) {
+        alert('You do not have permission to delete vendors. Only Admins and Managers can manage vendors.');
+        return;
+    }
+    
     // Check if vendor has any related records
     const vendorPurchases = AppState.purchases.filter(pur => pur.vendorId === vendorId);
     const vendorPayments = AppState.payments.filter(pay => pay.vendorId === vendorId);
@@ -1894,6 +2387,8 @@ function loadInvoices() {
     }
     
     const sortedInvoices = sortByCreatedAtDesc(AppState.invoices);
+    const canEdit = checkPermission('EDIT_INVOICE');
+    const canDelete = checkPermission('DELETE_INVOICE');
     
     tbody.innerHTML = sortedInvoices.map(invoice => {
         const client = AppState.clients.find(c => c.id === invoice.clientId);
@@ -1910,12 +2405,16 @@ function loadInvoices() {
                     <button class="action-btn print" onclick="printInvoice('${invoice.id}')">
                         <i class="fas fa-print"></i> Print
                     </button>
-                    <button class="action-btn edit" onclick="editInvoice('${invoice.id}')">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="action-btn delete" onclick="deleteInvoice('${invoice.id}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    ${canEdit ? `
+                        <button class="action-btn edit" onclick="editInvoice('${invoice.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    ` : ''}
+                    ${canDelete ? `
+                        <button class="action-btn delete" onclick="deleteInvoice('${invoice.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    ` : ''}
                 </td>
             </tr>
         `;
@@ -2374,6 +2873,11 @@ function addSimplifiedInvoice(event) {
 }
 
 function editInvoice(invoiceId) {
+    if (!checkPermission('EDIT_INVOICE')) {
+        alert('You do not have permission to edit invoices. Only Admins and Managers can edit invoices.');
+        return;
+    }
+    
     const invoice = AppState.invoices.find(inv => inv.id === invoiceId);
     if (!invoice) return;
     
@@ -2658,6 +3162,11 @@ function updateSimplifiedInvoice(event, invoiceId) {
 }
 
 async function deleteInvoice(invoiceId) {
+    if (!checkPermission('DELETE_INVOICE')) {
+        alert('You do not have permission to delete invoices. Only Admins and Managers can delete invoices.');
+        return;
+    }
+    
     // Check if there are any goods returns associated with this invoice
     const associatedGoodsReturns = AppState.goodsReturns.filter(gr => gr.invoiceId === invoiceId);
     
@@ -4446,6 +4955,11 @@ function loadPurchases() {
 }
 
 function showAddPurchaseModal() {
+    if (!checkPermission('MANAGE_PURCHASES')) {
+        alert('You do not have permission to add purchases. Only Admins and Managers can manage purchases.');
+        return;
+    }
+    
     const vendorOptions = AppState.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
     
     const modal = createModal('New Purchase', `
@@ -4677,6 +5191,11 @@ function loadPayments() {
 }
 
 function showAddPaymentModal() {
+    if (!checkPermission('MANAGE_PAYMENTS')) {
+        alert('You do not have permission to add payments. Only Admins and Managers can manage payments.');
+        return;
+    }
+    
     const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     const vendorOptions = AppState.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
     
@@ -4987,6 +5506,11 @@ function getNextGoodsReturnNumber() {
 }
 
 function showAddGoodsReturnModal() {
+    if (!checkPermission('MANAGE_GOODS_RETURN')) {
+        alert('You do not have permission to add goods returns. Only Admins and Managers can manage goods returns.');
+        return;
+    }
+    
     const clientOptions = AppState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     const nextReturnNo = getNextGoodsReturnNumber();
     
@@ -6870,6 +7394,11 @@ async function saveAccountLedgerReportToPDF() {
 
 // Settings Functions
 function editCompanySettings() {
+    if (!checkPermission('MANAGE_SETTINGS')) {
+        alert('You do not have permission to edit company settings. Only Admins and Managers can manage settings.');
+        return;
+    }
+    
     const company = AppState.currentCompany;
     const detailedInvoicingEnabled = company.detailedInvoicing !== false; // Default to true if not set
     
@@ -6951,6 +7480,11 @@ function updateCompanySettings(event) {
 }
 
 function showFinancialYearSettings() {
+    if (!checkPermission('MANAGE_FINANCIAL_YEAR')) {
+        alert('You do not have permission to manage financial years. Only Admins and Managers can manage financial years.');
+        return;
+    }
+    
     const fyList = AppState.financialYears
         .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
         .map(fy => `
@@ -7294,6 +7828,11 @@ function processYearEnd(event) {
 }
 
 function showTemplateSettings() {
+    if (!checkPermission('MANAGE_SETTINGS')) {
+        alert('You do not have permission to manage templates. Only Admins and Managers can manage settings.');
+        return;
+    }
+    
     const modal = createModal('Template Settings', `
         <form id="templateSettingsForm" onsubmit="updateTemplateSettings(event)">
             <h4>Invoice Settings</h4>
