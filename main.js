@@ -5,10 +5,12 @@ const fs = require('fs');
 // Import License System
 const LicenseValidator = require('./licensing/licenseValidator');
 const LicenseStorage = require('./licensing/licenseStorage');
+const UserAuth = require('./licensing/userAuth');
 
 let mainWindow;
 let licenseValidator;
 let licenseStorage;
+let userAuth;
 
 function createWindow() {
     // Create the browser window
@@ -117,10 +119,11 @@ function createWindow() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows
 app.whenReady().then(() => {
-    // Initialize license system
+    // Initialize license system and user authentication
     const userDataPath = app.getPath('userData');
     licenseValidator = new LicenseValidator(userDataPath);
     licenseStorage = new LicenseStorage(userDataPath);
+    userAuth = new UserAuth(userDataPath);
     
     createWindow();
 
@@ -501,6 +504,72 @@ ipcMain.handle('license:import', async (event, importData) => {
         return { success };
     } catch (error) {
         console.error('Error importing license:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+// User Authentication IPC Handlers
+ipcMain.handle('auth:create-user', async (event, username, password, fullName) => {
+    try {
+        return userAuth.createUser(username, password, fullName);
+    } catch (error) {
+        console.error('Error creating user:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:login', async (event, username, password) => {
+    try {
+        return userAuth.login(username, password);
+    } catch (error) {
+        console.error('Error logging in:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:logout', async (event) => {
+    try {
+        userAuth.logout();
+        return { success: true };
+    } catch (error) {
+        console.error('Error logging out:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:get-current-user', async (event) => {
+    try {
+        const user = userAuth.getCurrentUser();
+        return user;
+    } catch (error) {
+        console.error('Error getting current user:', error);
+        return null;
+    }
+});
+
+ipcMain.handle('auth:change-password', async (event, username, oldPassword, newPassword) => {
+    try {
+        return userAuth.changePassword(username, oldPassword, newPassword);
+    } catch (error) {
+        console.error('Error changing password:', error);
+        return { success: false, message: error.message };
+    }
+});
+
+ipcMain.handle('auth:get-all-users', async (event) => {
+    try {
+        return userAuth.getAllUsers();
+    } catch (error) {
+        console.error('Error getting users:', error);
+        return [];
+    }
+});
+
+ipcMain.handle('auth:delete-user', async (event, username) => {
+    try {
+        return userAuth.deleteUser(username);
+    } catch (error) {
+        console.error('Error deleting user:', error);
         return { success: false, message: error.message };
     }
 });

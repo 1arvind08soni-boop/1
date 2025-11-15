@@ -41,10 +41,25 @@ function getProductDisplay(item) {
 }
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize license system first
+document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize authentication system first
+    let isAuthenticated = false;
+    if (window.AuthUIManager) {
+        isAuthenticated = await AuthUIManager.initialize();
+    } else {
+        // No auth system, proceed normally
+        isAuthenticated = true;
+    }
+    
+    // Only continue if authenticated
+    if (!isAuthenticated) {
+        console.log('Waiting for user authentication...');
+        return; // Stop here, login screen is showing
+    }
+    
+    // Initialize license system after authentication
     if (window.LicenseUIManager) {
-        LicenseUIManager.initialize().then(() => {
+        await LicenseUIManager.initialize().then(() => {
             // Load app data and initialize after license check
             loadFromStorage();
             initializeApp();

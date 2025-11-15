@@ -64,5 +64,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
         
         importLicense: (importData) => 
             ipcRenderer.invoke('license:import', importData)
+    },
+    
+    // User Authentication API
+    auth: {
+        createUser: (username, password, fullName) =>
+            ipcRenderer.invoke('auth:create-user', username, password, fullName),
+        
+        login: (username, password) =>
+            ipcRenderer.invoke('auth:login', username, password),
+        
+        logout: () =>
+            ipcRenderer.invoke('auth:logout'),
+        
+        getCurrentUser: () =>
+            ipcRenderer.invoke('auth:get-current-user'),
+        
+        changePassword: (username, oldPassword, newPassword) =>
+            ipcRenderer.invoke('auth:change-password', username, oldPassword, newPassword),
+        
+        getAllUsers: () =>
+            ipcRenderer.invoke('auth:get-all-users'),
+        
+        deleteUser: (username) =>
+            ipcRenderer.invoke('auth:delete-user', username)
     }
 });

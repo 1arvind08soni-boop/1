@@ -54,23 +54,62 @@ class LicenseValidator {
      */
     validateExistingLicense(licenseData, bindingData) {
         try {
-            // Validate product key
-            const validation = this.licenseManager.validateProductKey(
-                licenseData.productKey,
-                bindingData
-            );
+            // Check if it's a simple key or complex key
+            const isSimpleKey = licenseData.licenseData && licenseData.licenseData.isSimpleKey;
             
-            if (!validation.valid) {
-                this.licenseStorage.logEvent('license_invalid', validation.message);
+            let validation;
+            if (isSimpleKey) {
+                // Validate simple key
+                validation = this.simpleKeyGenerator.validateSimpleKey(licenseData.productKey);
                 
-                return {
-                    hasLicense: true,
-                    isValid: false,
-                    status: validation.status,
-                    message: validation.message,
-                    action: 'show_activation', // Show activation screen
-                    canUseApp: false
-                };
+                if (!validation.valid) {
+                    this.licenseStorage.logEvent('license_invalid', validation.message);
+                    
+                    return {
+                        hasLicense: true,
+                        isValid: false,
+                        status: 'invalid',
+                        message: validation.message,
+                        action: 'show_activation',
+                        canUseApp: false
+                    };
+                }
+                
+                // Check expiration for yearly licenses
+                if (licenseData.licenseData.type === 'yearly' && licenseData.licenseData.expirationDate) {
+                    const expDate = new Date(licenseData.licenseData.expirationDate);
+                    if (expDate < new Date()) {
+                        this.licenseStorage.logEvent('license_expired', 'Yearly license has expired');
+                        
+                        return {
+                            hasLicense: true,
+                            isValid: false,
+                            status: 'expired',
+                            message: 'License has expired',
+                            action: 'show_activation',
+                            canUseApp: false
+                        };
+                    }
+                }
+            } else {
+                // Validate complex key
+                validation = this.licenseManager.validateProductKey(
+                    licenseData.productKey,
+                    bindingData
+                );
+                
+                if (!validation.valid) {
+                    this.licenseStorage.logEvent('license_invalid', validation.message);
+                    
+                    return {
+                        hasLicense: true,
+                        isValid: false,
+                        status: validation.status,
+                        message: validation.message,
+                        action: 'show_activation',
+                        canUseApp: false
+                    };
+                }
             }
             
             // Check device fingerprint
@@ -117,9 +156,11 @@ class LicenseValidator {
             
             // Calculate days until expiration for yearly licenses
             let daysUntilExpiration = null;
-            if (validation.licenseData.type === this.licenseManager.LICENSE_TYPES.YEARLY &&
-                validation.licenseData.expirationDate) {
-                const expDate = new Date(validation.licenseData.expirationDate);
+            const storedLicenseData = licenseData.licenseData || validation.licenseData;
+            
+            if (storedLicenseData && storedLicenseData.type === 'yearly' &&
+                storedLicenseData.expirationDate) {
+                const expDate = new Date(storedLicenseData.expirationDate);
                 const now = new Date();
                 const timeDiff = expDate - now;
                 daysUntilExpiration = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
@@ -130,10 +171,10 @@ class LicenseValidator {
                 isValid: true,
                 status: this.licenseManager.LICENSE_STATUS.VALID,
                 message: 'License is valid',
-                licenseType: validation.licenseData.type,
-                userLimit: validation.licenseData.userLimit,
+                licenseType: storedLicenseData ? storedLicenseData.type : 'unknown',
+                userLimit: storedLicenseData ? storedLicenseData.userLimit : 0,
                 assignedUsers: licenseData.users ? licenseData.users.length : 0,
-                expirationDate: validation.licenseData.expirationDate,
+                expirationDate: storedLicenseData ? storedLicenseData.expirationDate : null,
                 daysUntilExpiration,
                 action: daysUntilExpiration && daysUntilExpiration <= 30 ? 
                     'show_renewal_warning' : 'proceed', // Warn if expiring soon
