@@ -430,10 +430,19 @@ function selectCompany(companyId) {
     
     document.getElementById('currentCompanyName').textContent = company.name;
     updateFinancialYearDisplay();
+    updateUserDisplay();
     updateUIForUserRole();
     showScreen('main');
     showContentScreen('dashboard');
     updateDashboard();
+}
+
+function updateUserDisplay() {
+    const userDisplay = document.getElementById('currentUserName');
+    if (userDisplay && AppState.currentUser) {
+        const roleLabel = AppState.currentUser.role.charAt(0).toUpperCase() + AppState.currentUser.role.slice(1);
+        userDisplay.querySelector('span').textContent = `${AppState.currentUser.fullName} (${roleLabel})`;
+    }
 }
 
 function updateUIForUserRole() {
@@ -457,6 +466,24 @@ function updateUIForUserRole() {
         );
         if (navItem) {
             navItem.style.display = shouldShow ? '' : 'none';
+        }
+    });
+    
+    // Hide/show action buttons based on permissions
+    const actionButtons = [
+        { id: 'addProductBtn', permission: 'MANAGE_PRODUCTS' },
+        { id: 'addClientBtn', permission: 'MANAGE_CLIENTS' },
+        { id: 'addVendorBtn', permission: 'MANAGE_VENDORS' },
+        { id: 'addPurchaseBtn', permission: 'MANAGE_PURCHASES' },
+        { id: 'addPaymentBtn', permission: 'MANAGE_PAYMENTS' },
+        { id: 'addGoodsReturnBtn', permission: 'MANAGE_GOODS_RETURN' },
+        { id: 'restoreInvoiceBtn', permission: 'DELETE_INVOICE' }
+    ];
+    
+    actionButtons.forEach(btn => {
+        const button = document.getElementById(btn.id);
+        if (button) {
+            button.style.display = checkPermission(btn.permission) ? '' : 'none';
         }
     });
 }

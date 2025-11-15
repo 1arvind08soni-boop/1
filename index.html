@@ -58,8 +58,11 @@
             <div class="sidebar-header">
                 <h2 id="currentCompanyName">Company Name</h2>
                 <p id="currentFinancialYearName" style="font-size: 0.85rem; color: #888; margin: 0.25rem 0 0 0;">FY: 2024-2025</p>
-                <button class="btn-icon" onclick="showCompanySwitch()" title="Switch Company">
-                    <i class="fas fa-exchange-alt"></i>
+                <p id="currentUserName" style="font-size: 0.8rem; color: #aaa; margin: 0.25rem 0 0 0;">
+                    <i class="fas fa-user"></i> <span>User</span>
+                </p>
+                <button class="btn-icon" onclick="showCompanySwitch()" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
             
@@ -151,7 +154,7 @@
                     <h1 class="page-title">Products</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <input type="text" id="productSearchInput" class="form-control" placeholder="Search products..." style="width: 300px;" onkeyup="filterProducts()">
-                        <button class="btn btn-primary" onclick="showAddProductModal()">
+                        <button id="addProductBtn" class="btn btn-primary" onclick="showAddProductModal()">
                             <i class="fas fa-plus"></i> Add Product
                         </button>
                     </div>
@@ -178,7 +181,7 @@
                     <h1 class="page-title">Clients</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <input type="text" id="clientSearchInput" class="form-control" placeholder="Search clients..." style="width: 300px;" onkeyup="filterClients()">
-                        <button class="btn btn-primary" onclick="showAddClientModal()">
+                        <button id="addClientBtn" class="btn btn-primary" onclick="showAddClientModal()">
                             <i class="fas fa-plus"></i> Add Client
                         </button>
                     </div>
@@ -205,7 +208,7 @@
                     <h1 class="page-title">Vendors</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <input type="text" id="vendorSearchInput" class="form-control" placeholder="Search vendors..." style="width: 300px;" onkeyup="filterVendors()">
-                        <button class="btn btn-primary" onclick="showAddVendorModal()">
+                        <button id="addVendorBtn" class="btn btn-primary" onclick="showAddVendorModal()">
                             <i class="fas fa-plus"></i> Add Vendor
                         </button>
                     </div>
@@ -235,7 +238,7 @@
                         <button class="btn btn-primary" onclick="showAddInvoiceModal()">
                             <i class="fas fa-plus"></i> New Invoice
                         </button>
-                        <button class="btn btn-secondary" onclick="showRestoreInvoiceModal()" title="Restore recently deleted invoices">
+                        <button id="restoreInvoiceBtn" class="btn btn-secondary" onclick="showRestoreInvoiceModal()" title="Restore recently deleted invoices">
                             <i class="fas fa-undo"></i> Restore Deleted
                         </button>
                     </div>
@@ -261,7 +264,7 @@
                     <h1 class="page-title">Goods Return</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <input type="text" id="goodsReturnSearchInput" class="form-control" placeholder="Search goods returns..." style="width: 300px;" onkeyup="filterGoodsReturns()">
-                        <button class="btn btn-primary" onclick="showAddGoodsReturnModal()">
+                        <button id="addGoodsReturnBtn" class="btn btn-primary" onclick="showAddGoodsReturnModal()">
                             <i class="fas fa-plus"></i> Add Goods Return
                         </button>
                     </div>
@@ -289,7 +292,7 @@
                     <h1 class="page-title">Purchase</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <input type="text" id="purchaseSearchInput" class="form-control" placeholder="Search purchases..." style="width: 300px;" onkeyup="filterPurchases()">
-                        <button class="btn btn-primary" onclick="showAddPurchaseModal()">
+                        <button id="addPurchaseBtn" class="btn btn-primary" onclick="showAddPurchaseModal()">
                             <i class="fas fa-plus"></i> New Purchase
                         </button>
                     </div>
@@ -315,7 +318,7 @@
                     <h1 class="page-title">Payments</h1>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <input type="text" id="paymentSearchInput" class="form-control" placeholder="Search payments..." style="width: 300px;" onkeyup="filterPayments()">
-                        <button class="btn btn-primary" onclick="showAddPaymentModal()">
+                        <button id="addPaymentBtn" class="btn btn-primary" onclick="showAddPaymentModal()">
                             <i class="fas fa-plus"></i> Add Payment
                         </button>
                     </div>
