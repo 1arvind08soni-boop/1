@@ -1,10 +1,11 @@
 # Billing & Account Management System
 
-A comprehensive desktop application for Windows that helps manage billing, invoicing, clients, vendors, products, and accounts.
+A comprehensive desktop application for Windows that helps manage billing, invoicing, clients, vendors, products, and accounts with secure multi-user authentication.
 
 ## Features
 
-- **Multi-Company Support**: Manage multiple companies with separate data
+- **🆕 Multi-User Management**: Secure authentication with role-based access control (Admin, Manager, Staff)
+- **Multi-Company Support**: Manage multiple companies with separate data and user access
 - **Financial Year Management**: Track multiple financial years, carry forward balances, and maintain historical data
 - **Product Management**: Track products with categories, pricing, opening stock, and client-specific pricing
 - **Client & Vendor Management**: Maintain client and vendor databases with ledgers and opening balances
@@ -15,7 +16,34 @@ A comprehensive desktop application for Windows that helps manage billing, invoi
 - **Year-End Process**: Automated closing of financial years with balance carry forward
 - **Data Export**: Export data to CSV/Excel format
 - **Backup & Restore**: Backup and restore company data with full financial year support
-- **🆕 Auto-Backup**: Automatic backups with configurable schedules (daily/weekly) and backup-on-close option
+- **Auto-Backup**: Automatic backups with configurable schedules (daily/weekly) and backup-on-close option
+
+## New: Multi-User Authentication System
+
+The application now includes a comprehensive user management system:
+
+- **Secure Login**: Username and password authentication with encrypted password storage
+- **Role-Based Access Control**: Three user roles with different permission levels
+  - **Admin/Manager**: Full system access including user management, settings, and all operations
+  - **Staff**: Limited access for basic billing operations and view-only reports
+- **User Management**: Admins can add, edit, disable/enable users and change passwords
+- **Company Isolation**: Each user can only access their assigned company's data
+- **Default Credentials**: New companies get a default admin user (username: `admin`, password: `admin123`)
+
+📖 **Documentation**: See [Roles and Permissions Matrix](ROLES-AND-PERMISSIONS.md) for complete permission details
+
+### User Roles and Permissions
+
+| Feature | Admin/Manager | Staff |
+|---------|:-------------:|:-----:|
+| Create Invoices | ✓ | ✓ |
+| View/Print Invoices | ✓ | ✓ |
+| Edit/Delete Invoices | ✓ | ✗ |
+| Manage Products/Clients/Vendors | ✓ | ✗ (View Only) |
+| Manage Purchases/Payments | ✓ | ✗ |
+| View Reports | ✓ | ✓ (View Only) |
+| User Management | ✓ | ✗ |
+| System Settings | ✓ | ✗ |
 
 ## New: Auto-Backup Feature
 
@@ -42,6 +70,24 @@ The application supports comprehensive financial year management:
 
 📖 **Documentation**: See [Financial Year Management Guide](FINANCIAL-YEAR-MANAGEMENT.md) for detailed information
 📖 **Quick Guide**: See [Financial Year User Guide](FINANCIAL-YEAR-USER-GUIDE.md) for step-by-step instructions
+
+## Getting Started
+
+### First Time Setup
+1. Install and launch the application
+2. Create a new company or login with default credentials
+3. Default admin credentials: 
+   - Username: `admin`
+   - Password: `admin123`
+4. **Important**: Change the default password immediately after first login
+5. Add additional users as needed (recommended 2-3 staff users per company)
+
+### Creating Additional Users
+1. Login as Admin/Manager
+2. Navigate to Settings → User Management
+3. Click "Add User" and fill in the details
+4. Assign appropriate role (Admin, Manager, or Staff)
+5. Set a secure password (minimum 6 characters)
 
 ## Windows Installation
 
