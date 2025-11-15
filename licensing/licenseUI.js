@@ -363,5 +363,256 @@ const LicenseUIManager = {
     }
 };
 
+// Global helper functions for UI actions
+async function showLicenseDetails() {
+    if (!window.electronAPI || !window.electronAPI.license) {
+        alert('License API not available');
+        return;
+    }
+    
+    try {
+        const status = await window.electronAPI.license.getStatus();
+        
+        const modal = document.createElement('div');
+        modal.className = 'license-modal-overlay';
+        
+        let statusHTML = '';
+        if (status.hasLicense && status.isValid) {
+            const expiryInfo = status.expirationDate 
+                ? `<p><strong>Expiration:</strong> ${new Date(status.expirationDate).toLocaleDateString()}</p>`
+                : '<p><strong>Expiration:</strong> Never (Lifetime)</p>';
+            
+            const usersInfo = status.userLimit > 0
+                ? `<p><strong>User Limit:</strong> ${status.userLimit}</p><p><strong>Assigned Users:</strong> ${status.assignedUsers || 0}</p>`
+                : '<p><strong>Users:</strong> Unlimited</p>';
+            
+            statusHTML = `
+                <div style="color: #4CAF50; margin-bottom: 20px;">
+                    <i class="fas fa-check-circle" style="font-size: 48px;"></i>
+                    <h3 style="margin-top: 10px;">License Active</h3>
+                </div>
+                <div style="text-align: left;">
+                    <p><strong>Status:</strong> Valid</p>
+                    <p><strong>Type:</strong> ${status.licenseType || 'Unknown'}</p>
+                    ${expiryInfo}
+                    ${usersInfo}
+                </div>
+            `;
+        } else if (status.hasLicense && !status.isValid) {
+            statusHTML = `
+                <div style="color: #f44336; margin-bottom: 20px;">
+                    <i class="fas fa-times-circle" style="font-size: 48px;"></i>
+                    <h3 style="margin-top: 10px;">License Invalid</h3>
+                </div>
+                <div style="text-align: left;">
+                    <p><strong>Status:</strong> ${status.message || 'Invalid'}</p>
+                    <p style="color: #f44336; margin-top: 15px;">Please activate a valid license to continue.</p>
+                </div>
+            `;
+        } else if (status.status === 'demo') {
+            statusHTML = `
+                <div style="color: #FF9800; margin-bottom: 20px;">
+                    <i class="fas fa-clock" style="font-size: 48px;"></i>
+                    <h3 style="margin-top: 10px;">Demo Mode</h3>
+                </div>
+                <div style="text-align: left;">
+                    <p><strong>Status:</strong> Demo (Trial)</p>
+                    <p><strong>Days Remaining:</strong> ${status.daysRemaining || 0}</p>
+                    <p style="color: #666; margin-top: 15px;">Activate a license to unlock full features.</p>
+                </div>
+            `;
+        } else {
+            statusHTML = `
+                <div style="color: #f44336; margin-bottom: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px;"></i>
+                    <h3 style="margin-top: 10px;">No License</h3>
+                </div>
+                <div style="text-align: left;">
+                    <p><strong>Status:</strong> No active license</p>
+                    <p style="color: #666; margin-top: 15px;">Please activate a license to use the application.</p>
+                </div>
+            `;
+        }
+        
+        modal.innerHTML = `
+            <div class="license-modal">
+                <h2 style="margin-bottom: 20px;">
+                    <i class="fas fa-key"></i> License Information
+                </h2>
+                ${statusHTML}
+                <div style="margin-top: 30px;">
+                    <button class="btn btn-primary" onclick="LicenseUIManager.showActivationDialog()">
+                        <i class="fas fa-plus-circle"></i> Activate License
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.closest('.license-modal-overlay').remove()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Error getting license status:', error);
+        alert('Error loading license information: ' + error.message);
+    }
+}
+
+async function showUserAccountInfo() {
+    if (!window.electronAPI || !window.electronAPI.auth) {
+        alert('Auth API not available');
+        return;
+    }
+    
+    try {
+        const currentUser = await window.electronAPI.auth.getCurrentUser();
+        
+        if (!currentUser) {
+            alert('No user logged in');
+            return;
+        }
+        
+        const modal = document.createElement('div');
+        modal.className = 'license-modal-overlay';
+        modal.innerHTML = `
+            <div class="license-modal">
+                <h2 style="margin-bottom: 20px;">
+                    <i class="fas fa-user"></i> Account Information
+                </h2>
+                <div style="text-align: left;">
+                    <p><strong>Username:</strong> ${currentUser.username}</p>
+                    <p><strong>Full Name:</strong> ${currentUser.fullName || 'Not set'}</p>
+                    <p><strong>Login Time:</strong> ${new Date(currentUser.loginTime).toLocaleString()}</p>
+                </div>
+                <div style="margin-top: 30px;">
+                    <button class="btn btn-primary" onclick="showChangePassword(); this.closest('.license-modal-overlay').remove();">
+                        <i class="fas fa-lock"></i> Change Password
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.closest('.license-modal-overlay').remove()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Error getting user info:', error);
+        alert('Error loading user information: ' + error.message);
+    }
+}
+
+async function showChangePassword() {
+    if (!window.electronAPI || !window.electronAPI.auth) {
+        alert('Auth API not available');
+        return;
+    }
+    
+    try {
+        const currentUser = await window.electronAPI.auth.getCurrentUser();
+        
+        if (!currentUser) {
+            alert('No user logged in');
+            return;
+        }
+        
+        const modal = document.createElement('div');
+        modal.className = 'license-modal-overlay';
+        modal.innerHTML = `
+            <div class="license-modal">
+                <h2 style="margin-bottom: 20px;">
+                    <i class="fas fa-lock"></i> Change Password
+                </h2>
+                <div class="login-form">
+                    <div class="form-group">
+                        <label>Current Password:</label>
+                        <input type="password" id="currentPassword" class="form-control" placeholder="Enter current password" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password:</label>
+                        <input type="password" id="newPassword" class="form-control" placeholder="Enter new password (min 4 characters)" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password:</label>
+                        <input type="password" id="confirmNewPassword" class="form-control" placeholder="Confirm new password" autocomplete="new-password">
+                    </div>
+                    <div id="changePasswordError" style="color: red; margin: 10px 0; display: none;"></div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="handleChangePassword('${currentUser.username}')">
+                        <i class="fas fa-check"></i> Change Password
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.closest('.license-modal-overlay').remove()">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Error showing change password:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+async function handleChangePassword(username) {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmNewPassword').value;
+    const errorDiv = document.getElementById('changePasswordError');
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        errorDiv.textContent = 'Please fill all fields';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    if (newPassword.length < 4) {
+        errorDiv.textContent = 'New password must be at least 4 characters';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        errorDiv.textContent = 'New passwords do not match';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    try {
+        const result = await window.electronAPI.auth.changePassword(username, currentPassword, newPassword);
+        
+        if (result.success) {
+            alert('Password changed successfully!');
+            document.querySelector('.license-modal-overlay').remove();
+        } else {
+            errorDiv.textContent = result.message;
+            errorDiv.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        errorDiv.textContent = 'Error changing password: ' + error.message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+async function handleLogout() {
+    if (!confirm('Are you sure you want to logout?')) {
+        return;
+    }
+    
+    try {
+        if (window.electronAPI && window.electronAPI.auth) {
+            await window.electronAPI.auth.logout();
+        }
+        // Reload the page to show login screen
+        location.reload();
+    } catch (error) {
+        console.error('Error logging out:', error);
+        alert('Error logging out: ' + error.message);
+    }
+}
+
 // Make available globally
 window.LicenseUIManager = LicenseUIManager;

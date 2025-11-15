@@ -57,6 +57,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         return; // Stop here, login screen is showing
     }
     
+    // Display current user info
+    await displayCurrentUserInfo();
+    
     // Initialize license system after authentication
     if (window.LicenseUIManager) {
         await LicenseUIManager.initialize().then(() => {
@@ -8600,3 +8603,23 @@ function exportTrialBalanceToPDF() {
     printWindow.document.write('</script></body></html>');
     printWindow.document.close();
 }
+
+
+// Display current user information
+async function displayCurrentUserInfo() {
+    try {
+        if (window.electronAPI && window.electronAPI.auth) {
+            const currentUser = await window.electronAPI.auth.getCurrentUser();
+            const usernameSpan = document.getElementById("currentUsername");
+            
+            if (currentUser && usernameSpan) {
+                usernameSpan.textContent = currentUser.username;
+            } else if (usernameSpan) {
+                usernameSpan.textContent = "Guest";
+            }
+        }
+    } catch (error) {
+        console.error("Error displaying user info:", error);
+    }
+}
+

@@ -99,6 +99,9 @@
             </nav>
 
             <div class="sidebar-footer">
+                <div id="userInfoDisplay" style="padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; font-size: 12px; color: white;">
+                    <i class="fas fa-user"></i> <span id="currentUsername">Loading...</span>
+                </div>
                 <button class="btn btn-secondary btn-block" onclick="logoutCompany()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
@@ -416,6 +419,27 @@
                         </button>
                         <button class="btn btn-secondary" onclick="showAutoBackupSettings()">
                             <i class="fas fa-clock"></i> Auto-Backup Settings
+                        </button>
+                    </div>
+                    <div class="settings-section">
+                        <h3>License Management</h3>
+                        <button class="btn btn-secondary" onclick="showLicenseDetails()">
+                            <i class="fas fa-key"></i> View License Details
+                        </button>
+                        <button class="btn btn-secondary" onclick="LicenseUIManager.showActivationDialog()">
+                            <i class="fas fa-plus-circle"></i> Activate New License
+                        </button>
+                    </div>
+                    <div class="settings-section">
+                        <h3>User Account</h3>
+                        <button class="btn btn-secondary" onclick="showUserAccountInfo()">
+                            <i class="fas fa-user"></i> Account Information
+                        </button>
+                        <button class="btn btn-secondary" onclick="showChangePassword()">
+                            <i class="fas fa-lock"></i> Change Password
+                        </button>
+                        <button class="btn btn-danger" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt"></i> Logout
                         </button>
                     </div>
                 </div>
