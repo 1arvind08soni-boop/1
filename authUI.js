@@ -10,6 +10,8 @@ const AuthUIManager = {
      * Initialize authentication on app startup
      */
     async initialize() {
+        console.log('AuthUIManager: Starting initialization...');
+        
         if (!window.electronAPI || !window.electronAPI.auth) {
             console.warn('Auth API not available');
             return true; // Continue without auth
@@ -17,25 +19,52 @@ const AuthUIManager = {
         
         // Check if user is already logged in
         const user = await window.electronAPI.auth.getCurrentUser();
+        console.log('Current user check:', user);
         
         if (user) {
             this.currentUser = user;
             console.log('User already logged in:', user.username);
+            // User is authenticated - hide login screen, show company selection
+            this.hideLoginScreen();
             return true; // User is logged in
         }
         
         // Check if any users exist
         const users = await window.electronAPI.auth.getAllUsers();
+        console.log('Total users in system:', users.length);
         
         if (users.length === 0) {
             // No users exist - show first-time setup
+            console.log('No users found, showing first-time setup');
             this.showFirstTimeSetup();
             return false;
         } else {
             // Users exist - show login screen
+            console.log('Users found, showing login screen');
             this.showLoginScreen();
             return false;
         }
+    },
+    
+    /**
+     * Hide login screen and show company selection
+     */
+    hideLoginScreen() {
+        const loginScreen = document.getElementById('loginScreen');
+        const companyScreen = document.getElementById('companySelectionScreen');
+        const mainApp = document.getElementById('mainApp');
+        
+        if (loginScreen) {
+            loginScreen.style.display = 'none';
+        }
+        if (companyScreen) {
+            companyScreen.style.display = 'flex';
+        }
+        if (mainApp) {
+            mainApp.style.display = 'none';
+        }
+        
+        console.log('Login screen hidden, company selection shown');
     },
     
     /**
@@ -56,6 +85,8 @@ const AuthUIManager = {
             mainApp.style.display = 'none';
         }
         
+        console.log('Login screen displayed');
+        
         // Focus on username field
         setTimeout(() => {
             const usernameField = document.getElementById('loginUsername');
@@ -65,11 +96,8 @@ const AuthUIManager = {
         // Add enter key listener
         const passwordField = document.getElementById('loginPassword');
         if (passwordField) {
-            passwordField.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    handleLogin();
-                }
-            });
+            passwordField.removeEventListener('keypress', handleLoginKeypress); // Remove old listeners
+            passwordField.addEventListener('keypress', handleLoginKeypress);
         }
     },
     
@@ -136,6 +164,12 @@ const AuthUIManager = {
             return;
         }
         
+        if (!fullName) {
+            errorDiv.textContent = 'Please enter your full name';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
         if (password.length < 4) {
             errorDiv.textContent = 'Password must be at least 4 characters';
             errorDiv.style.display = 'block';
@@ -148,11 +182,17 @@ const AuthUIManager = {
             return;
         }
         
+        console.log('Creating new user:', username);
+        
         const result = await window.electronAPI.auth.createUser(username, password, fullName);
+        
+        console.log('User creation result:', result);
         
         if (result.success) {
             // Auto-login after creation
             const loginResult = await window.electronAPI.auth.login(username, password);
+            
+            console.log('Auto-login result:', loginResult);
             
             if (loginResult.success) {
                 this.currentUser = loginResult.user;
@@ -161,8 +201,24 @@ const AuthUIManager = {
                 const modal = document.querySelector('.license-modal-overlay');
                 if (modal) modal.remove();
                 
-                // Continue to app
-                location.reload();
+                // Hide login screen and show company selection
+                this.hideLoginScreen();
+                
+                // Update the user display
+                await displayCurrentUserInfo();
+                
+                // Initialize the app
+                if (typeof loadFromStorage === 'function') {
+                    loadFromStorage();
+                }
+                if (typeof initializeApp === 'function') {
+                    initializeApp();
+                }
+                
+                console.log('First-time setup complete, app initialized');
+            } else {
+                errorDiv.textContent = 'User created but auto-login failed';
+                errorDiv.style.display = 'block';
             }
         } else {
             errorDiv.textContent = result.message;
@@ -178,8 +234,17 @@ const AuthUIManager = {
     }
 };
 
+// Helper function for keyboard event
+function handleLoginKeypress(e) {
+    if (e.key === 'Enter') {
+        handleLogin();
+    }
+}
+
 // Global functions for onclick handlers
 async function handleLogin() {
+    console.log('Login attempt started');
+    
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errorDiv = document.getElementById('loginError');
@@ -190,15 +255,30 @@ async function handleLogin() {
         return;
     }
     
+    console.log('Attempting login for user:', username);
+    
     const result = await window.electronAPI.auth.login(username, password);
+    
+    console.log('Login result:', result);
     
     if (result.success) {
         AuthUIManager.currentUser = result.user;
-        // Reload to show the app
-        location.reload();
+        console.log('Login successful, user:', result.user.username);
+        
+        // Hide login screen and show company selection
+        AuthUIManager.hideLoginScreen();
+        
+        // Update the user display
+        await displayCurrentUserInfo();
+        
+        // Initialize the app if not already done
+        if (typeof initializeApp === 'function') {
+            initializeApp();
+        }
     } else {
-        errorDiv.textContent = result.message;
+        errorDiv.textContent = result.message || 'Invalid username or password';
         errorDiv.style.display = 'block';
+        console.error('Login failed:', result.message);
     }
 }
 

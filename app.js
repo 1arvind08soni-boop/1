@@ -42,41 +42,47 @@ function getProductDisplay(item) {
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('=== App Initialization Started ===');
+    
+    // Check if authentication system is available
+    if (!window.electronAPI || !window.electronAPI.auth) {
+        console.warn('Authentication system not available, proceeding without auth');
+        // No auth system, proceed directly
+        loadFromStorage();
+        initializeApp();
+        return;
+    }
+    
     // Initialize authentication system first
-    let isAuthenticated = false;
     if (window.AuthUIManager) {
-        isAuthenticated = await AuthUIManager.initialize();
-    } else {
-        // No auth system, proceed normally
-        isAuthenticated = true;
+        const isAuthenticated = await AuthUIManager.initialize();
+        console.log('Authentication check result:', isAuthenticated);
+        
+        // Only continue if authenticated
+        if (!isAuthenticated) {
+            console.log('User not authenticated. Showing login screen...');
+            return; // Stop here, login screen is showing
+        }
+        
+        // User is authenticated - display user info
+        console.log('User authenticated successfully');
+        await displayCurrentUserInfo();
     }
-    
-    // Only continue if authenticated
-    if (!isAuthenticated) {
-        console.log('Waiting for user authentication...');
-        return; // Stop here, login screen is showing
-    }
-    
-    // Display current user info
-    await displayCurrentUserInfo();
     
     // Initialize license system after authentication
     if (window.LicenseUIManager) {
-        await LicenseUIManager.initialize().then(() => {
-            // Load app data and initialize after license check
-            loadFromStorage();
-            initializeApp();
-        }).catch(err => {
+        try {
+            await LicenseUIManager.initialize();
+            console.log('License system initialized');
+        } catch (err) {
             console.error('License initialization error:', err);
-            // Still load the app even if license check fails
-            loadFromStorage();
-            initializeApp();
-        });
-    } else {
-        // No license system available, proceed normally
-        loadFromStorage();
-        initializeApp();
+            // Continue even if license check fails
+        }
     }
+    
+    // Load app data and initialize
+    loadFromStorage();
+    initializeApp();
     
     // Setup app closing listener for auto-backup
     if (window.electronAPI && window.electronAPI.onAppClosing) {
@@ -84,6 +90,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             performBackupOnClose();
         });
     }
+    
+    console.log('=== App Initialization Complete ===');
 });
 
 // Storage Management
@@ -8608,14 +8616,20 @@ function exportTrialBalanceToPDF() {
 // Display current user information
 async function displayCurrentUserInfo() {
     try {
+        console.log('Displaying current user info...');
+        
         if (window.electronAPI && window.electronAPI.auth) {
             const currentUser = await window.electronAPI.auth.getCurrentUser();
             const usernameSpan = document.getElementById("currentUsername");
             
+            console.log('Current user from API:', currentUser);
+            
             if (currentUser && usernameSpan) {
                 usernameSpan.textContent = currentUser.username;
+                console.log('Username displayed:', currentUser.username);
             } else if (usernameSpan) {
-                usernameSpan.textContent = "Guest";
+                usernameSpan.textContent = "Not logged in";
+                console.warn('No current user found');
             }
         }
     } catch (error) {
